@@ -49,8 +49,8 @@ The show setup and employee task-time workflow is documented in
 | ------------------------ | ------------------------------------------- |
 | Source and Helm version  | `0.3.0`                                     |
 | Git branch               | `main`                                      |
-| Git baseline             | `7d9dfce`                                   |
-| Local Kubernetes release | `0.2.0`, revision 4; `0.3.0` images pending |
+| Git baseline             | `f00f027`                                   |
+| Local Kubernetes release | `0.3.0`, Helm revision 5, deployed          |
 | Container target         | kubeadm/containerd `k8s.io`, `linux/amd64`  |
 | Ingress                  | `http://gnomon.local` through NGINX Ingress |
 
