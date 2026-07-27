@@ -88,7 +88,7 @@ Holiday and leave-balance administration is documented in
 | ------------------------ | ------------------------------------------- |
 | Source and Helm version  | `0.7.0`                                     |
 | Git branch               | `main`                                      |
-| Source release commit    | Current `0.7.0` feature commit              |
+| Source release commit    | `cd3619a`                                   |
 | Local Kubernetes release | `0.6.0`, Helm revision 8, deployed          |
 | Local `0.7.0` images     | Awaiting local build and containerd import  |
 | Container target         | kubeadm/containerd `k8s.io`, `linux/amd64`  |
