@@ -9,7 +9,9 @@ import { sensitiveLogPaths } from './config/logging.js';
 import { errorHandler, notFoundHandler } from './middleware/errors.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { importRouter } from './modules/imports/import.routes.js';
+import { showRouter } from './modules/shows/show.routes.js';
 import { timecardRouter } from './modules/timecard/timecard.routes.js';
+import { timesheetRouter } from './modules/timesheets/timesheet.routes.js';
 import { healthRouter } from './routes/health.routes.js';
 
 export const app = express();
@@ -38,7 +40,9 @@ app.use(cookieParser());
 app.use('/api/v1/health', healthRouter);
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/imports', importRouter);
+app.use('/api/v1/shows', showRouter);
 app.use('/api/v1/timecard', timecardRouter);
+app.use('/api/v1/timesheets', timesheetRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

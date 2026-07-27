@@ -36,4 +36,16 @@ describe('protected routes', () => {
     expect(response.status).toBe(401);
     expect(response.body.error.code).toBe('AUTHENTICATION_REQUIRED');
   });
+
+  it('requires authentication for shows and timesheets', async () => {
+    const [shows, timesheets] = await Promise.all([
+      request(app).get('/api/v1/shows'),
+      request(app).get('/api/v1/timesheets'),
+    ]);
+
+    expect(shows.status).toBe(401);
+    expect(timesheets.status).toBe(401);
+    expect(shows.body.error.code).toBe('AUTHENTICATION_REQUIRED');
+    expect(timesheets.body.error.code).toBe('AUTHENTICATION_REQUIRED');
+  });
 });

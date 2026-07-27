@@ -17,6 +17,7 @@ export type AppView =
   | 'leave'
   | 'calendar'
   | 'approvals'
+  | 'shows'
   | 'people'
   | 'administration';
 
@@ -41,6 +42,12 @@ export const managementNavigation: NavigationItem[] = [
     label: 'Approvals',
     icon: ShieldCheck,
     requiredPermissions: ['regularisation:approve', 'leave:approve', 'timesheet:approve'],
+  },
+  {
+    id: 'shows',
+    label: 'Shows & tasks',
+    icon: FileClock,
+    requiredPermissions: ['show:manage'],
   },
   {
     id: 'people',

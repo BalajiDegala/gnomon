@@ -27,8 +27,11 @@ import {
 } from 'lucide-react';
 
 import { formatElapsed, formatIndiaTime, useTodayTimecard } from '../lib/timecard';
+import { useAuth } from '../lib/auth';
 import type { AppView } from '../navigation';
 import { AttendanceImportsPage } from './AttendanceImportsPage';
+import { ShowManagementPage } from './ShowManagementPage';
+import { TimesheetsPage } from './TimesheetsPage';
 
 interface ModulePageProps {
   view: Exclude<AppView, 'overview'>;
@@ -44,33 +47,9 @@ interface ModuleDefinition {
 }
 
 const moduleDefinitions: Record<
-  Exclude<AppView, 'overview' | 'timecard' | 'administration'>,
+  Exclude<AppView, 'overview' | 'timecard' | 'timesheets' | 'shows' | 'administration'>,
   ModuleDefinition
 > = {
-  timesheets: {
-    eyebrow: 'Delivery tracking',
-    title: 'Timesheets',
-    description:
-      'Record start and end times against shows, projects and tasks, then submit them for the correct Show Manager approval.',
-    icon: FileClock,
-    capabilities: [
-      {
-        label: 'Show assignments',
-        detail: 'Only assigned shows and tasks will be available.',
-        icon: Sparkles,
-      },
-      {
-        label: 'Start/end entries',
-        detail: 'Overlapping intervals will be rejected.',
-        icon: Clock3,
-      },
-      {
-        label: 'Show approval',
-        detail: 'Entries route to the responsible Show Manager.',
-        icon: ShieldCheck,
-      },
-    ],
-  },
   leave: {
     eyebrow: 'Time away',
     title: 'Leave',
@@ -154,7 +133,18 @@ const moduleDefinitions: Record<
 };
 
 export function ModulePage({ view, onNavigate }: ModulePageProps) {
+  const { user } = useAuth();
   if (view === 'timecard') return <TimecardDetailPage onBack={() => onNavigate('overview')} />;
+  if (view === 'timesheets') {
+    return (
+      <TimesheetsPage
+        onBack={() => onNavigate('overview')}
+        onManageShows={() => onNavigate('shows')}
+        canManageShows={user?.permissions.includes('show:manage') ?? false}
+      />
+    );
+  }
+  if (view === 'shows') return <ShowManagementPage onBack={() => onNavigate('overview')} />;
   if (view === 'administration') {
     return <AttendanceImportsPage onBack={() => onNavigate('overview')} />;
   }

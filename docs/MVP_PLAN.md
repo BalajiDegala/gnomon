@@ -2,7 +2,7 @@
 
 ## Document status
 
-- Status: Active MVP baseline (Phase 2 attendance ingestion in progress)
+- Status: Phase 3 task-time slice implemented; daily reconciliation is next
 - Created: 2026-07-27
 - Company: DIGITAL DOMAIN INDIA
 - Application scope: Single company
@@ -581,10 +581,11 @@ CPU does not expose the AVX instructions required by newer MongoDB releases.
 
 ### Phase 3: Time entries and reconciliation
 
-- Shows, projects, tasks, and assignments.
-- Task start/end entries.
-- Daily timecard calculation.
-- Source comparison and anomaly detection.
+- Implemented in `0.3.0`: shows, tasks, and employee show assignments.
+- Implemented in `0.3.0`: non-overlapping task start/end entries, draft deletion,
+  daily totals, and daily submission.
+- Next: project-level grouping and daily timecard calculation.
+- Next: source comparison and anomaly detection.
 
 ### Phase 4: Regularisation and approval engine
 
@@ -634,12 +635,14 @@ business-rule complete:
 1. Does the required nine hours include lunch and other breaks?
 2. Does attendance regularisation require both Reporting Manager and
    HR/Attendance Admin approval?
-3. Can employees record multiple task intervals per day, as currently proposed?
-4. Is the approval split correct: Show Manager approves show timesheets, while
+3. Is the approval split correct: Show Manager approves show timesheets, while
    Reporting Manager approves leave and attendance?
-5. What mismatch tolerance should trigger a discrepancy between biometric,
+4. What mismatch tolerance should trigger a discrepancy between biometric,
    access-card, and website times (for example, 15 minutes)?
-6. Should time entries be submitted daily or as a weekly timesheet?
+
+Confirmed implementation baselines: employees may record multiple
+non-overlapping task intervals per day, and entries are submitted by work date
+rather than as a weekly sheet.
 
 An anonymized example of both the biometric CSV and access-card CSV is required
 before finalizing the import mappings.

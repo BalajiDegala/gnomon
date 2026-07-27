@@ -7,7 +7,7 @@ regularisation, calendars, approval workflows, and scoped administration.
 
 ## Current implementation
 
-The Phase 1 foundation and first Phase 2 timecard slice include:
+The Phase 1 foundation, attendance slice, and Phase 3 task-time slice include:
 
 - Responsive React and Material UI application shell with a polished login page,
   permission-aware navigation, desktop sidebar, and mobile drawer.
@@ -21,28 +21,36 @@ The Phase 1 foundation and first Phase 2 timecard slice include:
 - Company-scoped biometric and access-card CSV imports with file/row idempotency,
   immutable raw events, validation results, and import history.
 - Permission-to-scope authorization grants for protected company-wide actions.
-- Focused timecard detail view plus clear delivery states for timesheets, leave,
-  calendar, approvals, people, and administration.
+- Company- or show-scoped show administration with task creation and employee
+  assignment by employee code.
+- Employee task-time entries for assigned shows, including start/end intervals,
+  descriptions, billable flags, work-session linkage, overlap protection, daily
+  totals, draft deletion, and daily submission.
+- Responsive Shows & tasks and Timesheets pages for desktop and mobile.
+- Focused timecard detail view plus clear delivery states for leave, calendar,
+  approvals, people, and administration.
 - Playwright coverage for authenticated desktop and mobile application flows.
 - Seeded Employee, Reporting Manager, Show Manager, HR, Attendance Administrator,
   and System Administrator permission sets.
 - Development Docker Compose configuration.
 - Kubeadm/containerd-compatible Helm chart aligned with the local cluster.
 
-Task entries, full daily reconciliation, regularisation, leave, and approvals
-will be added in the following slices.
+Full daily reconciliation, regularisation, submitted-timesheet approval
+decisions, leave, and calendar workflows will be added in the following slices.
 
 The accepted attendance CSV contract is documented in
 [`docs/ATTENDANCE_CSV_FORMAT.md`](docs/ATTENDANCE_CSV_FORMAT.md).
+The show setup and employee task-time workflow is documented in
+[`docs/TIMESHEET_WORKFLOW.md`](docs/TIMESHEET_WORKFLOW.md).
 
 ## Release status
 
 | Item                     | Status                                      |
 | ------------------------ | ------------------------------------------- |
-| Source and Helm version  | `0.2.0`                                     |
+| Source and Helm version  | `0.3.0`                                     |
 | Git branch               | `main`                                      |
-| Git baseline             | `aec2463`                                   |
-| Local Kubernetes release | `0.2.0`, Helm revision 4, deployed          |
+| Git baseline             | `7d9dfce`                                   |
+| Local Kubernetes release | `0.2.0`, revision 4; `0.3.0` images pending |
 | Container target         | kubeadm/containerd `k8s.io`, `linux/amd64`  |
 | Ingress                  | `http://gnomon.local` through NGINX Ingress |
 
