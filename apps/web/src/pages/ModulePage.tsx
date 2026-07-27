@@ -24,7 +24,7 @@ import {
 import { formatElapsed, formatIndiaTime, useTodayTimecard } from '../lib/timecard';
 import { useAuth } from '../lib/auth';
 import type { AppView } from '../navigation';
-import { AttendanceImportsPage } from './AttendanceImportsPage';
+import { AdministrationPage } from './AdministrationPage';
 import { ApprovalQueuePage } from './ApprovalQueuePage';
 import { CalendarPage } from './CalendarPage';
 import { LeavePage } from './LeavePage';
@@ -104,7 +104,7 @@ export function ModulePage({ view, onNavigate }: ModulePageProps) {
   }
   if (view === 'shows') return <ShowManagementPage onBack={() => onNavigate('overview')} />;
   if (view === 'administration') {
-    return <AttendanceImportsPage onBack={() => onNavigate('overview')} />;
+    return <AdministrationPage onBack={() => onNavigate('overview')} />;
   }
   return (
     <PlannedModule definition={moduleDefinitions[view]} onBack={() => onNavigate('overview')} />

@@ -45,13 +45,24 @@ function nextWorkingDate(): string {
   return date.toISOString().slice(0, 10);
 }
 
-function workingDayCount(startDate: string, endDate: string, dayPart: LeaveDayPart): number {
+function workingDayCount(
+  startDate: string,
+  endDate: string,
+  dayPart: LeaveDayPart,
+  holidayDates: ReadonlySet<string>,
+): number {
   if (!startDate || !endDate || endDate < startDate) return 0;
   const start = new Date(`${startDate}T00:00:00.000Z`);
   const end = new Date(`${endDate}T00:00:00.000Z`);
   let count = 0;
   for (let date = start; date <= end; date = new Date(date.getTime() + 86_400_000)) {
-    if (date.getUTCDay() !== 0 && date.getUTCDay() !== 6) count += 1;
+    if (
+      date.getUTCDay() !== 0 &&
+      date.getUTCDay() !== 6 &&
+      !holidayDates.has(date.toISOString().slice(0, 10))
+    ) {
+      count += 1;
+    }
   }
   return dayPart === 'full_day' ? count : count ? 0.5 : 0;
 }
@@ -88,7 +99,11 @@ export function LeavePage({ onBack }: LeavePageProps) {
   const [reason, setReason] = useState('');
   const year = Number(startDate.slice(0, 4));
   const leaves = useMyLeaves(year);
-  const requestedDays = workingDayCount(startDate, endDate, dayPart);
+  const holidayDates = useMemo(
+    () => new Set(leaves.holidays.map((holiday) => holiday.date)),
+    [leaves.holidays],
+  );
+  const requestedDays = workingDayCount(startDate, endDate, dayPart, holidayDates);
   const selectedBalance = leaves.balances.find((balance) => balance.leaveType === leaveType);
 
   useEffect(() => {
@@ -126,8 +141,8 @@ export function LeavePage({ onBack }: LeavePageProps) {
           Leave
         </Typography>
         <Typography sx={{ maxWidth: 780, color: 'text.secondary', fontSize: 13.5, mt: 0.7 }}>
-          Request full-day or half-day leave. Saturdays and Sundays are excluded, and your Reporting
-          Manager owns the decision.
+          Request full-day or half-day leave. Weekends and configured holidays are excluded, and
+          your Reporting Manager owns the decision.
         </Typography>
       </Box>
 
@@ -236,6 +251,13 @@ export function LeavePage({ onBack }: LeavePageProps) {
                         ? `${selectedBalance.availableDays} configured days remain after pending and approved leave.`
                         : 'Loading balance policy…'}
                   </Typography>
+                  {leaves.holidays.some(
+                    (holiday) => holiday.date >= startDate && holiday.date <= endDate,
+                  ) && (
+                    <Typography sx={{ mt: 0.45, color: 'primary.dark', fontSize: 10.5 }}>
+                      Company holidays inside this range are excluded automatically.
+                    </Typography>
+                  )}
                 </Box>
                 <Button
                   type="submit"

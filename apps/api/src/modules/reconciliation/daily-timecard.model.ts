@@ -114,7 +114,7 @@ const dailyTimecardSchema = new Schema(
       isFinal: { type: Boolean, required: true, default: false },
       finalSource: {
         type: String,
-        enum: ['calculated', 'regularised', 'approved_leave', 'hr_override'],
+        enum: ['calculated', 'regularised', 'approved_leave', 'holiday', 'hr_override'],
         required: true,
         default: 'calculated',
       },

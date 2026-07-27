@@ -11,6 +11,7 @@ import { Types } from 'mongoose';
 
 import { HttpError } from '../../middleware/errors.js';
 import { Employee, type EmployeeDocument } from '../employees/employee.model.js';
+import { listApplicableHolidays } from '../policies/policy.service.js';
 import { reconcileDailyTimecard } from '../reconciliation/reconciliation.service.js';
 import { LeaveBalance, LeaveRequest, type LeaveRequestDocument } from './leave.model.js';
 
@@ -36,7 +37,10 @@ function employeeName(employee: Pick<EmployeeDocument, 'firstName' | 'lastName'>
   return `${employee.firstName} ${employee.lastName}`.trim();
 }
 
-export function calculateLeaveWindow(input: CreateLeaveRequest) {
+export function calculateLeaveWindow(
+  input: CreateLeaveRequest,
+  holidayDates: ReadonlySet<string> = new Set(),
+) {
   const start = new Date(`${input.startDate}T00:00:00.000Z`);
   const end = new Date(`${input.endDate}T00:00:00.000Z`);
   const calendarDays = Math.floor((end.getTime() - start.getTime()) / 86_400_000) + 1;
@@ -51,8 +55,9 @@ export function calculateLeaveWindow(input: CreateLeaveRequest) {
   const workingDates: string[] = [];
   for (let offset = 0; offset < calendarDays; offset += 1) {
     const date = new Date(start.getTime() + offset * 86_400_000);
-    if (date.getUTCDay() !== 0 && date.getUTCDay() !== 6) {
-      workingDates.push(date.toISOString().slice(0, 10));
+    const isoDate = date.toISOString().slice(0, 10);
+    if (date.getUTCDay() !== 0 && date.getUTCDay() !== 6 && !holidayDates.has(isoDate)) {
+      workingDates.push(isoDate);
     }
   }
   if (workingDates.length === 0) {
@@ -164,9 +169,14 @@ export async function listMyLeaves(user: AuthUser, year?: number) {
     .sort({ submittedAt: -1 })
     .lean()
     .exec();
+  const [balances, holidays] = await Promise.all([
+    buildBalances(user.employeeId, selectedYear),
+    listApplicableHolidays(user.employeeId, `${selectedYear}-01-01`, `${selectedYear}-12-31`),
+  ]);
   return {
     requests: requests.map((request) => toDto(request, employee)),
-    balances: await buildBalances(user.employeeId, selectedYear),
+    balances,
+    holidays,
   };
 }
 
@@ -176,9 +186,10 @@ export async function createLeave(
   now = new Date(),
 ): Promise<LeaveRequestDto> {
   await ensureIndexes();
-  const window = calculateLeaveWindow(input);
   const employee = await Employee.findOne({ _id: user.employeeId, status: 'active' }).lean().exec();
   if (!employee) throw new HttpError(404, 'Employee profile not found', 'EMPLOYEE_NOT_FOUND');
+  const holidays = await listApplicableHolidays(user.employeeId, input.startDate, input.endDate);
+  const window = calculateLeaveWindow(input, new Set(holidays.map((holiday) => holiday.date)));
   if (!employee.reportingManagerId) {
     throw new HttpError(
       409,

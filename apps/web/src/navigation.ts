@@ -77,6 +77,6 @@ export const managementNavigation: NavigationItem[] = [
     id: 'administration',
     label: 'Administration',
     icon: Settings2,
-    requiredPermissions: ['policy:manage', 'imports:create', 'audit:read'],
+    requiredPermissions: ['policy:manage', 'imports:create', 'employee:update', 'audit:read'],
   },
 ];

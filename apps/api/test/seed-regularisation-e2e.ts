@@ -6,6 +6,7 @@ import { connectDatabase, disconnectDatabase } from '../src/db/mongoose.js';
 import { User } from '../src/modules/auth/user.model.js';
 import { Employee } from '../src/modules/employees/employee.model.js';
 import { LeaveBalance, LeaveRequest } from '../src/modules/leaves/leave.model.js';
+import { Holiday } from '../src/modules/policies/holiday.model.js';
 import { DailyTimecard } from '../src/modules/reconciliation/daily-timecard.model.js';
 import { RegularisationRequest } from '../src/modules/regularisations/regularisation.model.js';
 import { RoleAssignment } from '../src/modules/roles/role.model.js';
@@ -101,6 +102,7 @@ async function seedWorkflowFixtures(): Promise<void> {
     RegularisationRequest.deleteMany({ employeeId: { $in: fixtureEmployeeIds } }),
     LeaveRequest.deleteMany({ employeeId: { $in: fixtureEmployeeIds } }),
     LeaveBalance.deleteMany({ employeeId: { $in: fixtureEmployeeIds } }),
+    Holiday.deleteMany({}),
     DailyTimecard.deleteMany({ employeeId: { $in: fixtureEmployeeIds } }),
     RoleAssignment.deleteMany({ userId: { $in: fixtureUserIds } }),
   ]);
@@ -109,7 +111,8 @@ async function seedWorkflowFixtures(): Promise<void> {
   const employeeRole = roles.get('EMPLOYEE');
   const managerRole = roles.get('REPORTING_MANAGER');
   const hrRole = roles.get('HR');
-  if (!employeeRole || !managerRole || !hrRole) {
+  const attendanceRole = roles.get('ATTENDANCE_ADMIN');
+  if (!employeeRole || !managerRole || !hrRole || !attendanceRole) {
     throw new Error('Required system roles could not be seeded');
   }
 
@@ -159,9 +162,18 @@ async function seedWorkflowFixtures(): Promise<void> {
       validUntil: null,
       grantedBy: null,
     },
+    {
+      userId: hrUser._id,
+      roleId: attendanceRole._id,
+      scopeType: 'company',
+      scopeIds: [],
+      validFrom: new Date(),
+      validUntil: null,
+      grantedBy: null,
+    },
   ]);
 
-  process.stdout.write('Seeded isolated regularisation and leave E2E fixtures\n');
+  process.stdout.write('Seeded isolated regularisation, leave, and policy E2E fixtures\n');
 }
 
 seedWorkflowFixtures()

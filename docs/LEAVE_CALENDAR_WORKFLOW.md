@@ -1,6 +1,6 @@
 # Leave and Personal Calendar Workflow
 
-This document describes the Gnomon `0.6.0` leave-management and personal-calendar
+This document describes the Gnomon `0.7.0` leave-management and personal-calendar
 MVP for DIGITAL DOMAIN INDIA. It is the implemented baseline, not a final payroll
 or statutory leave policy.
 
@@ -25,14 +25,20 @@ available for another request; pending and approved dates remain reserved.
 - Full-day duration: one day per weekday in the range
 - Half-day duration: 0.5 day and exactly one weekday
 - Cross-year ranges: rejected so one request maps to one annual balance period
-- Holidays: not yet configured, so `0.6.0` excludes weekends only
+- Holidays: applicable active company/location holidays are excluded
 
 Paid balances are stored separately for casual, sick, and earned leave by employee
 and year. Each record has entitlement days, signed adjustment days, and an optional
 note. Pending requests reserve balance and approved requests consume it. When no
 record exists, the UI says **Not set** and approval remains available; Gnomon does
 not invent a default entitlement. Unpaid leave is tracked by request totals without
-an entitlement ceiling.
+an entitlement ceiling. Release `0.7.0` lets scoped HR administrators configure
+entitlement, signed adjustment, and a note by employee/year.
+
+Company holidays are managed separately by Attendance/System Administration. New
+leave requests exclude applicable holiday dates. Adding or archiving a holiday is
+blocked when it would conflict with an active leave reservation/range, so stored
+days and balances never change silently.
 
 ## Persistence invariants
 
@@ -63,9 +69,10 @@ calendar responses contain type, portion, status, and duration but deliberately 
 the reason. Hiding navigation in React is convenience only; every API route enforces
 its permission independently.
 
-The `0.6.0` policy uses one Reporting Manager decision for leave. HR configuration,
-oversight, and override screens remain a later slice; regularisation continues to use
-its separate two-step Manager then HR/Attendance workflow.
+The leave policy uses one Reporting Manager decision. Release `0.7.0` adds HR balance
+configuration; HR leave-decision oversight and override remain a later slice.
+Regularisation continues to use its separate two-step Manager then HR/Attendance
+workflow.
 
 ## Attendance interaction
 
@@ -75,6 +82,9 @@ its separate two-step Manager then HR/Attendance workflow.
   270 minutes and preserves evidence/anomalies for the worked half.
 - Biometric, access-card, website-session, and task-time summaries are never changed.
 - Approved regularisation takes precedence over leave when both exist.
+- An applicable holiday sets effective attendance to `holiday`, clears attendance
+  anomalies, and finalises the derived daily record as `holiday` without changing
+  source summaries.
 - Future approvals are shown in the calendar immediately; daily records are created
   only for current/past dates to avoid manufacturing future attendance.
 
@@ -89,6 +99,13 @@ GET  /api/v1/approvals/leaves
 POST /api/v1/approvals/leaves/:requestId/decision
 
 GET  /api/v1/calendar?month=YYYY-MM
+
+GET  /api/v1/administration/holidays?year=YYYY
+PUT  /api/v1/administration/holidays
+POST /api/v1/administration/holidays/:holidayId/archive
+
+GET  /api/v1/administration/leave-balances?employeeCode=CODE&year=YYYY
+PUT  /api/v1/administration/leave-balances/:employeeCode
 ```
 
 Creation and decision bodies are validated by shared Zod contracts. Rejection needs
@@ -111,8 +128,8 @@ checks `NODE_ENV=test` and the `_test` suffix before writing.
 
 ## Follow-up scope
 
-- HR leave-balance and leave-type administration
-- Location-specific holiday calendars and working-day exclusion
+- Leave-type catalogue administration
+- Location selection UI for the location-ready holiday model
 - HR oversight/override with audit reporting
 - Reporting Manager team calendar
 - Show Manager assigned-artist availability calendar

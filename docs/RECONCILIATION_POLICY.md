@@ -1,7 +1,7 @@
 # Daily Reconciliation Policy
 
-This document records the `0.6.0` employee attendance calculation,
-regularisation finalisation, and approved-leave interaction. It is a
+This document records the `0.7.0` employee attendance calculation,
+regularisation finalisation, approved-leave interaction, and holiday state. It is a
 provisional MVP policy: immutable evidence is preserved, calculations can be
 regenerated, and unresolved business settings remain explicit rather than being
 treated as final payroll rules.
@@ -103,6 +103,19 @@ the service does not create future daily-timecard records. Reconciliation is app
 when the work date is current/past. See
 [`LEAVE_CALENDAR_WORKFLOW.md`](LEAVE_CALENDAR_WORKFLOW.md).
 
+## Configured holidays
+
+An applicable active holiday overrides ordinary calculated attendance with `holiday`,
+clears daily anomalies, and finalises the derived record with `holiday` as its source.
+The policy actor and update time are retained while biometric, access-card, website,
+and task summaries remain intact. Approved regularisation and approved leave retain
+precedence over holiday state.
+
+Creating or archiving a holiday is rejected if doing so would conflict with an active
+leave reservation/range. Current/past daily records already materialized for the date
+are recalculated after a policy change; future dates remain calendar policy until the
+work date arrives.
+
 ## Duration caveat
 
 `breakMinutes` is currently zero and `payableMinutes` equals gross presence.
@@ -125,6 +138,5 @@ against 540 minutes; and translates anomaly codes into review messages.
 
 ## Next slice
 
-The reconciliation service will next consume configured holiday state. Policy
-administration will later make the 15-minute source tolerance, shift, workday
+Policy administration will later make the 15-minute source tolerance, shift, workday
 boundary, required duration, half-day duration, and approval path configurable.

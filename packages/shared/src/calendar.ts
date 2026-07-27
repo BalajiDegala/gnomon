@@ -14,6 +14,13 @@ export const PersonalCalendarDayDtoSchema = z.object({
   date: z.string().date(),
   weekday: z.number().int().min(1).max(7),
   isWorkingDay: z.boolean(),
+  holiday: z
+    .object({
+      id: z.string(),
+      name: z.string(),
+      scopeType: z.enum(['company', 'location']),
+    })
+    .nullable(),
   attendance: z
     .object({
       status: z.enum([

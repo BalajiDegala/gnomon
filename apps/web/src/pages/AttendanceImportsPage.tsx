@@ -31,7 +31,8 @@ import { useState, type DragEvent } from 'react';
 import { downloadAttendanceTemplate, useAttendanceImports } from '../lib/imports';
 
 interface AttendanceImportsPageProps {
-  onBack: () => void;
+  onBack?: () => void;
+  embedded?: boolean;
 }
 
 const requiredColumns = ['employee_code', 'occurred_at', 'event_type'];
@@ -59,7 +60,7 @@ function statusColor(status: ImportBatchDto['status']): 'success' | 'warning' | 
   return 'info';
 }
 
-export function AttendanceImportsPage({ onBack }: AttendanceImportsPageProps) {
+export function AttendanceImportsPage({ onBack, embedded = false }: AttendanceImportsPageProps) {
   const imports = useAttendanceImports();
   const [source, setSource] = useState<AttendanceImportSource>('biometric');
   const [file, setFile] = useState<File | null>(null);
@@ -77,9 +78,16 @@ export function AttendanceImportsPage({ onBack }: AttendanceImportsPageProps) {
   return (
     <Stack spacing={3} sx={{ width: '100%', maxWidth: 1280, mx: 'auto' }}>
       <Box>
-        <Button color="inherit" startIcon={<ArrowLeft size={16} />} onClick={onBack} sx={{ mb: 2 }}>
-          Back to overview
-        </Button>
+        {!embedded && onBack && (
+          <Button
+            color="inherit"
+            startIcon={<ArrowLeft size={16} />}
+            onClick={onBack}
+            sx={{ mb: 2 }}
+          >
+            Back to overview
+          </Button>
+        )}
         <Typography
           sx={{ color: 'primary.dark', fontSize: 11, fontWeight: 800, letterSpacing: 1.3 }}
         >

@@ -107,6 +107,7 @@ export interface LeaveBalanceDocument {
   entitledDays: number;
   adjustedDays: number;
   note: string;
+  updatedByUserId: Types.ObjectId | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -119,6 +120,7 @@ const leaveBalanceSchema = new Schema<LeaveBalanceDocument>(
     entitledDays: { type: Number, required: true, min: 0 },
     adjustedDays: { type: Number, required: true, default: 0 },
     note: { type: String, default: '', trim: true, maxlength: 500 },
+    updatedByUserId: { type: Schema.Types.ObjectId, ref: 'User', default: null },
   },
   { timestamps: true },
 );

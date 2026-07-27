@@ -2,7 +2,7 @@
 
 ## Document status
 
-- Status: Phase 5 leave and personal-calendar slice implemented
+- Status: Phase 5 leave, holiday, balance, and personal-calendar slices implemented
 - Created: 2026-07-27
 - Company: DIGITAL DOMAIN INDIA
 - Application scope: Single company
@@ -187,7 +187,8 @@ One record per employee and company work date.
 
   finalisation: {
     isFinal: boolean,
-    finalSource: "calculated" | "regularised" | "hr_override",
+    finalSource:
+      "calculated" | "regularised" | "approved_leave" | "holiday" | "hr_override",
     finalStart: ISODate | null,
     finalEnd: ISODate | null,
     finalMinutes: number,
@@ -464,8 +465,14 @@ Approval behavior must be policy-driven rather than hardcoded.
 - Approved full-day leave becomes the final effective daily attendance state while
   preserving source evidence. Half-day leave reduces the effective requirement to
   270 minutes and keeps evidence for the worked portion.
-- Location-specific holidays, Reporting Manager team calendars, and Show Manager
-  availability calendars remain next-slice work.
+- Release `0.7.0` adds auditable company holidays, excludes them from new leave
+  requests, reconciles them as effective holiday attendance, and displays them in
+  the personal calendar.
+- Release `0.7.0` adds HR-scoped annual entitlement/adjustment administration and
+  company policy administration with active-leave conflict guards.
+- Location-specific holiday UI, Reporting Manager team calendars, and Show Manager
+  availability calendars remain next-slice work. The holiday schema and API scope
+  checks are location-ready.
 - Leave reasons remain private unless the viewer has an explicit permission.
 
 See [`LEAVE_CALENDAR_WORKFLOW.md`](LEAVE_CALENDAR_WORKFLOW.md) for the implemented
@@ -617,12 +624,17 @@ CPU does not expose the AVX instructions required by newer MongoDB releases.
   reasons, self-approval prevention, and immutable decision attribution.
 - Implemented in `0.6.0`: personal month calendar and approved-leave attendance
   reconciliation.
-- Next: holiday administration and location-aware working-day calculation.
+- Implemented in `0.7.0`: company holiday administration, holiday-aware leave-day
+  calculation, personal calendar markers, and holiday attendance finalisation.
+- Implemented in `0.7.0`: HR-scoped paid-leave entitlement and adjustment administration.
+- Next: location selection and location-specific holiday administration.
 - Next: Reporting Manager team and Show Manager availability calendars.
 
 ### Phase 6: Administration and reporting
 
-- HR, show, attendance, and security admin pages.
+- Implemented in `0.7.0`: permission-aware administration shell for attendance
+  imports, company holidays, and employee leave balances.
+- Next: remaining HR, attendance-policy, security, and reporting pages.
 - Dashboards and CSV exports.
 - Scoped reports.
 

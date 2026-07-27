@@ -77,6 +77,21 @@ describe('leave working-day calculation', () => {
     ).toBe(0.5);
   });
 
+  it('excludes configured holidays from working dates', () => {
+    expect(
+      calculateLeaveWindow(
+        {
+          leaveType: 'earned',
+          startDate: '2026-08-13',
+          endDate: '2026-08-17',
+          dayPart: 'full_day',
+          reason: 'Planned holiday extension',
+        },
+        new Set(['2026-08-14']),
+      ),
+    ).toEqual({ workingDates: ['2026-08-13', '2026-08-17'], requestedDays: 2 });
+  });
+
   it('rejects a weekend-only request', () => {
     expect(() =>
       calculateLeaveWindow({

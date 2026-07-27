@@ -51,6 +51,12 @@ personal-calendar slices include:
   to 270 minutes and retains the worked portion.
 - Responsive personal calendar combining reconciled attendance with pending and
   approved leave without exposing leave reasons.
+- Auditable company-holiday administration with scope enforcement, archive/reactivate
+  support, leave-range conflict protection, and automatic exclusion from leave days.
+- HR-scoped employee leave-balance administration for annual entitlement, signed
+  adjustment, usage, availability, and notes.
+- Permission-aware Administration workspace that exposes attendance imports, holiday
+  policy, and/or leave balances according to each role grant.
 - Responsive Shows & tasks and Timesheets pages for desktop and mobile.
 - Focused timecard detail view plus operational leave, calendar, approvals, show,
   timesheet, import, and regularisation pages.
@@ -60,8 +66,8 @@ personal-calendar slices include:
 - Development Docker Compose configuration.
 - Kubeadm/containerd-compatible Helm chart aligned with the local cluster.
 
-Submitted-timesheet approval decisions, holiday administration, leave-balance
-administration, and scoped team/show calendars remain for the following slices.
+Submitted-timesheet approval decisions, location-specific holiday administration,
+and scoped team/show calendars remain for the following slices.
 
 The accepted attendance CSV contract is documented in
 [`docs/ATTENDANCE_CSV_FORMAT.md`](docs/ATTENDANCE_CSV_FORMAT.md).
@@ -73,16 +79,18 @@ The attendance correction and approval workflow is documented in
 [`docs/REGULARISATION_WORKFLOW.md`](docs/REGULARISATION_WORKFLOW.md).
 The leave, approval, balance, calendar, and attendance interaction is documented in
 [`docs/LEAVE_CALENDAR_WORKFLOW.md`](docs/LEAVE_CALENDAR_WORKFLOW.md).
+Holiday and leave-balance administration is documented in
+[`docs/POLICY_ADMINISTRATION.md`](docs/POLICY_ADMINISTRATION.md).
 
 ## Release status
 
 | Item                     | Status                                      |
 | ------------------------ | ------------------------------------------- |
-| Source and Helm version  | `0.6.0`                                     |
+| Source and Helm version  | `0.7.0`                                     |
 | Git branch               | `main`                                      |
-| Source release commit    | `3b9bcb7`                                   |
+| Source release commit    | Current `0.7.0` feature commit              |
 | Local Kubernetes release | `0.6.0`, Helm revision 8, deployed          |
-| Local `0.6.0` images     | Imported into containerd and running        |
+| Local `0.7.0` images     | Awaiting local build and containerd import  |
 | Container target         | kubeadm/containerd `k8s.io`, `linux/amd64`  |
 | Ingress                  | `http://gnomon.local` through NGINX Ingress |
 

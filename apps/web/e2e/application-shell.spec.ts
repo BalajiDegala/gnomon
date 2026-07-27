@@ -47,6 +47,21 @@ function previousWeekdayDate(daysAgo: number): string {
   return date.toISOString().slice(0, 10);
 }
 
+function futureWeekdayDate(daysAhead: number): string {
+  const localDate = new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: 'Asia/Kolkata',
+  }).format(new Date());
+  const date = new Date(`${localDate}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + daysAhead);
+  while (date.getUTCDay() === 0 || date.getUTCDay() === 6) {
+    date.setUTCDate(date.getUTCDate() + 1);
+  }
+  return date.toISOString().slice(0, 10);
+}
+
 async function signIn(
   page: import('@playwright/test').Page,
   user: typeof regularisationUsers.employee,
@@ -329,6 +344,55 @@ test('completes leave approval and shows approved leave in the personal calendar
   await expect(page.getByText('Casual leave', { exact: true })).toBeVisible();
   await page.screenshot({
     path: testInfo.outputPath('leave-calendar-approved.png'),
+    fullPage: true,
+  });
+});
+
+test('configures a company holiday and an employee leave balance', async ({ page }, testInfo) => {
+  const credentialsReady = regularisationUsers.hr.email && regularisationUsers.employee.email;
+  test.skip(!credentialsReady, 'HR and employee E2E credentials are required');
+
+  await signIn(page, regularisationUsers.hr);
+  if (testInfo.project.name === 'mobile-chromium') {
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+  }
+  await page.getByRole('button', { name: 'Administration', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Administration', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Leave & holidays', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Leave & holidays', exact: true })).toBeVisible();
+
+  if (testInfo.project.name === 'mobile-chromium') {
+    await page.screenshot({
+      path: testInfo.outputPath('leave-policy-administration-mobile.png'),
+      fullPage: true,
+    });
+    return;
+  }
+
+  const holidayDate = futureWeekdayDate(35);
+  const holidayName = `E2E Studio Holiday ${Date.now()}`;
+  await page.getByLabel('Policy year').fill(holidayDate.slice(0, 4));
+  await page.getByLabel('Holiday date').fill(holidayDate);
+  await page.getByLabel('Holiday name').fill(holidayName);
+  await page.getByRole('button', { name: 'Save holiday' }).click();
+  await expect(page.getByText(holidayName)).toBeVisible();
+
+  await page.getByLabel('Employee code').fill('E2EEMP01');
+  await page.getByRole('button', { name: 'Load balances' }).click();
+  await expect(page.getByText('Eshan Artist')).toBeVisible();
+  await page.getByLabel('Casual leave entitlement').fill('12');
+  await page.getByLabel('Casual leave adjustment').fill('1');
+  await page.getByLabel('Casual leave note').fill('E2E annual balance configuration');
+  await page.getByRole('button', { name: 'Save casual leave' }).click();
+  await expect(page.getByText(/1[23] available/)).toBeVisible();
+  await signOut(page);
+
+  await signIn(page, regularisationUsers.employee);
+  await page.getByRole('button', { name: 'Calendar', exact: true }).click();
+  await page.getByLabel('Jump to month').fill(holidayDate.slice(0, 7));
+  await expect(page.getByText(holidayName)).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath('holiday-calendar-and-balance.png'),
     fullPage: true,
   });
 });

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   applyApprovedLeaveToReconciliation,
+  applyHolidayToReconciliation,
   calculateDailyReconciliation,
   type ReconciliationInput,
 } from '../src/modules/reconciliation/reconciliation.service.js';
@@ -177,5 +178,18 @@ describe('calculateDailyReconciliation', () => {
     expect(result.calculated.status).toBe('present');
     expect(result.calculated.anomalies).not.toContain('insufficient_hours');
     expect(result.sourceSummary.biometric.workedMinutes).toBe(270);
+  });
+
+  it('applies a configured holiday while retaining source evidence', () => {
+    const calculated = calculate();
+    const result = applyHolidayToReconciliation(calculated);
+
+    expect(result.calculated).toMatchObject({
+      status: 'holiday',
+      anomalies: [],
+      provisional: false,
+      requiresReview: false,
+    });
+    expect(result.sourceSummary).toEqual(calculated.sourceSummary);
   });
 });

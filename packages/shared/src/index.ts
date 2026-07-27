@@ -3,6 +3,7 @@ export * from './attendance.js';
 export * from './authorization.js';
 export * from './calendar.js';
 export * from './leave.js';
+export * from './policy.js';
 export * from './reconciliation.js';
 export * from './regularisation.js';
 export * from './time.js';

@@ -1,5 +1,6 @@
 import type {
   CreateLeaveRequest,
+  HolidayDto,
   LeaveBalanceDto,
   LeaveDecisionRequest,
   LeaveRequestDto,
@@ -11,6 +12,7 @@ import { useAuth } from './auth';
 interface MyLeavesResponse {
   requests: LeaveRequestDto[];
   balances: LeaveBalanceDto[];
+  holidays: HolidayDto[];
 }
 
 interface LeaveListResponse {
@@ -57,6 +59,7 @@ export function useMyLeaves(year: number) {
     canCreate,
     requests: query.data?.requests ?? [],
     balances: query.data?.balances ?? [],
+    holidays: query.data?.holidays ?? [],
     isLoading: query.isLoading,
     isUpdating: create.isPending || cancel.isPending,
     error: query.error ?? create.error ?? cancel.error,

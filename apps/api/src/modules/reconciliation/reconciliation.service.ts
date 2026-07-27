@@ -12,7 +12,9 @@ import {
 
 import { HttpError } from '../../middleware/errors.js';
 import { AttendanceEvent, type AttendanceEventType } from '../attendance/attendance-event.model.js';
+import { Employee } from '../employees/employee.model.js';
 import { LeaveRequest } from '../leaves/leave.model.js';
+import { Holiday } from '../policies/holiday.model.js';
 import { WorkSession } from '../timecard/work-session.model.js';
 import { TimeEntry } from '../timesheets/time-entry.model.js';
 import { RegularisationRequest } from '../regularisations/regularisation.model.js';
@@ -89,6 +91,21 @@ export function applyApprovedLeaveToReconciliation(
           : calculation.calculated.status,
       anomalies,
       requiresReview: anomalies.length > 0,
+    },
+  };
+}
+
+export function applyHolidayToReconciliation(
+  calculation: ReconciliationCalculation,
+): ReconciliationCalculation {
+  return {
+    ...calculation,
+    calculated: {
+      ...calculation.calculated,
+      status: 'holiday',
+      anomalies: [],
+      provisional: false,
+      requiresReview: false,
     },
   };
 }
@@ -371,29 +388,41 @@ export async function reconcileDailyTimecard(
   if (workDate > getWorkDate(now)) {
     throw new HttpError(400, 'A future work date cannot be reconciled', 'FUTURE_WORK_DATE');
   }
-  const [events, sessions, timeEntries, regularisations, approvedLeave] = await Promise.all([
-    AttendanceEvent.find({ employeeId, workDate })
-      .select({ source: 1, eventType: 1, occurredAt: 1 })
-      .lean()
-      .exec(),
-    WorkSession.find({ employeeId, workDate })
-      .select({ startedAt: 1, stoppedAt: 1, status: 1 })
-      .lean()
-      .exec(),
-    TimeEntry.find({ employeeId, workDate })
-      .select({ startedAt: 1, endedAt: 1, durationMinutes: 1, status: 1 })
-      .lean()
-      .exec(),
-    RegularisationRequest.find({
-      employeeId,
-      workDate,
-      status: { $in: ['pending_manager', 'pending_hr', 'approved', 'rejected'] },
-    })
-      .sort({ submittedAt: -1 })
-      .lean()
-      .exec(),
-    LeaveRequest.findOne({ employeeId, status: 'approved', workingDates: workDate }).lean().exec(),
-  ]);
+  const employee = await Employee.findById(employeeId).select({ locationId: 1 }).lean().exec();
+  if (!employee) throw new HttpError(404, 'Employee profile not found', 'EMPLOYEE_NOT_FOUND');
+  const holidayScopes: Array<Record<string, unknown>> = [
+    { scopeType: 'company', locationId: null },
+  ];
+  if (employee.locationId) {
+    holidayScopes.push({ scopeType: 'location', locationId: employee.locationId });
+  }
+  const [events, sessions, timeEntries, regularisations, approvedLeave, holiday] =
+    await Promise.all([
+      AttendanceEvent.find({ employeeId, workDate })
+        .select({ source: 1, eventType: 1, occurredAt: 1 })
+        .lean()
+        .exec(),
+      WorkSession.find({ employeeId, workDate })
+        .select({ startedAt: 1, stoppedAt: 1, status: 1 })
+        .lean()
+        .exec(),
+      TimeEntry.find({ employeeId, workDate })
+        .select({ startedAt: 1, endedAt: 1, durationMinutes: 1, status: 1 })
+        .lean()
+        .exec(),
+      RegularisationRequest.find({
+        employeeId,
+        workDate,
+        status: { $in: ['pending_manager', 'pending_hr', 'approved', 'rejected'] },
+      })
+        .sort({ submittedAt: -1 })
+        .lean()
+        .exec(),
+      LeaveRequest.findOne({ employeeId, status: 'approved', workingDates: workDate })
+        .lean()
+        .exec(),
+      Holiday.findOne({ date: workDate, status: 'active', $or: holidayScopes }).lean().exec(),
+    ]);
   const calculation = calculateDailyReconciliation({
     workDate,
     now,
@@ -420,7 +449,9 @@ export async function reconcileDailyTimecard(
   const effectiveCalculation =
     approvedLeave && !approvedRegularisation
       ? applyApprovedLeaveToReconciliation(calculation, approvedLeave.dayPart)
-      : calculation;
+      : holiday && !approvedRegularisation
+        ? applyHolidayToReconciliation(calculation)
+        : calculation;
   const persistedCalculation: Record<string, unknown> = {
     ...effectiveCalculation,
     regularisationStatus,
@@ -444,15 +475,25 @@ export async function reconcileDailyTimecard(
             finalisedBy: approvedLeave.decision?.actorUserId ?? null,
             finalisedAt: approvedLeave.decision?.decidedAt ?? approvedLeave.updatedAt,
           }
-        : {
-            isFinal: false,
-            finalSource: 'calculated',
-            finalStart: effectiveCalculation.calculated.attendanceStart,
-            finalEnd: effectiveCalculation.calculated.attendanceEnd,
-            finalMinutes: effectiveCalculation.calculated.payableMinutes,
-            finalisedBy: null,
-            finalisedAt: null,
-          },
+        : holiday && !approvedLeave
+          ? {
+              isFinal: true,
+              finalSource: 'holiday',
+              finalStart: null,
+              finalEnd: null,
+              finalMinutes: 0,
+              finalisedBy: holiday.updatedByUserId,
+              finalisedAt: holiday.updatedAt,
+            }
+          : {
+              isFinal: false,
+              finalSource: 'calculated',
+              finalStart: effectiveCalculation.calculated.attendanceStart,
+              finalEnd: effectiveCalculation.calculated.attendanceEnd,
+              finalMinutes: effectiveCalculation.calculated.payableMinutes,
+              finalisedBy: null,
+              finalisedAt: null,
+            },
   };
 
   const record = await DailyTimecard.findOneAndUpdate(

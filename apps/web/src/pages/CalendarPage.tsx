@@ -38,6 +38,18 @@ function monthLabel(month: string): string {
 }
 
 function AttendanceMarker({ day }: { day: PersonalCalendarDayDto }) {
+  if (day.holiday) {
+    return (
+      <Box sx={{ mt: 0.75, px: 0.75, py: 0.5, borderRadius: 1.25, bgcolor: '#f1edff' }}>
+        <Typography
+          noWrap
+          sx={{ color: '#6852a8', fontSize: { xs: 8.5, sm: 10 }, fontWeight: 800 }}
+        >
+          {day.holiday.name}
+        </Typography>
+      </Box>
+    );
+  }
   if (day.leave) {
     const approved = day.leave.status === 'approved';
     return (
@@ -101,9 +113,10 @@ export function CalendarPage({ onBack }: CalendarPageProps) {
   const days = calendar.calendar?.days ?? [];
   const leadingBlanks = days[0] ? days[0].weekday - 1 : 0;
   const attendanceDays = days.filter(
-    (day) => day.attendance && day.attendance.status !== 'weekend',
+    (day) => day.attendance && !['weekend', 'holiday', 'leave'].includes(day.attendance.status),
   ).length;
   const leaveDays = days.filter((day) => day.leave).length;
+  const holidayDays = days.filter((day) => day.holiday).length;
 
   return (
     <Stack spacing={3} sx={{ width: '100%', maxWidth: 1280, mx: 'auto' }}>
@@ -172,6 +185,7 @@ export function CalendarPage({ onBack }: CalendarPageProps) {
                 color="info"
                 variant="outlined"
               />
+              <Chip size="small" label={`${holidayDays} holidays`} variant="outlined" />
               <TextField
                 type="month"
                 label="Jump to month"
@@ -255,6 +269,7 @@ export function CalendarPage({ onBack }: CalendarPageProps) {
           sx={{ bgcolor: '#fff4df', color: '#a86616' }}
         />
         <Chip size="small" label="Absent" sx={{ bgcolor: '#fdebec', color: '#b43f48' }} />
+        <Chip size="small" label="Holiday" sx={{ bgcolor: '#f1edff', color: '#6852a8' }} />
         <Chip
           size="small"
           icon={<CalendarDays size={13} />}
