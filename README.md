@@ -65,9 +65,9 @@ The attendance correction and approval workflow is documented in
 | ------------------------ | ------------------------------------------- |
 | Source and Helm version  | `0.5.0`                                     |
 | Git branch               | `main`                                      |
-| Pre-`0.5.0` Git baseline | `7017779`                                   |
-| Local Kubernetes release | `0.4.0`, Helm revision 6, deployed          |
-| Local `0.5.0` images     | Build and containerd import pending         |
+| Source release commit    | `42dcb1e`                                   |
+| Local Kubernetes release | `0.5.0`, Helm revision 7, deployed          |
+| Local `0.5.0` images     | Imported into containerd and running        |
 | Container target         | kubeadm/containerd `k8s.io`, `linux/amd64`  |
 | Ingress                  | `http://gnomon.local` through NGINX Ingress |
 
