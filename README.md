@@ -81,8 +81,8 @@ The leave, approval, balance, calendar, and attendance interaction is documented
 | Source and Helm version  | `0.6.0`                                     |
 | Git branch               | `main`                                      |
 | Source release commit    | `3b9bcb7`                                   |
-| Local Kubernetes release | `0.5.0`, Helm revision 7, deployed          |
-| Local `0.6.0` images     | Awaiting local build and containerd import  |
+| Local Kubernetes release | `0.6.0`, Helm revision 8, deployed          |
+| Local `0.6.0` images     | Imported into containerd and running        |
 | Container target         | kubeadm/containerd `k8s.io`, `linux/amd64`  |
 | Ingress                  | `http://gnomon.local` through NGINX Ingress |
 
