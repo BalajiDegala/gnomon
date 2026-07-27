@@ -1,17 +1,24 @@
 import type {
+  AuthUser,
   CreateTimeEntryRequest,
   TaskDto,
   TimeEntryDto,
   TimesheetDayDto,
+  TimesheetDecisionActorRole,
+  TimesheetDecisionRequest,
+  TimesheetApprovalDto,
   TimesheetOption,
 } from '@gnomon/shared';
 import { getWorkDate } from '@gnomon/shared';
 import { Types } from 'mongoose';
 
 import { HttpError } from '../../middleware/errors.js';
+import { Employee, type EmployeeDocument } from '../employees/employee.model.js';
 import { Show, ShowAssignment, Task } from '../shows/show.model.js';
 import { WorkSession } from '../timecard/work-session.model.js';
-import { TimeEntry } from './time-entry.model.js';
+import { TimeEntry, type TimeEntryDocument } from './time-entry.model.js';
+
+const APPROVAL_POLICY_VERSION = 'TIMESHEET_V1';
 
 let indexesReady: Promise<unknown> | null = null;
 
@@ -30,6 +37,45 @@ export interface TimeEntryWindow {
   endedAt: Date;
   workDate: string;
   durationMinutes: number;
+}
+
+function employeeName(employee: Pick<EmployeeDocument, 'firstName' | 'lastName'>): string {
+  return `${employee.firstName} ${employee.lastName}`.trim();
+}
+
+function toTimeEntryDto(
+  entry: TimeEntryDocument,
+  show?: { code: string; name: string },
+  task?: { code: string; name: string },
+): TimeEntryDto {
+  return {
+    id: String(entry._id),
+    workDate: entry.workDate,
+    showId: String(entry.showId),
+    showCode: show?.code ?? 'UNKNOWN',
+    showName: show?.name ?? 'Unknown show',
+    taskId: String(entry.taskId),
+    taskCode: task?.code ?? 'UNKNOWN',
+    taskName: task?.name ?? 'Unknown task',
+    workSessionId: entry.workSessionId ? String(entry.workSessionId) : null,
+    startedAt: entry.startedAt.toISOString(),
+    endedAt: entry.endedAt.toISOString(),
+    durationMinutes: entry.durationMinutes,
+    description: entry.description,
+    billable: entry.billable,
+    status: entry.status,
+    approval: {
+      policyVersion: entry.approval?.policyVersion ?? APPROVAL_POLICY_VERSION,
+      submittedAt: entry.approval?.submittedAt?.toISOString() ?? null,
+      decisions: (entry.approval?.decisions ?? []).map((decision) => ({
+        decision: decision.decision,
+        actorDisplayName: decision.actorDisplayName,
+        actorRole: decision.actorRole,
+        comment: decision.comment,
+        decidedAt: decision.decidedAt.toISOString(),
+      })),
+    },
+  };
 }
 
 export function validateTimeEntryWindow(
@@ -130,27 +176,9 @@ async function buildTimesheetDay(employeeId: string, workDate: string): Promise<
   const showById = new Map(shows.map((show) => [String(show._id), show]));
   const taskById = new Map(tasks.map((task) => [String(task._id), task]));
 
-  const entryDtos = entries.map<TimeEntryDto>((entry) => {
-    const show = showById.get(String(entry.showId));
-    const task = taskById.get(String(entry.taskId));
-    return {
-      id: String(entry._id),
-      workDate: entry.workDate,
-      showId: String(entry.showId),
-      showCode: show?.code ?? 'UNKNOWN',
-      showName: show?.name ?? 'Unknown show',
-      taskId: String(entry.taskId),
-      taskCode: task?.code ?? 'UNKNOWN',
-      taskName: task?.name ?? 'Unknown task',
-      workSessionId: entry.workSessionId ? String(entry.workSessionId) : null,
-      startedAt: entry.startedAt.toISOString(),
-      endedAt: entry.endedAt.toISOString(),
-      durationMinutes: entry.durationMinutes,
-      description: entry.description,
-      billable: entry.billable,
-      status: entry.status,
-    };
-  });
+  const entryDtos = entries.map((entry) =>
+    toTimeEntryDto(entry, showById.get(String(entry.showId)), taskById.get(String(entry.taskId))),
+  );
 
   return {
     workDate,
@@ -158,6 +186,8 @@ async function buildTimesheetDay(employeeId: string, workDate: string): Promise<
     totalMinutes: entryDtos.reduce((total, entry) => total + entry.durationMinutes, 0),
     draftCount: entryDtos.filter((entry) => entry.status === 'draft').length,
     submittedCount: entryDtos.filter((entry) => entry.status === 'submitted').length,
+    approvedCount: entryDtos.filter((entry) => entry.status === 'approved').length,
+    rejectedCount: entryDtos.filter((entry) => entry.status === 'rejected').length,
   };
 }
 
@@ -230,11 +260,14 @@ export async function createTimeEntry(
     status: 'draft',
     approval: {
       policyId: null,
+      policyVersion: APPROVAL_POLICY_VERSION,
       currentStep: 0,
       assignedApproverIds: [],
+      submittedAt: null,
       approvedBy: null,
       approvedAt: null,
       rejectionReason: null,
+      decisions: [],
     },
   });
 
@@ -259,13 +292,188 @@ export async function deleteDraftTimeEntry(
 export async function submitTimesheetDay(
   employeeId: string,
   workDate: string,
+  now = new Date(),
 ): Promise<TimesheetDayDto> {
   const result = await TimeEntry.updateMany(
     { employeeId, workDate, status: 'draft' },
-    { $set: { status: 'submitted', 'approval.currentStep': 1 } },
+    {
+      $set: {
+        status: 'submitted',
+        'approval.policyVersion': APPROVAL_POLICY_VERSION,
+        'approval.currentStep': 1,
+        'approval.submittedAt': now,
+      },
+    },
   ).exec();
   if (result.modifiedCount === 0) {
     throw new HttpError(409, 'There are no draft entries to submit', 'NO_DRAFT_ENTRIES');
   }
   return buildTimesheetDay(employeeId, workDate);
+}
+
+function hasCompanyOrShowGrant(
+  user: AuthUser,
+  roleCode: 'SHOW_MANAGER' | 'SYSTEM_ADMIN',
+  showId: string,
+): boolean {
+  return user.grants.some(
+    (grant) =>
+      grant.roleCode === roleCode &&
+      grant.permissions.includes('timesheet:approve') &&
+      (grant.scope.type === 'company' ||
+        (grant.scope.type === 'show' && grant.scope.ids.includes(showId))),
+  );
+}
+
+export function canApproveTimeEntry(
+  user: AuthUser,
+  employee: Pick<EmployeeDocument, '_id' | 'reportingManagerId'>,
+  showId: string,
+): boolean {
+  if (String(employee._id) === user.employeeId) return false;
+
+  if (
+    hasCompanyOrShowGrant(user, 'SYSTEM_ADMIN', showId) ||
+    hasCompanyOrShowGrant(user, 'SHOW_MANAGER', showId)
+  ) {
+    return true;
+  }
+
+  if (String(employee.reportingManagerId) !== user.employeeId) return false;
+  return user.grants.some(
+    (grant) =>
+      grant.roleCode === 'REPORTING_MANAGER' &&
+      grant.permissions.includes('timesheet:approve') &&
+      (grant.scope.type === 'company' ||
+        (grant.scope.type === 'direct_reports' &&
+          (grant.scope.ids.length === 0 || grant.scope.ids.includes(String(employee._id))))),
+  );
+}
+
+function decisionActorRole(
+  user: AuthUser,
+  employee: Pick<EmployeeDocument, '_id' | 'reportingManagerId'>,
+  showId: string,
+): TimesheetDecisionActorRole {
+  if (hasCompanyOrShowGrant(user, 'SYSTEM_ADMIN', showId)) return 'system_admin';
+  if (hasCompanyOrShowGrant(user, 'SHOW_MANAGER', showId)) return 'show_manager';
+  if (
+    String(employee.reportingManagerId) === user.employeeId &&
+    user.grants.some(
+      (grant) =>
+        grant.roleCode === 'REPORTING_MANAGER' && grant.permissions.includes('timesheet:approve'),
+    )
+  ) {
+    return 'reporting_manager';
+  }
+  return 'show_manager';
+}
+
+function toApprovalDto(
+  entry: TimeEntryDocument,
+  employee: Pick<EmployeeDocument, '_id' | 'employeeCode' | 'firstName' | 'lastName'>,
+  show?: { code: string; name: string },
+  task?: { code: string; name: string },
+): TimesheetApprovalDto {
+  return {
+    ...toTimeEntryDto(entry, show, task),
+    employeeId: String(employee._id),
+    employeeCode: employee.employeeCode,
+    employeeDisplayName: employeeName(employee),
+  };
+}
+
+export async function listTimesheetApprovals(user: AuthUser): Promise<TimesheetApprovalDto[]> {
+  await ensureTimesheetIndexes();
+  const entries = await TimeEntry.find({
+    status: 'submitted',
+    employeeId: { $ne: user.employeeId },
+  })
+    .sort({ 'approval.submittedAt': 1, workDate: 1, startedAt: 1 })
+    .lean()
+    .exec();
+  if (entries.length === 0) return [];
+
+  const [employees, shows, tasks] = await Promise.all([
+    Employee.find({ _id: { $in: entries.map((entry) => entry.employeeId) } })
+      .lean()
+      .exec(),
+    Show.find({ _id: { $in: entries.map((entry) => entry.showId) } })
+      .lean()
+      .exec(),
+    Task.find({ _id: { $in: entries.map((entry) => entry.taskId) } })
+      .lean()
+      .exec(),
+  ]);
+  const employeeById = new Map(employees.map((employee) => [String(employee._id), employee]));
+  const showById = new Map(shows.map((show) => [String(show._id), show]));
+  const taskById = new Map(tasks.map((task) => [String(task._id), task]));
+
+  return entries.flatMap((entry) => {
+    const employee = employeeById.get(String(entry.employeeId));
+    if (!employee || !canApproveTimeEntry(user, employee, String(entry.showId))) return [];
+    return [
+      toApprovalDto(
+        entry,
+        employee,
+        showById.get(String(entry.showId)),
+        taskById.get(String(entry.taskId)),
+      ),
+    ];
+  });
+}
+
+export async function decideTimeEntry(
+  user: AuthUser,
+  entryId: string,
+  input: TimesheetDecisionRequest,
+  now = new Date(),
+): Promise<TimesheetApprovalDto> {
+  await ensureTimesheetIndexes();
+  const entry = await TimeEntry.findOne({ _id: entryId, status: 'submitted' }).exec();
+  if (!entry) throw new HttpError(404, 'Submitted time entry not found', 'TIME_ENTRY_NOT_FOUND');
+
+  const [employee, show, task] = await Promise.all([
+    Employee.findById(entry.employeeId).lean().exec(),
+    Show.findById(entry.showId).lean().exec(),
+    Task.findById(entry.taskId).lean().exec(),
+  ]);
+  if (!employee) throw new HttpError(404, 'Employee profile not found', 'EMPLOYEE_NOT_FOUND');
+  if (String(employee._id) === user.employeeId) {
+    throw new HttpError(403, 'Self approval is not allowed', 'SELF_APPROVAL_FORBIDDEN');
+  }
+  if (!canApproveTimeEntry(user, employee, String(entry.showId))) {
+    throw new HttpError(403, 'This entry is outside your approval scope', 'SCOPE_FORBIDDEN');
+  }
+
+  const approved = input.decision === 'approved';
+  const updated = await TimeEntry.findOneAndUpdate(
+    { _id: entry._id, status: 'submitted' },
+    {
+      $set: {
+        status: input.decision,
+        'approval.currentStep': 2,
+        'approval.approvedBy': approved ? new Types.ObjectId(user.id) : null,
+        'approval.approvedAt': approved ? now : null,
+        'approval.rejectionReason': approved ? null : input.comment,
+      },
+      $push: {
+        'approval.decisions': {
+          decision: input.decision,
+          actorUserId: new Types.ObjectId(user.id),
+          actorEmployeeId: new Types.ObjectId(user.employeeId),
+          actorDisplayName: user.displayName,
+          actorRole: decisionActorRole(user, employee, String(entry.showId)),
+          comment: input.comment,
+          decidedAt: now,
+        },
+      },
+    },
+    { returnDocument: 'after', runValidators: true },
+  ).exec();
+  if (!updated) {
+    throw new HttpError(409, 'The entry was already decided', 'TIME_ENTRY_ALREADY_DECIDED');
+  }
+
+  return toApprovalDto(updated, employee, show ?? undefined, task ?? undefined);
 }

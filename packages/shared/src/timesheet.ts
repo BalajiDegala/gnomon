@@ -11,6 +11,29 @@ export type TaskStatus = z.infer<typeof TaskStatusSchema>;
 export const TimeEntryStatusSchema = z.enum(['draft', 'submitted', 'approved', 'rejected']);
 export type TimeEntryStatus = z.infer<typeof TimeEntryStatusSchema>;
 
+export const TimesheetDecisionActorRoleSchema = z.enum([
+  'reporting_manager',
+  'show_manager',
+  'system_admin',
+]);
+export type TimesheetDecisionActorRole = z.infer<typeof TimesheetDecisionActorRoleSchema>;
+
+export const TimesheetDecisionSchema = z.object({
+  decision: z.enum(['approved', 'rejected']),
+  actorDisplayName: z.string(),
+  actorRole: TimesheetDecisionActorRoleSchema,
+  comment: z.string(),
+  decidedAt: z.string().datetime(),
+});
+export type TimesheetDecision = z.infer<typeof TimesheetDecisionSchema>;
+
+export const TimeEntryApprovalSchema = z.object({
+  policyVersion: z.string(),
+  submittedAt: z.string().datetime().nullable(),
+  decisions: z.array(TimesheetDecisionSchema),
+});
+export type TimeEntryApproval = z.infer<typeof TimeEntryApprovalSchema>;
+
 export const TaskDtoSchema = z.object({
   id: z.string(),
   showId: z.string(),
@@ -63,8 +86,16 @@ export const TimeEntryDtoSchema = z.object({
   description: z.string(),
   billable: z.boolean(),
   status: TimeEntryStatusSchema,
+  approval: TimeEntryApprovalSchema,
 });
 export type TimeEntryDto = z.infer<typeof TimeEntryDtoSchema>;
+
+export const TimesheetApprovalDtoSchema = TimeEntryDtoSchema.extend({
+  employeeId: z.string(),
+  employeeCode: z.string(),
+  employeeDisplayName: z.string(),
+});
+export type TimesheetApprovalDto = z.infer<typeof TimesheetApprovalDtoSchema>;
 
 export const TimesheetDayDtoSchema = z.object({
   workDate: z.string().date(),
@@ -72,6 +103,8 @@ export const TimesheetDayDtoSchema = z.object({
   totalMinutes: z.number().int().nonnegative(),
   draftCount: z.number().int().nonnegative(),
   submittedCount: z.number().int().nonnegative(),
+  approvedCount: z.number().int().nonnegative(),
+  rejectedCount: z.number().int().nonnegative(),
 });
 export type TimesheetDayDto = z.infer<typeof TimesheetDayDtoSchema>;
 
@@ -127,3 +160,14 @@ export type CreateTimeEntryRequest = z.infer<typeof CreateTimeEntryRequestSchema
 export const TimesheetDateQuerySchema = z.object({
   workDate: z.string().date().optional(),
 });
+
+export const TimesheetDecisionRequestSchema = z
+  .object({
+    decision: z.enum(['approved', 'rejected']),
+    comment: z.string().trim().max(1_000).default(''),
+  })
+  .refine((value) => value.decision === 'approved' || value.comment.length >= 3, {
+    path: ['comment'],
+    message: 'A rejection reason is required',
+  });
+export type TimesheetDecisionRequest = z.infer<typeof TimesheetDecisionRequestSchema>;

@@ -28,6 +28,7 @@ import { useRegularisationApprovals } from '../lib/regularisations';
 import { formatIndiaTime } from '../lib/timecard';
 import { formatMinutes } from '../lib/timesheets';
 import { LeaveApprovalSection } from './LeaveApprovalSection';
+import { TimesheetApprovalSection } from './TimesheetApprovalSection';
 
 interface ApprovalQueuePageProps {
   onBack: () => void;
@@ -68,8 +69,8 @@ export function ApprovalQueuePage({ onBack }: ApprovalQueuePageProps) {
           Approvals
         </Typography>
         <Typography sx={{ maxWidth: 780, color: 'text.secondary', fontSize: 13.5, mt: 0.7 }}>
-          Decide regularisation and leave requests assigned to your reporting or HR/Attendance
-          scope. Self approval is always blocked.
+          Decide regularisation, leave, and submitted task-time requests inside your reporting,
+          show, or HR/Attendance scope. Self approval is always blocked.
         </Typography>
       </Box>
 
@@ -171,6 +172,7 @@ export function ApprovalQueuePage({ onBack }: ApprovalQueuePageProps) {
       )}
 
       <LeaveApprovalSection />
+      <TimesheetApprovalSection />
     </Stack>
   );
 }

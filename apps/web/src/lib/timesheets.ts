@@ -1,4 +1,10 @@
-import type { CreateTimeEntryRequest, TimesheetDayDto, TimesheetOption } from '@gnomon/shared';
+import type {
+  CreateTimeEntryRequest,
+  TimesheetApprovalDto,
+  TimesheetDayDto,
+  TimesheetDecisionRequest,
+  TimesheetOption,
+} from '@gnomon/shared';
 import { getWorkDate } from '@gnomon/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -12,8 +18,51 @@ interface DayResponse {
   day: TimesheetDayDto;
 }
 
+interface ApprovalListResponse {
+  entries: TimesheetApprovalDto[];
+}
+
+interface ApprovalResponse {
+  entry: TimesheetApprovalDto;
+}
+
 export function currentIndiaWorkDate(): string {
   return getWorkDate(new Date());
+}
+
+export function useTimesheetApprovals() {
+  const { request, user } = useAuth();
+  const queryClient = useQueryClient();
+  const canApprove = user?.permissions.includes('timesheet:approve') ?? false;
+  const query = useQuery({
+    queryKey: ['timesheet-approvals'],
+    queryFn: () => request<ApprovalListResponse>('/api/v1/approvals/timesheets'),
+    enabled: canApprove,
+  });
+  const decide = useMutation({
+    mutationFn: ({ entryId, input }: { entryId: string; input: TimesheetDecisionRequest }) =>
+      request<ApprovalResponse>(`/api/v1/approvals/timesheets/${entryId}/decision`, {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['timesheet-approvals'] }),
+        queryClient.invalidateQueries({ queryKey: ['timesheet-day'] }),
+        queryClient.invalidateQueries({ queryKey: ['timecard', 'today'] }),
+      ]);
+    },
+  });
+
+  return {
+    canApprove,
+    entries: query.data?.entries ?? [],
+    isLoading: query.isLoading,
+    isUpdating: decide.isPending,
+    error: query.error ?? decide.error,
+    decide: (entryId: string, input: TimesheetDecisionRequest) =>
+      decide.mutateAsync({ entryId, input }),
+  };
 }
 
 export function indiaLocalInputToIso(value: string): string {

@@ -22,7 +22,7 @@ import {
 } from './modules/regularisations/regularisation.routes.js';
 import { showRouter } from './modules/shows/show.routes.js';
 import { timecardRouter } from './modules/timecard/timecard.routes.js';
-import { timesheetRouter } from './modules/timesheets/timesheet.routes.js';
+import { timesheetApprovalRouter, timesheetRouter } from './modules/timesheets/timesheet.routes.js';
 import { healthRouter } from './routes/health.routes.js';
 
 export const app = express();
@@ -62,6 +62,7 @@ app.use('/api/v1/approvals/regularisations', regularisationApprovalRouter);
 app.use('/api/v1/shows', showRouter);
 app.use('/api/v1/timecard', timecardRouter);
 app.use('/api/v1/timesheets', timesheetRouter);
+app.use('/api/v1/approvals/timesheets', timesheetApprovalRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

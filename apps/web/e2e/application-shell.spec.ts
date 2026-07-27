@@ -220,6 +220,107 @@ test('creates a show assignment and submits task time', async ({ page }, testInf
   await expect(page.getByText('submitted', { exact: true })).toBeVisible();
 });
 
+test('completes scoped timesheet submission and manager approval', async ({ page }, testInfo) => {
+  const credentialsReady =
+    email &&
+    password &&
+    regularisationUsers.employee.email &&
+    regularisationUsers.employee.password &&
+    regularisationUsers.manager.email &&
+    regularisationUsers.manager.password;
+  test.skip(!credentialsReady, 'Administrator, employee, and manager credentials are required');
+
+  if (testInfo.project.name === 'mobile-chromium') {
+    await signIn(page, regularisationUsers.manager);
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+    await page.getByRole('button', { name: 'Approvals', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Approvals' })).toBeVisible();
+    await expect(page.getByText('Timesheet queue')).toBeVisible();
+    await page.screenshot({
+      path: testInfo.outputPath('timesheet-approvals-mobile.png'),
+      fullPage: true,
+    });
+    return;
+  }
+
+  const workDate = previousWeekdayDate(21);
+  const suffix = `${Date.now()}`.slice(-8);
+  const showCode = `TS${suffix}`;
+  const showName = `Approval Show ${suffix}`;
+  const taskName = `Lighting ${suffix}`;
+  const taskDetails = `Scoped lighting review ${suffix}`;
+  const rejectedTaskDetails = `Lighting correction request ${suffix}`;
+  const rejectionReason = `Separate review time from production work ${suffix}`;
+
+  await page.goto('/');
+  await page.getByLabel('Work email').fill(email!);
+  await page.getByLabel('Password').fill(password!);
+  await page.getByRole('button', { name: 'Sign in to Gnomon' }).click();
+  await page.getByRole('button', { name: 'Shows & tasks' }).click();
+  await page.getByLabel('Show code').fill(showCode);
+  await page.getByLabel('Show name').fill(showName);
+  await page.getByRole('button', { name: 'Create show' }).click();
+  await page.getByLabel('Task code').fill(`LGT${suffix}`);
+  await page.getByLabel('Task name').fill(taskName);
+  await page.getByRole('button', { name: 'Add task' }).click();
+  await page.getByLabel('Employee code').fill('E2EEMP01');
+  await page.getByRole('button', { name: 'Assign employee' }).click();
+  await expect(page.locator('main').getByText('E2EEMP01')).toBeVisible();
+  await signOut(page);
+
+  await signIn(page, regularisationUsers.employee);
+  await page.getByRole('button', { name: 'Timesheets' }).click();
+  await page.getByLabel('Timesheet date').fill(workDate);
+  const showSelect = page.getByRole('combobox', { name: 'Show', exact: true });
+  const taskSelect = page.getByRole('combobox', { name: 'Task', exact: true });
+  await showSelect.click();
+  await page.getByRole('option', { name: new RegExp(showCode) }).click();
+  await taskSelect.click();
+  await page.getByRole('option', { name: new RegExp(taskName) }).click();
+  await page.getByLabel('Started at').fill(`${workDate}T09:00`);
+  await page.getByLabel('Ended at').fill(`${workDate}T10:30`);
+  await page.getByLabel('Task details').fill(taskDetails);
+  await page.getByRole('button', { name: 'Add draft entry' }).click();
+  await page.getByLabel('Started at').fill(`${workDate}T10:30`);
+  await page.getByLabel('Ended at').fill(`${workDate}T11:15`);
+  await page.getByLabel('Task details').fill(rejectedTaskDetails);
+  await page.getByRole('button', { name: 'Add draft entry' }).click();
+  await page.getByRole('button', { name: 'Submit 2 drafts' }).click();
+  await expect(page.getByText('2 awaiting')).toBeVisible();
+  await signOut(page);
+
+  await signIn(page, regularisationUsers.manager);
+  await page.getByRole('button', { name: 'Approvals', exact: true }).click();
+  const approvalCard = page
+    .getByText(taskDetails)
+    .locator('xpath=ancestor::*[contains(@class,"MuiCard-root")][1]');
+  await expect(approvalCard.getByText('Eshan Artist')).toBeVisible();
+  await expect(approvalCard.getByText(showName, { exact: false })).toBeVisible();
+  await approvalCard.getByRole('button', { name: 'Approve' }).click();
+  const rejectionCard = page
+    .getByText(rejectedTaskDetails)
+    .locator('xpath=ancestor::*[contains(@class,"MuiCard-root")][1]');
+  await rejectionCard.getByLabel(`Decision comment for LGT${suffix}`).fill(rejectionReason);
+  await rejectionCard.getByRole('button', { name: 'Reject' }).click();
+  await expect(page.getByText('No timesheets waiting')).toBeVisible();
+  await signOut(page);
+
+  await signIn(page, regularisationUsers.employee);
+  await page.getByRole('button', { name: 'Timesheets' }).click();
+  await page.getByLabel('Timesheet date').fill(workDate);
+  await expect(page.getByText(taskDetails)).toBeVisible();
+  await expect(page.getByText(rejectedTaskDetails)).toBeVisible();
+  await expect(page.getByText('approved', { exact: true })).toBeVisible();
+  await expect(page.getByText('rejected', { exact: true })).toBeVisible();
+  await expect(page.getByText(/Approved by Meera Manager/)).toBeVisible();
+  await expect(page.getByText(/Rejected by Meera Manager/)).toBeVisible();
+  await expect(page.getByText(rejectionReason)).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath('timesheet-approved.png'),
+    fullPage: true,
+  });
+});
+
 test('completes scoped regularisation approval and attendance finalisation', async ({
   page,
 }, testInfo) => {

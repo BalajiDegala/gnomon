@@ -2,7 +2,8 @@
 
 ## Document status
 
-- Status: Phase 5 leave, holiday, balance, and personal-calendar slices implemented
+- Status: Phase 3–5 task approval, attendance, regularisation, leave, holiday,
+  balance, and personal-calendar slices implemented
 - Created: 2026-07-27
 - Company: DIGITAL DOMAIN INDIA
 - Application scope: Single company
@@ -320,12 +321,23 @@ Rules:
   billable: boolean,
   status: "draft" | "submitted" | "approved" | "rejected",
   approval: {
-    policyId: ObjectId,
+    policyId: ObjectId | null,
+    policyVersion: "TIMESHEET_V1",
     currentStep: number,
     assignedApproverIds: [ObjectId],
+    submittedAt: ISODate | null,
     approvedBy: ObjectId | null,
     approvedAt: ISODate | null,
-    rejectionReason: string | null
+    rejectionReason: string | null,
+    decisions: [{
+      decision: "approved" | "rejected",
+      actorUserId: ObjectId,
+      actorEmployeeId: ObjectId,
+      actorDisplayName: string,
+      actorRole: "show_manager" | "reporting_manager" | "system_admin",
+      comment: string,
+      decidedAt: ISODate
+    }]
   },
   createdAt: ISODate,
   updatedAt: ISODate
@@ -338,8 +350,10 @@ Rules:
 - Entries for the same employee cannot overlap.
 - Task time outside website work sessions is flagged for review.
 - Task time exceeding presence time is flagged for review.
-- Employees may save drafts and submit entries daily or weekly.
-- Show task entries are routed to the relevant Show Manager.
+- Employees may save drafts and submit all drafts for a work date.
+- Submitted entries are routed by exact show scope or actual direct-report scope.
+- Self approval is blocked, rejection requires a reason, and a status-guarded update
+  prevents concurrent double decisions.
 
 ## 7. Reconciliation policy
 
@@ -416,7 +430,9 @@ approval is disabled unless an explicit future policy allows it.
 | Internal/non-show timesheet     | Reporting Manager                           | Reporting access               | No approval                   |
 | Employee profile change         | HR                                          | Maintain records               | No approval                   |
 
-Approval behavior must be policy-driven rather than hardcoded.
+Release `0.8.0` records `TIMESHEET_V1` on every submitted entry. Moving this
+versioned behavior into administrator-configurable approval policies remains a
+later approval-engine slice.
 
 ### Approval policy model
 
@@ -605,6 +621,9 @@ CPU does not expose the AVX instructions required by newer MongoDB releases.
   daily totals, and daily submission.
 - Implemented in `0.4.0`: persisted daily timecard calculation, evidence
   precedence, source comparison, and employee-facing anomaly detection.
+- Implemented in `0.8.0`: scoped submitted-entry approval/rejection for Show
+  Managers, Reporting Managers, and System Administrators, including self-approval
+  prevention, optimistic decision locking, rejection reasons, and immutable history.
 - Next: project-level task grouping and manager reconciliation queues.
 
 ### Phase 4: Regularisation and approval engine

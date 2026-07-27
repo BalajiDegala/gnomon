@@ -59,7 +59,7 @@ export const managementNavigation: NavigationItem[] = [
     id: 'approvals',
     label: 'Approvals',
     icon: ShieldCheck,
-    requiredPermissions: ['regularisation:approve', 'leave:approve'],
+    requiredPermissions: ['regularisation:approve', 'leave:approve', 'timesheet:approve'],
   },
   {
     id: 'shows',

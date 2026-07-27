@@ -101,7 +101,10 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
       ? [{ view: 'leave' as const, label: 'Leave requests', icon: CalendarDays }]
       : []),
     ...(user?.permissions.some(
-      (permission) => permission === 'regularisation:approve' || permission === 'leave:approve',
+      (permission) =>
+        permission === 'regularisation:approve' ||
+        permission === 'leave:approve' ||
+        permission === 'timesheet:approve',
     )
       ? [{ view: 'approvals' as const, label: 'Manager approvals', icon: ShieldCheck }]
       : []),

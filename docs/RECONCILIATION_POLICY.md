@@ -1,6 +1,6 @@
 # Daily Reconciliation Policy
 
-This document records the `0.7.0` employee attendance calculation,
+This document records the `0.8.0` employee attendance calculation,
 regularisation finalisation, approved-leave interaction, and holiday state. It is a
 provisional MVP policy: immutable evidence is preserved, calculations can be
 regenerated, and unresolved business settings remain explicit rather than being
@@ -37,7 +37,9 @@ provisional.
 For a complete biometric or access-card source, gross presence is the interval
 between its first opening event and last closing event. Website presence is the
 sum of its sessions, including elapsed time for a currently running session.
-Rejected task entries are excluded from task totals.
+Rejected task entries are excluded from task totals. Draft, submitted, and approved
+entries remain supporting task-time evidence; manager approval never promotes task
+time into the official attendance source.
 
 ## Open and closed workdays
 

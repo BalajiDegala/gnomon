@@ -11,6 +11,8 @@ import { DailyTimecard } from '../src/modules/reconciliation/daily-timecard.mode
 import { RegularisationRequest } from '../src/modules/regularisations/regularisation.model.js';
 import { RoleAssignment } from '../src/modules/roles/role.model.js';
 import { ensureSystemRoles } from '../src/modules/roles/system-roles.js';
+import { Show, ShowAssignment, Task } from '../src/modules/shows/show.model.js';
+import { TimeEntry } from '../src/modules/timesheets/time-entry.model.js';
 
 const FixtureEnvSchema = z.object({
   E2E_EMPLOYEE_EMAIL: z
@@ -105,6 +107,10 @@ async function seedWorkflowFixtures(): Promise<void> {
     Holiday.deleteMany({}),
     DailyTimecard.deleteMany({ employeeId: { $in: fixtureEmployeeIds } }),
     RoleAssignment.deleteMany({ userId: { $in: fixtureUserIds } }),
+    TimeEntry.deleteMany({ employeeId: { $in: fixtureEmployeeIds } }),
+    ShowAssignment.deleteMany({ employeeId: { $in: fixtureEmployeeIds } }),
+    Task.deleteMany({}),
+    Show.deleteMany({}),
   ]);
 
   const roles = await ensureSystemRoles();
@@ -173,7 +179,7 @@ async function seedWorkflowFixtures(): Promise<void> {
     },
   ]);
 
-  process.stdout.write('Seeded isolated regularisation, leave, and policy E2E fixtures\n');
+  process.stdout.write('Seeded isolated attendance, timesheet, leave, and policy E2E fixtures\n');
 }
 
 seedWorkflowFixtures()

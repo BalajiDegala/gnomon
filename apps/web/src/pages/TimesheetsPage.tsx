@@ -303,6 +303,23 @@ export function TimesheetsPage({ onBack, onManageShows, canManageShows }: Timesh
                   <Typography sx={{ color: 'rgba(255,255,255,.5)', fontSize: 11.5 }}>
                     {Math.round(completion)}% of the nine-hour attendance target
                   </Typography>
+                  <Stack direction="row" sx={{ mt: 1.4, gap: 0.75, flexWrap: 'wrap' }}>
+                    <Chip
+                      size="small"
+                      label={`${timesheet.day?.submittedCount ?? 0} awaiting`}
+                      sx={{ bgcolor: 'rgba(255,255,255,.1)', color: '#fff' }}
+                    />
+                    <Chip
+                      size="small"
+                      label={`${timesheet.day?.approvedCount ?? 0} approved`}
+                      sx={{ bgcolor: 'rgba(74,210,145,.14)', color: '#94e8bd' }}
+                    />
+                    <Chip
+                      size="small"
+                      label={`${timesheet.day?.rejectedCount ?? 0} rejected`}
+                      sx={{ bgcolor: 'rgba(255,118,126,.14)', color: '#ffadb2' }}
+                    />
+                  </Stack>
                 </Box>
                 <Button
                   variant="contained"
@@ -342,55 +359,82 @@ export function TimesheetsPage({ onBack, onManageShows, canManageShows }: Timesh
                     <Box
                       key={entry.id}
                       sx={{
-                        display: 'grid',
-                        gridTemplateColumns: { xs: '1fr auto', sm: '100px 1fr auto auto' },
-                        gap: 1.5,
-                        alignItems: 'center',
                         p: 1.5,
                         borderRadius: 2,
                         bgcolor: '#f7f9fb',
                       }}
                     >
-                      <Box>
-                        <Typography sx={{ fontSize: 12.5, fontWeight: 800 }}>
-                          {formatIndiaTime(entry.startedAt)}
-                        </Typography>
-                        <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
-                          to {formatIndiaTime(entry.endedAt)}
-                        </Typography>
+                      <Box
+                        sx={{
+                          display: 'grid',
+                          gridTemplateColumns: { xs: '1fr auto', sm: '100px 1fr auto auto' },
+                          gap: 1.5,
+                          alignItems: 'center',
+                        }}
+                      >
+                        <Box>
+                          <Typography sx={{ fontSize: 12.5, fontWeight: 800 }}>
+                            {formatIndiaTime(entry.startedAt)}
+                          </Typography>
+                          <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
+                            to {formatIndiaTime(entry.endedAt)}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 750 }}>
+                            {entry.showCode} · {entry.taskName}
+                          </Typography>
+                          <Typography noWrap sx={{ color: 'text.secondary', fontSize: 11 }}>
+                            {entry.description}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ textAlign: 'right' }}>
+                          <Typography sx={{ fontSize: 12.5, fontWeight: 800 }}>
+                            {formatMinutes(entry.durationMinutes)}
+                          </Typography>
+                          <Chip
+                            size="small"
+                            color={statusColor(entry.status)}
+                            label={entry.status}
+                            icon={
+                              entry.status === 'submitted' ? <CheckCircle2 size={12} /> : undefined
+                            }
+                          />
+                        </Box>
+                        {entry.status === 'draft' && (
+                          <Button
+                            aria-label={`Delete ${entry.taskName} entry`}
+                            color="error"
+                            size="small"
+                            onClick={() => void timesheet.remove(entry.id).catch(() => undefined)}
+                            sx={{ minWidth: 34, px: 0.75 }}
+                          >
+                            <Trash2 size={15} />
+                          </Button>
+                        )}
                       </Box>
-                      <Box sx={{ minWidth: 0 }}>
-                        <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 750 }}>
-                          {entry.showCode} · {entry.taskName}
-                        </Typography>
-                        <Typography noWrap sx={{ color: 'text.secondary', fontSize: 11 }}>
-                          {entry.description}
-                        </Typography>
-                      </Box>
-                      <Box sx={{ textAlign: 'right' }}>
-                        <Typography sx={{ fontSize: 12.5, fontWeight: 800 }}>
-                          {formatMinutes(entry.durationMinutes)}
-                        </Typography>
-                        <Chip
-                          size="small"
-                          color={statusColor(entry.status)}
-                          label={entry.status}
-                          icon={
-                            entry.status === 'submitted' ? <CheckCircle2 size={12} /> : undefined
-                          }
-                        />
-                      </Box>
-                      {entry.status === 'draft' && (
-                        <Button
-                          aria-label={`Delete ${entry.taskName} entry`}
-                          color="error"
-                          size="small"
-                          onClick={() => void timesheet.remove(entry.id).catch(() => undefined)}
-                          sx={{ minWidth: 34, px: 0.75 }}
+                      {entry.approval.decisions.map((decision) => (
+                        <Box
+                          key={decision.decidedAt}
+                          sx={{
+                            mt: 1.2,
+                            pt: 1.2,
+                            borderTop: '1px solid',
+                            borderColor: 'divider',
+                          }}
                         >
-                          <Trash2 size={15} />
-                        </Button>
-                      )}
+                          <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
+                            {decision.decision === 'approved' ? 'Approved' : 'Rejected'} by{' '}
+                            {decision.actorDisplayName} ·{' '}
+                            {new Date(decision.decidedAt).toLocaleDateString('en-IN')}
+                          </Typography>
+                          {decision.comment && (
+                            <Typography sx={{ mt: 0.25, fontSize: 11.5 }}>
+                              {decision.comment}
+                            </Typography>
+                          )}
+                        </Box>
+                      ))}
                     </Box>
                   ))}
                 </Stack>

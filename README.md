@@ -27,6 +27,9 @@ personal-calendar slices include:
 - Employee task-time entries for assigned shows, including start/end intervals,
   descriptions, billable flags, work-session linkage, overlap protection, daily
   totals, draft deletion, and daily submission.
+- Scoped submitted-timesheet approval for exact shows, direct reports, and company
+  administration, with self-approval prevention, atomic decisions, mandatory
+  rejection reasons, and immutable actor history shown back to the employee.
 - Persisted daily reconciliation across biometric, access-card, website-session,
   and task-time evidence with source precedence, open/closed workday handling,
   nine-hour calculation, and discrepancy detection.
@@ -66,8 +69,8 @@ personal-calendar slices include:
 - Development Docker Compose configuration.
 - Kubeadm/containerd-compatible Helm chart aligned with the local cluster.
 
-Submitted-timesheet approval decisions, location-specific holiday administration,
-and scoped team/show calendars remain for the following slices.
+Location-specific holiday administration, scoped team/show calendars, and
+project-level task grouping remain for the following slices.
 
 The accepted attendance CSV contract is documented in
 [`docs/ATTENDANCE_CSV_FORMAT.md`](docs/ATTENDANCE_CSV_FORMAT.md).
@@ -86,11 +89,11 @@ Holiday and leave-balance administration is documented in
 
 | Item                     | Status                                      |
 | ------------------------ | ------------------------------------------- |
-| Source and Helm version  | `0.7.0`                                     |
+| Source and Helm version  | `0.8.0`                                     |
 | Git branch               | `main`                                      |
-| Source release commit    | `cd3619a`                                   |
+| Source release commit    | Pending release commit                      |
 | Local Kubernetes release | `0.7.0`, Helm revision 9, deployed          |
-| Local `0.7.0` images     | Imported into containerd and running        |
+| Local `0.8.0` images     | Awaiting local build and containerd import  |
 | Container target         | kubeadm/containerd `k8s.io`, `linux/amd64`  |
 | Ingress                  | `http://gnomon.local` through NGINX Ingress |
 
