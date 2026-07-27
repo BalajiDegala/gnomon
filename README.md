@@ -42,7 +42,7 @@ The accepted attendance CSV contract is documented in
 | Source and Helm version  | `0.2.0`                                     |
 | Git branch               | `main`                                      |
 | Git baseline             | `aec2463`                                   |
-| Local Kubernetes release | `0.1.1` pending the `0.2.0` image import    |
+| Local Kubernetes release | `0.2.0`, Helm revision 4, deployed          |
 | Container target         | kubeadm/containerd `k8s.io`, `linux/amd64`  |
 | Ingress                  | `http://gnomon.local` through NGINX Ingress |
 
