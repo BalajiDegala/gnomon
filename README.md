@@ -97,7 +97,7 @@ Location, holiday, and leave-balance administration is documented in
 | ------------------------ | ------------------------------------------- |
 | Source and Helm version  | `0.9.0`                                     |
 | Git branch               | `main`                                      |
-| Source release commit    | Pending                                     |
+| Source release commit    | `7341ed8`                                   |
 | Local Kubernetes release | `0.8.0`, Helm revision 10, deployed         |
 | Local `0.9.0` images     | Awaiting local build/import                 |
 | Container target         | kubeadm/containerd `k8s.io`, `linux/amd64`  |
