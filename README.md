@@ -56,8 +56,8 @@ The daily calculation and provisional policy are documented in
 | ------------------------ | ------------------------------------------- |
 | Source and Helm version  | `0.4.0`                                     |
 | Git branch               | `main`                                      |
-| Git baseline             | `cf883ce`                                   |
-| Local Kubernetes release | `0.3.0`, revision 5; `0.4.0` images pending |
+| Git baseline             | `bab4bae`                                   |
+| Local Kubernetes release | `0.4.0`, Helm revision 6, deployed          |
 | Container target         | kubeadm/containerd `k8s.io`, `linux/amd64`  |
 | Ingress                  | `http://gnomon.local` through NGINX Ingress |
 
