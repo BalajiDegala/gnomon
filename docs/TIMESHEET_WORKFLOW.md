@@ -77,7 +77,6 @@ still pinned to the authenticated employee identifier on the server.
 
 ## Next slice
 
-The next implementation slice will reconcile biometric, access-card, website
-sessions, and task entries into a daily timecard with anomalies. Approval
-queues will then let the authorized Show Manager decide submitted task entries
-without widening their ABAC scope.
+Daily source reconciliation is implemented in `0.4.0` and consumes these task
+entries as supporting evidence. The next approval slice will let the authorized
+Show Manager decide submitted task entries without widening their ABAC scope.

@@ -1,4 +1,4 @@
-import type { AttendanceSignalsDto, TodayTimecard } from '@gnomon/shared';
+import type { AttendanceSignalsDto, DailyReconciliationDto, TodayTimecard } from '@gnomon/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -7,6 +7,7 @@ import { useAuth } from './auth';
 interface TimecardResponse {
   timecard: TodayTimecard;
   signals: AttendanceSignalsDto;
+  reconciliation: DailyReconciliationDto;
 }
 
 export function formatElapsed(totalSeconds: number): string {
@@ -75,6 +76,7 @@ export function useTodayTimecard() {
     isUpdating: mutation.isPending,
     timecard,
     signals: query.data?.signals,
+    reconciliation: query.data?.reconciliation,
     trackedSeconds,
     toggle: () => mutation.mutate(timecard?.activeSession ? 'stop' : 'start'),
   };

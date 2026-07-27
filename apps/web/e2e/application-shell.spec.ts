@@ -17,6 +17,7 @@ test('renders the authenticated workforce overview', async ({ page }, testInfo) 
     page.getByRole('heading', { name: /Good (morning|afternoon|evening),/ }),
   ).toBeVisible();
   await expect(page.getByText('Attendance signals')).toBeVisible();
+  await expect(page.getByText('Daily reconciliation')).toBeVisible();
   await expect(page.getByText('Website timecard').first()).toBeVisible();
 
   await page.screenshot({ path: testInfo.outputPath('overview.png'), fullPage: true });

@@ -2,7 +2,7 @@
 
 ## Document status
 
-- Status: Phase 3 task-time slice implemented; daily reconciliation is next
+- Status: Phase 3 task-time and daily reconciliation slices implemented
 - Created: 2026-07-27
 - Company: DIGITAL DOMAIN INDIA
 - Application scope: Single company
@@ -584,8 +584,9 @@ CPU does not expose the AVX instructions required by newer MongoDB releases.
 - Implemented in `0.3.0`: shows, tasks, and employee show assignments.
 - Implemented in `0.3.0`: non-overlapping task start/end entries, draft deletion,
   daily totals, and daily submission.
-- Next: project-level grouping and daily timecard calculation.
-- Next: source comparison and anomaly detection.
+- Implemented in `0.4.0`: persisted daily timecard calculation, evidence
+  precedence, source comparison, and employee-facing anomaly detection.
+- Next: project-level task grouping and manager reconciliation queues.
 
 ### Phase 4: Regularisation and approval engine
 
@@ -642,7 +643,9 @@ business-rule complete:
 
 Confirmed implementation baselines: employees may record multiple
 non-overlapping task intervals per day, and entries are submitted by work date
-rather than as a weekly sheet.
+rather than as a weekly sheet. Release `0.4.0` uses 15 minutes as an explicitly
+provisional mismatch tolerance until item 4 is confirmed and moved into the
+attendance-policy administration page.
 
 An anonymized example of both the biometric CSV and access-card CSV is required
 before finalizing the import mappings.

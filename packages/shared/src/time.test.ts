@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { defaultWorkdayPolicy, getWorkDate, WorkdayPolicySchema } from './time.js';
+import {
+  defaultWorkdayPolicy,
+  getWorkDate,
+  getWorkdayWindow,
+  WorkdayPolicySchema,
+} from './time.js';
 
 describe('WorkdayPolicySchema', () => {
   it('uses the agreed DIGITAL DOMAIN INDIA defaults', () => {
@@ -30,5 +35,20 @@ describe('getWorkDate', () => {
 
   it('keeps an after-midnight session before 07:00 on the previous work date', () => {
     expect(getWorkDate(new Date('2026-07-27T23:30:00.000Z'))).toBe('2026-07-27');
+  });
+});
+
+describe('getWorkdayWindow', () => {
+  it('resolves the India schedule to exact UTC instants', () => {
+    const window = getWorkdayWindow('2026-07-27');
+
+    expect(window.start.toISOString()).toBe('2026-07-27T01:30:00.000Z');
+    expect(window.end.toISOString()).toBe('2026-07-28T01:30:00.000Z');
+    expect(window.expectedStart.toISOString()).toBe('2026-07-27T03:30:00.000Z');
+    expect(window.expectedEnd.toISOString()).toBe('2026-07-27T12:30:00.000Z');
+  });
+
+  it('rejects impossible calendar dates', () => {
+    expect(() => getWorkdayWindow('2026-02-30')).toThrow('valid ISO work date');
   });
 });

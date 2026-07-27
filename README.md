@@ -7,7 +7,7 @@ regularisation, calendars, approval workflows, and scoped administration.
 
 ## Current implementation
 
-The Phase 1 foundation, attendance slice, and Phase 3 task-time slice include:
+The Phase 1 foundation and Phase 2/3 attendance and task-time slices include:
 
 - Responsive React and Material UI application shell with a polished login page,
   permission-aware navigation, desktop sidebar, and mobile drawer.
@@ -26,6 +26,11 @@ The Phase 1 foundation, attendance slice, and Phase 3 task-time slice include:
 - Employee task-time entries for assigned shows, including start/end intervals,
   descriptions, billable flags, work-session linkage, overlap protection, daily
   totals, draft deletion, and daily submission.
+- Persisted daily reconciliation across biometric, access-card, website-session,
+  and task-time evidence with source precedence, open/closed workday handling,
+  nine-hour calculation, and discrepancy detection.
+- Responsive reconciliation dashboard showing source totals, primary evidence,
+  provisional state, attendance result, and review anomalies.
 - Responsive Shows & tasks and Timesheets pages for desktop and mobile.
 - Focused timecard detail view plus clear delivery states for leave, calendar,
   approvals, people, and administration.
@@ -35,22 +40,24 @@ The Phase 1 foundation, attendance slice, and Phase 3 task-time slice include:
 - Development Docker Compose configuration.
 - Kubeadm/containerd-compatible Helm chart aligned with the local cluster.
 
-Full daily reconciliation, regularisation, submitted-timesheet approval
-decisions, leave, and calendar workflows will be added in the following slices.
+Regularisation, submitted-timesheet approval decisions, leave, and calendar
+workflows will be added in the following slices.
 
 The accepted attendance CSV contract is documented in
 [`docs/ATTENDANCE_CSV_FORMAT.md`](docs/ATTENDANCE_CSV_FORMAT.md).
 The show setup and employee task-time workflow is documented in
 [`docs/TIMESHEET_WORKFLOW.md`](docs/TIMESHEET_WORKFLOW.md).
+The daily calculation and provisional policy are documented in
+[`docs/RECONCILIATION_POLICY.md`](docs/RECONCILIATION_POLICY.md).
 
 ## Release status
 
 | Item                     | Status                                      |
 | ------------------------ | ------------------------------------------- |
-| Source and Helm version  | `0.3.0`                                     |
+| Source and Helm version  | `0.4.0`                                     |
 | Git branch               | `main`                                      |
-| Git baseline             | `f00f027`                                   |
-| Local Kubernetes release | `0.3.0`, Helm revision 5, deployed          |
+| Git baseline             | `cf883ce`                                   |
+| Local Kubernetes release | `0.3.0`, revision 5; `0.4.0` images pending |
 | Container target         | kubeadm/containerd `k8s.io`, `linux/amd64`  |
 | Ingress                  | `http://gnomon.local` through NGINX Ingress |
 

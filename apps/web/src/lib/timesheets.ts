@@ -41,8 +41,9 @@ export function useTimesheetDay(workDate: string) {
     enabled: canCreate,
   });
 
-  const applyDay = (response: DayResponse) => {
+  const applyDay = async (response: DayResponse) => {
     queryClient.setQueryData(['timesheet-day', response.day.workDate], response);
+    await queryClient.invalidateQueries({ queryKey: ['timecard', 'today'] });
   };
   const create = useMutation({
     mutationFn: (input: CreateTimeEntryRequest) =>

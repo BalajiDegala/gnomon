@@ -1,3 +1,4 @@
+import type { DailyReconciliationDto, ReconciliationAnomaly } from '@gnomon/shared';
 import {
   Alert,
   Box,
@@ -11,6 +12,7 @@ import {
   Typography,
 } from '@mui/material';
 import {
+  AlertTriangle,
   ArrowUpRight,
   CalendarDays,
   CheckCircle2,
@@ -50,6 +52,27 @@ const policyItems = [
   { label: 'Workday boundary', value: '07:00 – 07:00' },
   { label: 'Working week', value: 'Monday – Friday' },
 ];
+
+const anomalyLabels: Record<ReconciliationAnomaly, string> = {
+  missing_biometric_in: 'Missing biometric in',
+  missing_biometric_out: 'Missing biometric out',
+  missing_access_entry: 'Missing card entry',
+  missing_access_exit: 'Missing card exit',
+  missing_web_start: 'Missing website start',
+  missing_web_stop: 'Missing website stop',
+  source_time_mismatch: 'Source times differ',
+  insufficient_hours: 'Below nine hours',
+  task_outside_web_session: 'Task outside website session',
+  task_exceeds_presence: 'Task time exceeds presence',
+  unsubmitted_task_time: 'Draft task time remains',
+  invalid_event_order: 'Invalid event order',
+};
+
+function formatMinutesCompact(minutes: number): string {
+  const hours = Math.floor(Math.abs(minutes) / 60);
+  const remainder = Math.abs(minutes) % 60;
+  return `${hours}h ${String(remainder).padStart(2, '0')}m`;
+}
 
 export function DashboardPage({ onNavigate }: DashboardPageProps) {
   const { user } = useAuth();
@@ -323,7 +346,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
           <Box>
             <Typography sx={{ fontSize: 16, fontWeight: 800 }}>Attendance signals</Typography>
             <Typography sx={{ color: 'text.secondary', fontSize: 12 }}>
-              Independent sources will be reconciled into one attendance day.
+              Independent sources reconciled into one attendance day.
             </Typography>
           </Box>
         </Stack>
@@ -377,6 +400,8 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
           })}
         </Box>
       </Box>
+
+      <ReconciliationCard reconciliation={timecard.reconciliation} />
 
       <Box
         sx={{
@@ -483,9 +508,9 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
 
         <Card sx={{ boxShadow: 'none' }}>
           <CardContent sx={{ p: 3 }}>
-            <Typography sx={{ fontSize: 15, fontWeight: 800 }}>Coming next</Typography>
+            <Typography sx={{ fontSize: 15, fontWeight: 800 }}>Quick access</Typography>
             <Typography sx={{ color: 'text.secondary', fontSize: 11.5, mb: 2 }}>
-              The next MVP workflows in the delivery queue
+              Continue into task time, leave, or manager work
             </Typography>
             <Stack spacing={1}>
               {nextActions.map((item) => {
@@ -524,4 +549,193 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
 
 function DividerLine() {
   return <Box sx={{ borderTop: '1px solid', borderColor: 'divider' }} />;
+}
+
+function ReconciliationCard({
+  reconciliation,
+}: {
+  reconciliation: DailyReconciliationDto | undefined;
+}) {
+  const statusColor =
+    reconciliation?.calculated.status === 'present'
+      ? 'success'
+      : reconciliation?.calculated.status === 'absent'
+        ? 'error'
+        : reconciliation?.calculated.status === 'weekend'
+          ? 'info'
+          : 'warning';
+  const sourceLabel =
+    reconciliation?.calculated.primarySource === 'access_card'
+      ? 'Access card'
+      : reconciliation?.calculated.primarySource === 'website'
+        ? 'Website'
+        : reconciliation?.calculated.primarySource === 'biometric'
+          ? 'Biometric'
+          : 'Awaiting evidence';
+  const completion = reconciliation
+    ? Math.min(
+        100,
+        (reconciliation.calculated.grossMinutes / reconciliation.calculated.requiredMinutes) * 100,
+      )
+    : 0;
+
+  return (
+    <Card sx={{ boxShadow: 'none', overflow: 'hidden' }}>
+      <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' }, gap: 1.5 }}
+        >
+          <Stack direction="row" sx={{ alignItems: 'center', gap: 1.5 }}>
+            <Box
+              sx={{
+                width: 40,
+                height: 40,
+                display: 'grid',
+                placeItems: 'center',
+                borderRadius: 2.25,
+                bgcolor: '#edf7f8',
+                color: '#117f8c',
+              }}
+            >
+              <ShieldCheck size={19} />
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: 15.5, fontWeight: 820 }}>Daily reconciliation</Typography>
+              <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
+                {reconciliation
+                  ? `Work date ${reconciliation.workDate} · ${reconciliation.calculated.workdayClosed ? 'window closed' : 'live calculation'}`
+                  : 'Calculating attendance evidence…'}
+              </Typography>
+            </Box>
+          </Stack>
+          {reconciliation && (
+            <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
+              {reconciliation.calculated.provisional && (
+                <Chip size="small" label="Provisional" variant="outlined" />
+              )}
+              <Chip
+                size="small"
+                color={statusColor}
+                label={reconciliation.calculated.status.replaceAll('_', ' ')}
+                sx={{ textTransform: 'capitalize', fontWeight: 750 }}
+              />
+            </Stack>
+          )}
+        </Stack>
+
+        {reconciliation && (
+          <>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: {
+                  xs: 'repeat(2, minmax(0, 1fr))',
+                  md: 'repeat(5, minmax(0, 1fr))',
+                },
+                gap: 1,
+                mt: 2.5,
+              }}
+            >
+              <ReconciliationMetric label="Primary source" value={sourceLabel} />
+              <ReconciliationMetric
+                label="Biometric"
+                value={formatMinutesCompact(reconciliation.sourceSummary.biometric.workedMinutes)}
+              />
+              <ReconciliationMetric
+                label="Access card"
+                value={formatMinutesCompact(reconciliation.sourceSummary.accessCard.workedMinutes)}
+              />
+              <ReconciliationMetric
+                label="Website"
+                value={formatMinutesCompact(reconciliation.sourceSummary.website.workedMinutes)}
+              />
+              <ReconciliationMetric
+                label="Task entries"
+                value={formatMinutesCompact(reconciliation.sourceSummary.taskEntries.totalMinutes)}
+              />
+            </Box>
+
+            <Box sx={{ mt: 2.5 }}>
+              <Stack direction="row" sx={{ justifyContent: 'space-between', mb: 0.8 }}>
+                <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
+                  Calculated presence ·{' '}
+                  {formatMinutesCompact(reconciliation.calculated.grossMinutes)}
+                  {' / '}
+                  {formatMinutesCompact(reconciliation.calculated.requiredMinutes)}
+                </Typography>
+                <Typography
+                  sx={{
+                    color:
+                      reconciliation.calculated.differenceMinutes >= 0
+                        ? 'success.main'
+                        : 'text.secondary',
+                    fontSize: 11.5,
+                    fontWeight: 750,
+                  }}
+                >
+                  {reconciliation.calculated.differenceMinutes >= 0 ? '+' : '−'}
+                  {formatMinutesCompact(reconciliation.calculated.differenceMinutes)}
+                </Typography>
+              </Stack>
+              <LinearProgress
+                variant="determinate"
+                value={completion}
+                color={
+                  reconciliation.calculated.status === 'present' &&
+                  !reconciliation.calculated.requiresReview
+                    ? 'success'
+                    : reconciliation.calculated.status === 'absent'
+                      ? 'error'
+                      : 'warning'
+                }
+                sx={{ height: 7, borderRadius: 5 }}
+              />
+            </Box>
+
+            {reconciliation.calculated.anomalies.length ? (
+              <Box sx={{ mt: 2.25 }}>
+                <Stack direction="row" sx={{ alignItems: 'center', gap: 0.75, mb: 1 }}>
+                  <AlertTriangle size={15} color="#c17424" />
+                  <Typography sx={{ color: '#945719', fontSize: 11.5, fontWeight: 800 }}>
+                    Evidence requiring review
+                  </Typography>
+                </Stack>
+                <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.75 }}>
+                  {reconciliation.calculated.anomalies.map((anomaly) => (
+                    <Chip
+                      key={anomaly}
+                      size="small"
+                      color="warning"
+                      variant="outlined"
+                      label={anomalyLabels[anomaly]}
+                    />
+                  ))}
+                </Stack>
+              </Box>
+            ) : reconciliation.calculated.primarySource === 'none' ? (
+              <Alert severity="info" sx={{ mt: 2.25 }}>
+                Awaiting the first attendance signal for this work date.
+              </Alert>
+            ) : (
+              <Alert severity="success" sx={{ mt: 2.25 }}>
+                Available evidence is aligned; no discrepancy has been detected.
+              </Alert>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ReconciliationMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: '#f6f8fa', minWidth: 0 }}>
+      <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>{label}</Typography>
+      <Typography noWrap sx={{ mt: 0.3, fontSize: 13, fontWeight: 800 }}>
+        {value}
+      </Typography>
+    </Box>
+  );
 }
