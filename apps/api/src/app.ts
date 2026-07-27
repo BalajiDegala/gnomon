@@ -12,8 +12,10 @@ import { calendarRouter } from './modules/calendar/calendar.routes.js';
 import { importRouter } from './modules/imports/import.routes.js';
 import { leaveApprovalRouter, leaveRouter } from './modules/leaves/leave.routes.js';
 import {
+  employeeLocationAdministrationRouter,
   holidayAdministrationRouter,
   leaveBalanceAdministrationRouter,
+  locationAdministrationRouter,
 } from './modules/policies/policy.routes.js';
 import { reconciliationRouter } from './modules/reconciliation/reconciliation.routes.js';
 import {
@@ -55,6 +57,8 @@ app.use('/api/v1/imports', importRouter);
 app.use('/api/v1/leaves', leaveRouter);
 app.use('/api/v1/approvals/leaves', leaveApprovalRouter);
 app.use('/api/v1/administration/holidays', holidayAdministrationRouter);
+app.use('/api/v1/administration/locations', locationAdministrationRouter);
+app.use('/api/v1/administration/employee-locations', employeeLocationAdministrationRouter);
 app.use('/api/v1/administration/leave-balances', leaveBalanceAdministrationRouter);
 app.use('/api/v1/reconciliation', reconciliationRouter);
 app.use('/api/v1/regularisations', regularisationRouter);

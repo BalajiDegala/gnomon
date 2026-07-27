@@ -1,7 +1,7 @@
 import { getWorkDate, type PersonalCalendarDto } from '@gnomon/shared';
 
 import { LeaveRequest } from '../leaves/leave.model.js';
-import { listApplicableHolidays } from '../policies/policy.service.js';
+import { listApplicableHolidays } from '../policies/holiday-applicability.service.js';
 import { DailyTimecard } from '../reconciliation/daily-timecard.model.js';
 
 function monthWindow(month: string) {

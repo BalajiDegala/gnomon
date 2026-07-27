@@ -1,6 +1,6 @@
 # Leave and Personal Calendar Workflow
 
-This document describes the Gnomon `0.7.0` leave-management and personal-calendar
+This document describes the Gnomon `0.9.0` leave-management and personal-calendar
 MVP for DIGITAL DOMAIN INDIA. It is the implemented baseline, not a final payroll
 or statutory leave policy.
 
@@ -35,10 +35,12 @@ not invent a default entitlement. Unpaid leave is tracked by request totals with
 an entitlement ceiling. Release `0.7.0` lets scoped HR administrators configure
 entitlement, signed adjustment, and a note by employee/year.
 
-Company holidays are managed separately by Attendance/System Administration. New
-leave requests exclude applicable holiday dates. Adding or archiving a holiday is
-blocked when it would conflict with an active leave reservation/range, so stored
-days and balances never change silently.
+Company and studio-location holidays are managed separately by Attendance/System
+Administration. Location applicability is resolved from the employee's
+effective-dated assignment on each holiday date. New leave requests exclude only
+applicable holiday dates. Adding/archiving a holiday or changing an employee's
+location is blocked when it would make an active leave reservation/range gain or lose
+a holiday, so stored days and balances never change silently.
 
 ## Persistence invariants
 
@@ -104,6 +106,12 @@ GET  /api/v1/administration/holidays?year=YYYY
 PUT  /api/v1/administration/holidays
 POST /api/v1/administration/holidays/:holidayId/archive
 
+GET  /api/v1/administration/locations
+POST /api/v1/administration/locations
+
+GET /api/v1/administration/employee-locations?employeeCode=CODE
+PUT /api/v1/administration/employee-locations/:employeeCode
+
 GET  /api/v1/administration/leave-balances?employeeCode=CODE&year=YYYY
 PUT  /api/v1/administration/leave-balances/:employeeCode
 ```
@@ -129,7 +137,6 @@ checks `NODE_ENV=test` and the `_test` suffix before writing.
 ## Follow-up scope
 
 - Leave-type catalogue administration
-- Location selection UI for the location-ready holiday model
 - HR oversight/override with audit reporting
 - Reporting Manager team calendar
 - Show Manager assigned-artist availability calendar

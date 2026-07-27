@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { EmployeeDocument } from '../src/modules/employees/employee.model.js';
 import {
+  canAssignEmployeeLocation,
   canManageEmployeeBalance,
   canManageHoliday,
 } from '../src/modules/policies/policy.service.js';
@@ -130,5 +131,62 @@ describe('leave balance scope', () => {
         employee(),
       ),
     ).toBe(false);
+  });
+});
+
+describe('employee location assignment scope', () => {
+  it('allows company HR and same-location HR assignments', () => {
+    const target = employee();
+    expect(
+      canAssignEmployeeLocation(
+        user([
+          {
+            roleCode: 'HR',
+            permissions: ['employee:update'],
+            scope: { type: 'company', ids: [] },
+          },
+        ]),
+        target,
+        new Types.ObjectId(),
+      ),
+    ).toBe(true);
+    expect(
+      canAssignEmployeeLocation(
+        user([
+          {
+            roleCode: 'HR',
+            permissions: ['employee:update'],
+            scope: { type: 'location', ids: [String(locationId)] },
+          },
+        ]),
+        target,
+        locationId,
+      ),
+    ).toBe(true);
+  });
+
+  it('blocks cross-location, department-only, and unassigned location-scoped changes', () => {
+    const scopedHr = user([
+      {
+        roleCode: 'HR',
+        permissions: ['employee:update'],
+        scope: { type: 'location', ids: [String(locationId)] },
+      },
+    ]);
+    expect(canAssignEmployeeLocation(scopedHr, employee(), new Types.ObjectId())).toBe(false);
+    expect(
+      canAssignEmployeeLocation(
+        user([
+          {
+            roleCode: 'HR',
+            permissions: ['employee:update'],
+            scope: { type: 'department', ids: [String(departmentId)] },
+          },
+        ]),
+        employee(),
+        locationId,
+      ),
+    ).toBe(false);
+    expect(canAssignEmployeeLocation(scopedHr, { locationId: null }, locationId)).toBe(false);
   });
 });

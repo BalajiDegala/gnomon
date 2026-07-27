@@ -1,6 +1,6 @@
 # Daily Reconciliation Policy
 
-This document records the `0.8.0` employee attendance calculation,
+This document records the `0.9.0` employee attendance calculation,
 regularisation finalisation, approved-leave interaction, and holiday state. It is a
 provisional MVP policy: immutable evidence is preserved, calculations can be
 regenerated, and unresolved business settings remain explicit rather than being
@@ -113,10 +113,17 @@ The policy actor and update time are retained while biometric, access-card, webs
 and task summaries remain intact. Approved regularisation and approved leave retain
 precedence over holiday state.
 
+Company holidays apply to every employee. Studio holidays apply when the employee's
+effective-dated location assignment covers the holiday's work date. Current employee
+location is only a compatibility fallback when no assignment history exists, so a
+later transfer cannot rewrite the meaning of a historical calendar or daily timecard.
+Company and location holidays cannot both be active on the same date.
+
 Creating or archiving a holiday is rejected if doing so would conflict with an active
 leave reservation/range. Current/past daily records already materialized for the date
 are recalculated after a policy change; future dates remain calendar policy until the
-work date arrives.
+work date arrives. A location change similarly recalculates today's materialized
+record and is blocked when active leave would gain or lose a future location holiday.
 
 ## Duration caveat
 

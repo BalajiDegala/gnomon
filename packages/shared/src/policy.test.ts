@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { UpdateLeaveBalanceRequestSchema, UpsertHolidayRequestSchema } from './policy.js';
+import {
+  CreateLocationRequestSchema,
+  UpdateEmployeeLocationRequestSchema,
+  UpdateLeaveBalanceRequestSchema,
+  UpsertHolidayRequestSchema,
+} from './policy.js';
 
 describe('holiday and leave policy contracts', () => {
   it('accepts a company holiday without a location', () => {
@@ -35,5 +40,15 @@ describe('holiday and leave policy contracts', () => {
         entitledDays: 10,
       }),
     ).toThrow();
+  });
+
+  it('normalizes location codes and accepts an explicit unassigned location', () => {
+    expect(CreateLocationRequestSchema.parse({ code: 'mum-01', name: 'Mumbai Studio' })).toEqual({
+      code: 'MUM-01',
+      name: 'Mumbai Studio',
+    });
+    expect(UpdateEmployeeLocationRequestSchema.parse({ locationId: null })).toEqual({
+      locationId: null,
+    });
   });
 });

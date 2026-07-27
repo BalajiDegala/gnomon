@@ -11,11 +11,72 @@ export const HolidayDtoSchema = z.object({
   name: z.string(),
   scopeType: HolidayScopeTypeSchema,
   locationId: z.string().nullable(),
+  locationCode: z.string().nullable(),
+  locationName: z.string().nullable(),
   status: z.enum(['active', 'archived']),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
 export type HolidayDto = z.infer<typeof HolidayDtoSchema>;
+
+export const LocationAdministrationDtoSchema = z.object({
+  id: z.string(),
+  code: z.string(),
+  name: z.string(),
+  status: z.enum(['active', 'inactive']),
+  employeeCount: z.number().int().nonnegative(),
+  canManagePolicy: z.boolean(),
+  canAssignEmployees: z.boolean(),
+});
+export type LocationAdministrationDto = z.infer<typeof LocationAdministrationDtoSchema>;
+
+export const LocationDirectoryDtoSchema = z.object({
+  canCreateLocations: z.boolean(),
+  locations: z.array(LocationAdministrationDtoSchema),
+});
+export type LocationDirectoryDto = z.infer<typeof LocationDirectoryDtoSchema>;
+
+export const CreateLocationRequestSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .min(2)
+    .max(24)
+    .regex(/^[A-Za-z0-9_-]+$/)
+    .transform((value) => value.toUpperCase()),
+  name: z.string().trim().min(2).max(120),
+});
+export type CreateLocationRequest = z.infer<typeof CreateLocationRequestSchema>;
+
+export const EmployeeLocationAdministrationDtoSchema = z.object({
+  employeeId: z.string(),
+  employeeCode: z.string(),
+  employeeDisplayName: z.string(),
+  locationId: z.string().nullable(),
+  locationCode: z.string().nullable(),
+  locationName: z.string().nullable(),
+  effectiveFrom: z.string().date().nullable(),
+});
+export type EmployeeLocationAdministrationDto = z.infer<
+  typeof EmployeeLocationAdministrationDtoSchema
+>;
+
+export const EmployeeLocationQuerySchema = z.object({
+  employeeCode: z
+    .string()
+    .trim()
+    .min(2)
+    .max(50)
+    .transform((value) => value.toUpperCase()),
+});
+
+export const UpdateEmployeeLocationRequestSchema = z.object({
+  locationId: z
+    .string()
+    .regex(/^[a-f\d]{24}$/i)
+    .nullable(),
+});
+export type UpdateEmployeeLocationRequest = z.infer<typeof UpdateEmployeeLocationRequestSchema>;
 
 export const UpsertHolidayRequestSchema = z
   .object({

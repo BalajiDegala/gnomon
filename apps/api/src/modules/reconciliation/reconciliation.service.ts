@@ -12,9 +12,8 @@ import {
 
 import { HttpError } from '../../middleware/errors.js';
 import { AttendanceEvent, type AttendanceEventType } from '../attendance/attendance-event.model.js';
-import { Employee } from '../employees/employee.model.js';
 import { LeaveRequest } from '../leaves/leave.model.js';
-import { Holiday } from '../policies/holiday.model.js';
+import { findApplicableHoliday } from '../policies/holiday-applicability.service.js';
 import { WorkSession } from '../timecard/work-session.model.js';
 import { TimeEntry } from '../timesheets/time-entry.model.js';
 import { RegularisationRequest } from '../regularisations/regularisation.model.js';
@@ -388,14 +387,6 @@ export async function reconcileDailyTimecard(
   if (workDate > getWorkDate(now)) {
     throw new HttpError(400, 'A future work date cannot be reconciled', 'FUTURE_WORK_DATE');
   }
-  const employee = await Employee.findById(employeeId).select({ locationId: 1 }).lean().exec();
-  if (!employee) throw new HttpError(404, 'Employee profile not found', 'EMPLOYEE_NOT_FOUND');
-  const holidayScopes: Array<Record<string, unknown>> = [
-    { scopeType: 'company', locationId: null },
-  ];
-  if (employee.locationId) {
-    holidayScopes.push({ scopeType: 'location', locationId: employee.locationId });
-  }
   const [events, sessions, timeEntries, regularisations, approvedLeave, holiday] =
     await Promise.all([
       AttendanceEvent.find({ employeeId, workDate })
@@ -421,7 +412,7 @@ export async function reconcileDailyTimecard(
       LeaveRequest.findOne({ employeeId, status: 'approved', workingDates: workDate })
         .lean()
         .exec(),
-      Holiday.findOne({ date: workDate, status: 'active', $or: holidayScopes }).lean().exec(),
+      findApplicableHoliday(employeeId, workDate),
     ]);
   const calculation = calculateDailyReconciliation({
     workDate,
@@ -483,7 +474,7 @@ export async function reconcileDailyTimecard(
               finalEnd: null,
               finalMinutes: 0,
               finalisedBy: holiday.updatedByUserId,
-              finalisedAt: holiday.updatedAt,
+              finalisedAt: holiday.updatedAtDate,
             }
           : {
               isFinal: false,

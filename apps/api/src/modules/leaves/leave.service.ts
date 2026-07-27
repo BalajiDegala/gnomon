@@ -11,7 +11,7 @@ import { Types } from 'mongoose';
 
 import { HttpError } from '../../middleware/errors.js';
 import { Employee, type EmployeeDocument } from '../employees/employee.model.js';
-import { listApplicableHolidays } from '../policies/policy.service.js';
+import { listApplicableHolidays } from '../policies/holiday-applicability.service.js';
 import { reconcileDailyTimecard } from '../reconciliation/reconciliation.service.js';
 import { LeaveBalance, LeaveRequest, type LeaveRequestDocument } from './leave.model.js';
 

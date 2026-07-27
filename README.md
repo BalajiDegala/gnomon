@@ -54,12 +54,18 @@ personal-calendar slices include:
   to 270 minutes and retains the worked portion.
 - Responsive personal calendar combining reconciled attendance with pending and
   approved leave without exposing leave reasons.
-- Auditable company-holiday administration with scope enforcement, archive/reactivate
-  support, leave-range conflict protection, and automatic exclusion from leave days.
+- Auditable company- and studio-location holiday administration with scope
+  enforcement, archive/reactivate support, leave-range conflict protection, and
+  automatic exclusion from leave days.
+- Studio-location directory and effective-dated employee assignment history, with
+  company and exact-location RBAC/ABAC capabilities shown in the Administration UI.
+- Location-aware personal calendars, leave-day calculation, attendance
+  reconciliation, and policy changes that preserve historical assignment meaning.
 - HR-scoped employee leave-balance administration for annual entitlement, signed
   adjustment, usage, availability, and notes.
-- Permission-aware Administration workspace that exposes attendance imports, holiday
-  policy, and/or leave balances according to each role grant.
+- Permission-aware Administration workspace that exposes attendance imports, studio
+  locations, employee-location assignment, holiday policy, and/or leave balances
+  according to each role grant.
 - Responsive Shows & tasks and Timesheets pages for desktop and mobile.
 - Focused timecard detail view plus operational leave, calendar, approvals, show,
   timesheet, import, and regularisation pages.
@@ -69,8 +75,8 @@ personal-calendar slices include:
 - Development Docker Compose configuration.
 - Kubeadm/containerd-compatible Helm chart aligned with the local cluster.
 
-Location-specific holiday administration, scoped team/show calendars, and
-project-level task grouping remain for the following slices.
+Scoped team/show calendars and project-level task grouping remain for the following
+slices.
 
 The accepted attendance CSV contract is documented in
 [`docs/ATTENDANCE_CSV_FORMAT.md`](docs/ATTENDANCE_CSV_FORMAT.md).
@@ -82,18 +88,18 @@ The attendance correction and approval workflow is documented in
 [`docs/REGULARISATION_WORKFLOW.md`](docs/REGULARISATION_WORKFLOW.md).
 The leave, approval, balance, calendar, and attendance interaction is documented in
 [`docs/LEAVE_CALENDAR_WORKFLOW.md`](docs/LEAVE_CALENDAR_WORKFLOW.md).
-Holiday and leave-balance administration is documented in
+Location, holiday, and leave-balance administration is documented in
 [`docs/POLICY_ADMINISTRATION.md`](docs/POLICY_ADMINISTRATION.md).
 
 ## Release status
 
 | Item                     | Status                                      |
 | ------------------------ | ------------------------------------------- |
-| Source and Helm version  | `0.8.0`                                     |
+| Source and Helm version  | `0.9.0`                                     |
 | Git branch               | `main`                                      |
-| Source release commit    | `49f8b36`                                   |
+| Source release commit    | Pending                                     |
 | Local Kubernetes release | `0.8.0`, Helm revision 10, deployed         |
-| Local `0.8.0` images     | Imported into containerd and running        |
+| Local `0.9.0` images     | Awaiting local build/import                 |
 | Container target         | kubeadm/containerd `k8s.io`, `linux/amd64`  |
 | Ingress                  | `http://gnomon.local` through NGINX Ingress |
 

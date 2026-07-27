@@ -5,6 +5,7 @@ import { env } from '../src/config/env.js';
 import { connectDatabase, disconnectDatabase } from '../src/db/mongoose.js';
 import { User } from '../src/modules/auth/user.model.js';
 import { Employee } from '../src/modules/employees/employee.model.js';
+import { EmployeeLocationAssignment, Location } from '../src/modules/employees/location.model.js';
 import { LeaveBalance, LeaveRequest } from '../src/modules/leaves/leave.model.js';
 import { Holiday } from '../src/modules/policies/holiday.model.js';
 import { DailyTimecard } from '../src/modules/reconciliation/daily-timecard.model.js';
@@ -53,6 +54,7 @@ async function upsertEmployee(
         firstName,
         lastName,
         timezone: 'Asia/Kolkata',
+        locationId: null,
         status: 'active',
       },
     },
@@ -107,10 +109,12 @@ async function seedWorkflowFixtures(): Promise<void> {
     Holiday.deleteMany({}),
     DailyTimecard.deleteMany({ employeeId: { $in: fixtureEmployeeIds } }),
     RoleAssignment.deleteMany({ userId: { $in: fixtureUserIds } }),
-    TimeEntry.deleteMany({ employeeId: { $in: fixtureEmployeeIds } }),
-    ShowAssignment.deleteMany({ employeeId: { $in: fixtureEmployeeIds } }),
+    TimeEntry.deleteMany({}),
+    ShowAssignment.deleteMany({}),
     Task.deleteMany({}),
     Show.deleteMany({}),
+    EmployeeLocationAssignment.deleteMany({ employeeId: { $in: fixtureEmployeeIds } }),
+    Location.deleteMany({}),
   ]);
 
   const roles = await ensureSystemRoles();

@@ -2,8 +2,8 @@
 
 ## Document status
 
-- Status: Phase 3–5 task approval, attendance, regularisation, leave, holiday,
-  balance, and personal-calendar slices implemented
+- Status: Phase 3–6 task approval, attendance, regularisation, leave, location,
+  holiday, balance, personal-calendar, and scoped policy-administration slices implemented
 - Created: 2026-07-27
 - Company: DIGITAL DOMAIN INDIA
 - Application scope: Single company
@@ -486,9 +486,11 @@ later approval-engine slice.
   the personal calendar.
 - Release `0.7.0` adds HR-scoped annual entitlement/adjustment administration and
   company policy administration with active-leave conflict guards.
-- Location-specific holiday UI, Reporting Manager team calendars, and Show Manager
-  availability calendars remain next-slice work. The holiday schema and API scope
-  checks are location-ready.
+- Release `0.9.0` adds the studio location directory, effective-dated employee
+  location assignment history, exact-location RBAC/ABAC, location holiday selection,
+  and location-aware leave, calendar, and attendance reconciliation.
+- Reporting Manager team calendars and Show Manager availability calendars remain
+  next-slice work.
 - Leave reasons remain private unless the viewer has an explicit permission.
 
 See [`LEAVE_CALENDAR_WORKFLOW.md`](LEAVE_CALENDAR_WORKFLOW.md) for the implemented
@@ -646,13 +648,17 @@ CPU does not expose the AVX instructions required by newer MongoDB releases.
 - Implemented in `0.7.0`: company holiday administration, holiday-aware leave-day
   calculation, personal calendar markers, and holiday attendance finalisation.
 - Implemented in `0.7.0`: HR-scoped paid-leave entitlement and adjustment administration.
-- Next: location selection and location-specific holiday administration.
+- Implemented in `0.9.0`: location directory, effective-dated employee assignment,
+  exact-location authorization, location-specific holidays, and date-effective
+  calendar/leave/reconciliation applicability.
 - Next: Reporting Manager team and Show Manager availability calendars.
 
 ### Phase 6: Administration and reporting
 
 - Implemented in `0.7.0`: permission-aware administration shell for attendance
   imports, company holidays, and employee leave balances.
+- Implemented in `0.9.0`: capability-aware studio location cards, employee-location
+  assignment, and company/location holiday selection.
 - Next: remaining HR, attendance-policy, security, and reporting pages.
 - Dashboards and CSV exports.
 - Scoped reports.

@@ -449,7 +449,7 @@ test('completes leave approval and shows approved leave in the personal calendar
   });
 });
 
-test('configures a company holiday and an employee leave balance', async ({ page }, testInfo) => {
+test('configures a location holiday and an employee leave balance', async ({ page }, testInfo) => {
   const credentialsReady = regularisationUsers.hr.email && regularisationUsers.employee.email;
   test.skip(!credentialsReady, 'HR and employee E2E credentials are required');
 
@@ -471,21 +471,49 @@ test('configures a company holiday and an employee leave balance', async ({ page
   }
 
   const holidayDate = futureWeekdayDate(35);
-  const holidayName = `E2E Studio Holiday ${Date.now()}`;
+  const suffix = `${Date.now()}`.slice(-8);
+  const locationCode = `LOC${suffix}`;
+  const locationName = `E2E Mumbai Studio ${suffix}`;
+  const holidayName = `E2E Location Holiday ${suffix}`;
+
+  await page.getByLabel('Location code').fill(locationCode);
+  await page.getByLabel('Location name').fill(locationName);
+  await page.getByRole('button', { name: 'Add location' }).click();
+  await expect(page.getByText(locationName)).toBeVisible();
+
+  await page.getByLabel('Location employee code').fill('E2EEMP01');
+  await page.getByRole('button', { name: 'Load employee' }).click();
+  await expect(page.getByText('Eshan Artist')).toBeVisible();
+  await page.getByRole('combobox', { name: 'Assigned location' }).click();
+  await page.getByRole('option', { name: new RegExp(locationName) }).click();
+  await page.getByRole('button', { name: 'Assign effective today' }).click();
+  await expect(page.getByText(new RegExp(`current: ${locationName}`))).toBeVisible();
+
   await page.getByLabel('Policy year').fill(holidayDate.slice(0, 4));
+  await page.getByRole('combobox', { name: 'Holiday scope' }).click();
+  await page.getByRole('option', { name: 'One studio location' }).click();
+  await page.getByRole('combobox', { name: 'Studio location' }).click();
+  await page.getByRole('option', { name: new RegExp(locationName) }).click();
   await page.getByLabel('Holiday date').fill(holidayDate);
   await page.getByLabel('Holiday name').fill(holidayName);
   await page.getByRole('button', { name: 'Save holiday' }).click();
   await expect(page.getByText(holidayName)).toBeVisible();
 
-  await page.getByLabel('Employee code').fill('E2EEMP01');
-  await page.getByRole('button', { name: 'Load balances' }).click();
-  await expect(page.getByText('Eshan Artist')).toBeVisible();
-  await page.getByLabel('Casual leave entitlement').fill('12');
-  await page.getByLabel('Casual leave adjustment').fill('1');
-  await page.getByLabel('Casual leave note').fill('E2E annual balance configuration');
-  await page.getByRole('button', { name: 'Save casual leave' }).click();
-  await expect(page.getByText(/1[23] available/)).toBeVisible();
+  const balanceCard = page
+    .getByText('Employee leave balances')
+    .locator('xpath=ancestor::*[contains(@class,"MuiCard-root")][1]');
+  await balanceCard.getByLabel('Employee code').fill('E2EEMP01');
+  await balanceCard.getByRole('button', { name: 'Load balances' }).click();
+  await expect(balanceCard.getByText('Eshan Artist')).toBeVisible();
+  await balanceCard.getByLabel('Casual leave entitlement').fill('12');
+  await balanceCard.getByLabel('Casual leave adjustment').fill('1');
+  await balanceCard.getByLabel('Casual leave note').fill('E2E annual balance configuration');
+  await balanceCard.getByRole('button', { name: 'Save casual leave' }).click();
+  await expect(balanceCard.getByText(/1[23] available/)).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath('location-policy-administration.png'),
+    fullPage: true,
+  });
   await signOut(page);
 
   await signIn(page, regularisationUsers.employee);
@@ -496,4 +524,10 @@ test('configures a company holiday and an employee leave balance', async ({ page
     path: testInfo.outputPath('holiday-calendar-and-balance.png'),
     fullPage: true,
   });
+  await signOut(page);
+
+  await signIn(page, regularisationUsers.manager);
+  await page.getByRole('button', { name: 'Calendar', exact: true }).click();
+  await page.getByLabel('Jump to month').fill(holidayDate.slice(0, 7));
+  await expect(page.getByText(holidayName)).toHaveCount(0);
 });

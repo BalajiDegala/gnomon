@@ -1,6 +1,6 @@
 {
   "name": "gnomon",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "private": true,
   "description": "DIGITAL DOMAIN INDIA workforce management platform",
   "workspaces": [
