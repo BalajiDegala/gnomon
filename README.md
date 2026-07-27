@@ -92,8 +92,8 @@ Holiday and leave-balance administration is documented in
 | Source and Helm version  | `0.8.0`                                     |
 | Git branch               | `main`                                      |
 | Source release commit    | `49f8b36`                                   |
-| Local Kubernetes release | `0.7.0`, Helm revision 9, deployed          |
-| Local `0.8.0` images     | Awaiting local build and containerd import  |
+| Local Kubernetes release | `0.8.0`, Helm revision 10, deployed         |
+| Local `0.8.0` images     | Imported into containerd and running        |
 | Container target         | kubeadm/containerd `k8s.io`, `linux/amd64`  |
 | Ingress                  | `http://gnomon.local` through NGINX Ingress |
 
