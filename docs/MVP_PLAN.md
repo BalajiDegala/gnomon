@@ -2,7 +2,7 @@
 
 ## Document status
 
-- Status: Phase 3 task-time and daily reconciliation slices implemented
+- Status: Phase 4 regularisation and scoped approval slice implemented
 - Created: 2026-07-27
 - Company: DIGITAL DOMAIN INDIA
 - Application scope: Single company
@@ -590,10 +590,12 @@ CPU does not expose the AVX instructions required by newer MongoDB releases.
 
 ### Phase 4: Regularisation and approval engine
 
-- Configurable approval policies.
-- Employee regularisation requests.
-- Reporting Manager and HR/Attendance Admin queues.
-- Approval history, evidence, and audit log.
+- Implemented in `0.5.0`: employee missed-biometric and website start/stop
+  correction requests with one active request per work date, source, and missing event.
+- Implemented in `0.5.0`: Reporting Manager followed by HR/Attendance final approval.
+- Implemented in `0.5.0`: direct-report, company, department, and location approval
+  scope, self-approval prevention, decision history, and daily-timecard finalisation.
+- Next: administrator-configurable approval policies and centralized audit-log reporting.
 
 ### Phase 5: Leave and calendar
 
@@ -634,8 +636,8 @@ The following rules must be confirmed before implementation is considered
 business-rule complete:
 
 1. Does the required nine hours include lunch and other breaks?
-2. Does attendance regularisation require both Reporting Manager and
-   HR/Attendance Admin approval?
+2. Should the `0.5.0` attendance baseline continue to require both Reporting
+   Manager and HR/Attendance Admin approval, or should some corrections use one step?
 3. Is the approval split correct: Show Manager approves show timesheets, while
    Reporting Manager approves leave and attendance?
 4. What mismatch tolerance should trigger a discrepancy between biometric,
@@ -645,7 +647,9 @@ Confirmed implementation baselines: employees may record multiple
 non-overlapping task intervals per day, and entries are submitted by work date
 rather than as a weekly sheet. Release `0.4.0` uses 15 minutes as an explicitly
 provisional mismatch tolerance until item 4 is confirmed and moved into the
-attendance-policy administration page.
+attendance-policy administration page. Release `0.5.0` implements the two-step
+regularisation path in item 2 as the explicit MVP baseline without treating that
+policy choice as permanently fixed.
 
 An anonymized example of both the biometric CSV and access-card CSV is required
 before finalizing the import mappings.

@@ -88,8 +88,17 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
   const completion = Math.min(100, (timecard.trackedSeconds / (9 * 3_600)) * 100);
   const nextActions = [
     { view: 'timesheets' as const, label: 'Task time entries', icon: FileClock },
+    ...(user?.permissions.includes('regularisation:create')
+      ? [
+          {
+            view: 'regularisation' as const,
+            label: 'Attendance correction',
+            icon: Fingerprint,
+          },
+        ]
+      : []),
     { view: 'leave' as const, label: 'Leave requests', icon: CalendarDays },
-    ...(user?.permissions.some((permission) => permission.endsWith(':approve'))
+    ...(user?.permissions.includes('regularisation:approve')
       ? [{ view: 'approvals' as const, label: 'Manager approvals', icon: ShieldCheck }]
       : []),
   ];
@@ -510,7 +519,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
           <CardContent sx={{ p: 3 }}>
             <Typography sx={{ fontSize: 15, fontWeight: 800 }}>Quick access</Typography>
             <Typography sx={{ color: 'text.secondary', fontSize: 11.5, mb: 2 }}>
-              Continue into task time, leave, or manager work
+              Continue into time, attendance, leave, or manager work
             </Typography>
             <Stack spacing={1}>
               {nextActions.map((item) => {

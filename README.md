@@ -7,7 +7,7 @@ regularisation, calendars, approval workflows, and scoped administration.
 
 ## Current implementation
 
-The Phase 1 foundation and Phase 2/3 attendance and task-time slices include:
+The Phase 1 foundation and Phase 2–4 attendance, task-time, and correction slices include:
 
 - Responsive React and Material UI application shell with a polished login page,
   permission-aware navigation, desktop sidebar, and mobile drawer.
@@ -31,6 +31,13 @@ The Phase 1 foundation and Phase 2/3 attendance and task-time slices include:
   nine-hour calculation, and discrepancy detection.
 - Responsive reconciliation dashboard showing source totals, primary evidence,
   provisional state, attendance result, and review anomalies.
+- Employee missed-biometric and website start/stop regularisation requests with
+  closed-workday validation, duplicate prevention, cancellation, and status history.
+- Two-step Reporting Manager then HR/Attendance approval, strict direct-report/
+  company/department/location scope enforcement, self-approval prevention, and
+  immutable decision history.
+- Approved corrections finalise the daily timecard while preserving all imported
+  biometric, access-card, and website evidence.
 - Responsive Shows & tasks and Timesheets pages for desktop and mobile.
 - Focused timecard detail view plus clear delivery states for leave, calendar,
   approvals, people, and administration.
@@ -40,8 +47,8 @@ The Phase 1 foundation and Phase 2/3 attendance and task-time slices include:
 - Development Docker Compose configuration.
 - Kubeadm/containerd-compatible Helm chart aligned with the local cluster.
 
-Regularisation, submitted-timesheet approval decisions, leave, and calendar
-workflows will be added in the following slices.
+Submitted-timesheet approval decisions, leave, and calendar workflows will be
+added in the following slices.
 
 The accepted attendance CSV contract is documented in
 [`docs/ATTENDANCE_CSV_FORMAT.md`](docs/ATTENDANCE_CSV_FORMAT.md).
@@ -49,15 +56,18 @@ The show setup and employee task-time workflow is documented in
 [`docs/TIMESHEET_WORKFLOW.md`](docs/TIMESHEET_WORKFLOW.md).
 The daily calculation and provisional policy are documented in
 [`docs/RECONCILIATION_POLICY.md`](docs/RECONCILIATION_POLICY.md).
+The attendance correction and approval workflow is documented in
+[`docs/REGULARISATION_WORKFLOW.md`](docs/REGULARISATION_WORKFLOW.md).
 
 ## Release status
 
 | Item                     | Status                                      |
 | ------------------------ | ------------------------------------------- |
-| Source and Helm version  | `0.4.0`                                     |
+| Source and Helm version  | `0.5.0`                                     |
 | Git branch               | `main`                                      |
-| Git baseline             | `bab4bae`                                   |
+| Pre-`0.5.0` Git baseline | `7017779`                                   |
 | Local Kubernetes release | `0.4.0`, Helm revision 6, deployed          |
+| Local `0.5.0` images     | Build and containerd import pending         |
 | Container target         | kubeadm/containerd `k8s.io`, `linux/amd64`  |
 | Ingress                  | `http://gnomon.local` through NGINX Ingress |
 

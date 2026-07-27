@@ -101,11 +101,15 @@ export function AppShell() {
   const [activeView, setActiveView] = useState<AppView>('overview');
   const [mobileOpen, setMobileOpen] = useState(false);
   const permissions = user?.permissions ?? [];
+  const workspaceItems = useMemo(
+    () => workspaceNavigation.filter((item) => canSeeNavigationItem(item, permissions)),
+    [permissions],
+  );
   const managementItems = useMemo(
     () => managementNavigation.filter((item) => canSeeNavigationItem(item, permissions)),
     [permissions],
   );
-  const allVisibleItems = [...workspaceNavigation, ...managementItems];
+  const allVisibleItems = [...workspaceItems, ...managementItems];
   const activeLabel = allVisibleItems.find((item) => item.id === activeView)?.label ?? 'Overview';
 
   const selectView = (view: AppView) => {
@@ -142,7 +146,7 @@ export function AppShell() {
       <Box sx={{ pt: 1, flex: 1, overflowY: 'auto' }}>
         <NavigationList
           label="Workspace"
-          items={workspaceNavigation}
+          items={workspaceItems}
           activeView={activeView}
           onSelect={selectView}
         />

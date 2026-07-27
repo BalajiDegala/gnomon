@@ -38,17 +38,23 @@ describe('protected routes', () => {
   });
 
   it('requires authentication for shows and timesheets', async () => {
-    const [shows, timesheets, reconciliation] = await Promise.all([
+    const [shows, timesheets, reconciliation, regularisations, approvals] = await Promise.all([
       request(app).get('/api/v1/shows'),
       request(app).get('/api/v1/timesheets'),
       request(app).get('/api/v1/reconciliation'),
+      request(app).get('/api/v1/regularisations/mine'),
+      request(app).get('/api/v1/approvals/regularisations'),
     ]);
 
     expect(shows.status).toBe(401);
     expect(timesheets.status).toBe(401);
     expect(reconciliation.status).toBe(401);
+    expect(regularisations.status).toBe(401);
+    expect(approvals.status).toBe(401);
     expect(shows.body.error.code).toBe('AUTHENTICATION_REQUIRED');
     expect(timesheets.body.error.code).toBe('AUTHENTICATION_REQUIRED');
     expect(reconciliation.body.error.code).toBe('AUTHENTICATION_REQUIRED');
+    expect(regularisations.body.error.code).toBe('AUTHENTICATION_REQUIRED');
+    expect(approvals.body.error.code).toBe('AUTHENTICATION_REQUIRED');
   });
 });

@@ -13,6 +13,7 @@ import { HttpError } from '../../middleware/errors.js';
 import { AttendanceEvent, type AttendanceEventType } from '../attendance/attendance-event.model.js';
 import { WorkSession } from '../timecard/work-session.model.js';
 import { TimeEntry } from '../timesheets/time-entry.model.js';
+import { RegularisationRequest } from '../regularisations/regularisation.model.js';
 import { DailyTimecard } from './daily-timecard.model.js';
 
 export const SOURCE_MISMATCH_TOLERANCE_MINUTES = 15;
@@ -327,7 +328,7 @@ export async function reconcileDailyTimecard(
   if (workDate > getWorkDate(now)) {
     throw new HttpError(400, 'A future work date cannot be reconciled', 'FUTURE_WORK_DATE');
   }
-  const [events, sessions, timeEntries] = await Promise.all([
+  const [events, sessions, timeEntries, regularisations] = await Promise.all([
     AttendanceEvent.find({ employeeId, workDate })
       .select({ source: 1, eventType: 1, occurredAt: 1 })
       .lean()
@@ -340,6 +341,14 @@ export async function reconcileDailyTimecard(
       .select({ startedAt: 1, endedAt: 1, durationMinutes: 1, status: 1 })
       .lean()
       .exec(),
+    RegularisationRequest.find({
+      employeeId,
+      workDate,
+      status: { $in: ['pending_manager', 'pending_hr', 'approved', 'rejected'] },
+    })
+      .sort({ submittedAt: -1 })
+      .lean()
+      .exec(),
   ]);
   const calculation = calculateDailyReconciliation({
     workDate,
@@ -348,22 +357,49 @@ export async function reconcileDailyTimecard(
     sessions,
     timeEntries,
   });
-  const record = await DailyTimecard.findOneAndUpdate(
-    { employeeId, workDate },
-    {
-      $set: calculation,
-      $setOnInsert: {
-        regularisationStatus: 'not_required',
-        finalisation: {
+  const pendingRegularisation = regularisations.find((request) =>
+    ['pending_manager', 'pending_hr'].includes(request.status),
+  );
+  const approvedRegularisation = regularisations.find((request) => request.status === 'approved');
+  const latestRegularisation = regularisations[0];
+  const regularisationStatus = pendingRegularisation
+    ? 'pending'
+    : approvedRegularisation
+      ? 'approved'
+      : latestRegularisation?.status === 'rejected'
+        ? 'rejected'
+        : 'not_required';
+  const finalApproval = approvedRegularisation?.decisions.find(
+    (decision) => decision.step === 2 && decision.decision === 'approved',
+  );
+  const persistedCalculation: Record<string, unknown> = {
+    ...calculation,
+    regularisationStatus,
+    finalisation: approvedRegularisation
+      ? {
+          isFinal: true,
+          finalSource: 'regularised',
+          finalStart: approvedRegularisation.requestedStart,
+          finalEnd: approvedRegularisation.requestedEnd,
+          finalMinutes: approvedRegularisation.requestedMinutes,
+          finalisedBy: finalApproval?.actorUserId ?? null,
+          finalisedAt: finalApproval?.decidedAt ?? approvedRegularisation.updatedAt,
+        }
+      : {
           isFinal: false,
           finalSource: 'calculated',
-          finalStart: null,
-          finalEnd: null,
-          finalMinutes: 0,
+          finalStart: calculation.calculated.attendanceStart,
+          finalEnd: calculation.calculated.attendanceEnd,
+          finalMinutes: calculation.calculated.payableMinutes,
           finalisedBy: null,
           finalisedAt: null,
         },
-      },
+  };
+
+  const record = await DailyTimecard.findOneAndUpdate(
+    { employeeId, workDate },
+    {
+      $set: persistedCalculation,
       $inc: { version: 1 },
     },
     {

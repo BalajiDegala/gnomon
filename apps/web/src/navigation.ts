@@ -3,6 +3,7 @@ import {
   CalendarDays,
   Clock3,
   FileClock,
+  Fingerprint,
   Gauge,
   LayoutDashboard,
   Settings2,
@@ -14,6 +15,7 @@ export type AppView =
   | 'overview'
   | 'timecard'
   | 'timesheets'
+  | 'regularisation'
   | 'leave'
   | 'calendar'
   | 'approvals'
@@ -32,6 +34,12 @@ export const workspaceNavigation: NavigationItem[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
   { id: 'timecard', label: 'My timecard', icon: Clock3 },
   { id: 'timesheets', label: 'Timesheets', icon: FileClock },
+  {
+    id: 'regularisation',
+    label: 'Regularisation',
+    icon: Fingerprint,
+    requiredPermissions: ['regularisation:create'],
+  },
   { id: 'leave', label: 'Leave', icon: Gauge },
   { id: 'calendar', label: 'Calendar', icon: CalendarDays },
 ];
@@ -41,7 +49,7 @@ export const managementNavigation: NavigationItem[] = [
     id: 'approvals',
     label: 'Approvals',
     icon: ShieldCheck,
-    requiredPermissions: ['regularisation:approve', 'leave:approve', 'timesheet:approve'],
+    requiredPermissions: ['regularisation:approve'],
   },
   {
     id: 'shows',

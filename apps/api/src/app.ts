@@ -10,6 +10,10 @@ import { errorHandler, notFoundHandler } from './middleware/errors.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { importRouter } from './modules/imports/import.routes.js';
 import { reconciliationRouter } from './modules/reconciliation/reconciliation.routes.js';
+import {
+  regularisationApprovalRouter,
+  regularisationRouter,
+} from './modules/regularisations/regularisation.routes.js';
 import { showRouter } from './modules/shows/show.routes.js';
 import { timecardRouter } from './modules/timecard/timecard.routes.js';
 import { timesheetRouter } from './modules/timesheets/timesheet.routes.js';
@@ -42,6 +46,8 @@ app.use('/api/v1/health', healthRouter);
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/imports', importRouter);
 app.use('/api/v1/reconciliation', reconciliationRouter);
+app.use('/api/v1/regularisations', regularisationRouter);
+app.use('/api/v1/approvals/regularisations', regularisationApprovalRouter);
 app.use('/api/v1/shows', showRouter);
 app.use('/api/v1/timecard', timecardRouter);
 app.use('/api/v1/timesheets', timesheetRouter);

@@ -1,6 +1,7 @@
 # Daily Reconciliation Policy
 
-This document records the `0.4.0` employee attendance calculation. It is a
+This document records the `0.5.0` employee attendance calculation and
+regularisation finalisation. It is a
 provisional MVP policy: immutable evidence is preserved, calculations can be
 regenerated, and unresolved business settings remain explicit rather than being
 treated as final payroll rules.
@@ -15,9 +16,9 @@ treated as final payroll rules.
 - Unique daily record: employee identifier plus work date
 
 The API reads current evidence and upserts one `daily_timecards` document. A
-version counter records every recalculation. Recalculation updates only the
-source summary and calculated result; future regularisation and finalisation
-fields are preserved.
+version counter records every recalculation. Each pass refreshes the immutable-source
+summary, calculated result, regularisation status, and a coherent calculated or
+approved finalisation snapshot.
 
 ## Evidence precedence
 
@@ -70,13 +71,28 @@ more than 15 minutes. This value is provisional and isolated in the service as
 `SOURCE_MISMATCH_TOLERANCE_MINUTES`; it will become attendance-policy
 configuration after the business threshold is confirmed.
 
+## Approved regularisation
+
+An employee may request a corrected biometric or website interval only after the
+selected 07:00–07:00 workday has closed. A Reporting Manager inside the employee's
+direct-report scope must approve first; HR, Attendance Administration, or a System
+Administrator inside company, department, or location scope gives final approval.
+Self approval is forbidden at both steps.
+
+While a request is pending, the calculated evidence remains visible and the daily
+record is marked `pending`. Final approval sets `finalisation.isFinal` to true,
+uses `regularised` as the final source, and records the requested start, end,
+minutes, final approver, and decision time. Raw biometric, access-card, website,
+and task evidence is never rewritten. See
+[`REGULARISATION_WORKFLOW.md`](REGULARISATION_WORKFLOW.md).
+
 ## Duration caveat
 
 `breakMinutes` is currently zero and `payableMinutes` equals gross presence.
 This avoids inventing an unpaid-break rule while the company confirms whether
-the required nine hours include lunch and other breaks. The result must not be
-used as a payroll finalisation until that decision and the HR finalisation flow
-are implemented.
+the required nine hours include lunch and other breaks. Attendance regularisation
+can now be final, but the result must not be used as payroll finalisation until
+that break-policy decision is confirmed.
 
 ## Employee API and UI
 
@@ -92,6 +108,6 @@ against 540 minutes; and translates anomaly codes into review messages.
 
 ## Next slice
 
-Regularisation requests will reference these anomalies without modifying raw
-attendance events. Approved corrections can then update finalisation while
-preserving the calculated version and complete audit history.
+The reconciliation service will next consume approved leave and holiday state.
+Policy administration will later make the 15-minute source tolerance, shift,
+workday boundary, required duration, and approval path configurable.

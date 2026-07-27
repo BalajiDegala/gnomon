@@ -2,6 +2,53 @@ import { expect, test } from '@playwright/test';
 
 const email = process.env.E2E_EMAIL;
 const password = process.env.E2E_PASSWORD;
+const regularisationUsers = {
+  employee: {
+    email: process.env.E2E_EMPLOYEE_EMAIL,
+    password: process.env.E2E_EMPLOYEE_PASSWORD,
+  },
+  manager: {
+    email: process.env.E2E_MANAGER_EMAIL,
+    password: process.env.E2E_MANAGER_PASSWORD,
+  },
+  hr: {
+    email: process.env.E2E_HR_EMAIL,
+    password: process.env.E2E_HR_PASSWORD,
+  },
+};
+
+function closedWeekdayDate(): string {
+  const localDate = new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: 'Asia/Kolkata',
+  }).format(new Date());
+  const date = new Date(`${localDate}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() - 7);
+  while (date.getUTCDay() === 0 || date.getUTCDay() === 6) {
+    date.setUTCDate(date.getUTCDate() - 1);
+  }
+  return date.toISOString().slice(0, 10);
+}
+
+async function signIn(
+  page: import('@playwright/test').Page,
+  user: typeof regularisationUsers.employee,
+) {
+  await page.goto('/');
+  await page.getByLabel('Work email').fill(user.email!);
+  await page.getByLabel('Password').fill(user.password!);
+  await page.getByRole('button', { name: 'Sign in to Gnomon' }).click();
+  await expect(
+    page.getByRole('heading', { name: /Good (morning|afternoon|evening),/ }),
+  ).toBeVisible();
+}
+
+async function signOut(page: import('@playwright/test').Page) {
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+}
 
 test('renders the authenticated workforce overview', async ({ page }, testInfo) => {
   test.skip(!email || !password, 'E2E_EMAIL and E2E_PASSWORD are required');
@@ -141,4 +188,70 @@ test('creates a show assignment and submits task time', async ({ page }, testInf
   await expect(page.getByRole('button', { name: 'Submit 1 draft' })).toBeEnabled();
   await page.getByRole('button', { name: 'Submit 1 draft' }).click();
   await expect(page.getByText('submitted', { exact: true })).toBeVisible();
+});
+
+test('completes scoped regularisation approval and attendance finalisation', async ({
+  page,
+}, testInfo) => {
+  const credentialsReady = Object.values(regularisationUsers).every(
+    (user) => user.email && user.password,
+  );
+  test.skip(!credentialsReady, 'Employee, manager, and HR E2E credentials are required');
+
+  if (testInfo.project.name === 'mobile-chromium') {
+    await signIn(page, regularisationUsers.employee);
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+    await page.getByRole('button', { name: 'Regularisation' }).click();
+    await expect(page.getByRole('heading', { name: 'Regularisation' })).toBeVisible();
+    await expect(page.getByText('New correction request')).toBeVisible();
+    await expect(page.getByText('Request history')).toBeVisible();
+    await page.screenshot({
+      path: testInfo.outputPath('regularisation-mobile.png'),
+      fullPage: true,
+    });
+    return;
+  }
+
+  const workDate = closedWeekdayDate();
+  const reason = `E2E missed biometric checkout ${Date.now()}`;
+
+  await signIn(page, regularisationUsers.employee);
+  await page.getByRole('button', { name: 'Regularisation' }).click();
+  await expect(page.getByRole('heading', { name: 'Regularisation' })).toBeVisible();
+  await page.getByLabel('Work date').fill(workDate);
+  await page.getByLabel('Corrected start').fill(`${workDate}T09:00`);
+  await page.getByLabel('Corrected end').fill(`${workDate}T18:00`);
+  await page.getByLabel('Reason').fill(reason);
+  await page.getByRole('button', { name: 'Submit for manager review' }).click();
+  await expect(page.getByText(reason)).toBeVisible();
+  await expect(page.getByText('Manager review', { exact: true })).toBeVisible();
+  await signOut(page);
+
+  await signIn(page, regularisationUsers.manager);
+  await page.getByRole('button', { name: 'Approvals', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Approvals' })).toBeVisible();
+  await expect(page.getByText('Eshan Artist')).toBeVisible();
+  await expect(page.getByText(reason)).toBeVisible();
+  await page.getByRole('button', { name: 'Approve' }).click();
+  await expect(page.getByText('Queue is clear')).toBeVisible();
+  await signOut(page);
+
+  await signIn(page, regularisationUsers.hr);
+  await page.getByRole('button', { name: 'Approvals', exact: true }).click();
+  await expect(page.getByText('Final HR review', { exact: true })).toBeVisible();
+  await expect(page.getByText(reason)).toBeVisible();
+  await page.getByRole('button', { name: 'Approve' }).click();
+  await expect(page.getByText('Queue is clear')).toBeVisible();
+  await signOut(page);
+
+  await signIn(page, regularisationUsers.employee);
+  await page.getByRole('button', { name: 'Regularisation' }).click();
+  await expect(page.getByText(reason)).toBeVisible();
+  await expect(page.getByText('Approved', { exact: true })).toBeVisible();
+  await expect(page.getByText(/Step 1 approved by Meera Manager/)).toBeVisible();
+  await expect(page.getByText(/Step 2 approved by Harini HR/)).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath('regularisation-approved.png'),
+    fullPage: true,
+  });
 });

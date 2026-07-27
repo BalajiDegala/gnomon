@@ -18,7 +18,6 @@ import {
   Clock3,
   DatabaseZap,
   FileClock,
-  Fingerprint,
   Gauge,
   ShieldCheck,
   Sparkles,
@@ -30,6 +29,8 @@ import { formatElapsed, formatIndiaTime, useTodayTimecard } from '../lib/timecar
 import { useAuth } from '../lib/auth';
 import type { AppView } from '../navigation';
 import { AttendanceImportsPage } from './AttendanceImportsPage';
+import { ApprovalQueuePage } from './ApprovalQueuePage';
+import { RegularisationPage } from './RegularisationPage';
 import { ShowManagementPage } from './ShowManagementPage';
 import { TimesheetsPage } from './TimesheetsPage';
 
@@ -47,7 +48,16 @@ interface ModuleDefinition {
 }
 
 const moduleDefinitions: Record<
-  Exclude<AppView, 'overview' | 'timecard' | 'timesheets' | 'shows' | 'administration'>,
+  Exclude<
+    AppView,
+    | 'overview'
+    | 'timecard'
+    | 'timesheets'
+    | 'regularisation'
+    | 'approvals'
+    | 'shows'
+    | 'administration'
+  >,
   ModuleDefinition
 > = {
   leave: {
@@ -90,26 +100,6 @@ const moduleDefinitions: Record<
       { label: 'Show availability', detail: 'Show Managers see assigned artists.', icon: Sparkles },
     ],
   },
-  approvals: {
-    eyebrow: 'Manager workspace',
-    title: 'Approvals',
-    description:
-      'A consolidated queue for regularisation, leave and timesheet decisions, filtered by your role assignments and scope.',
-    icon: ShieldCheck,
-    capabilities: [
-      {
-        label: 'Regularisation',
-        detail: 'Reporting Manager followed by HR/Attendance.',
-        icon: Fingerprint,
-      },
-      {
-        label: 'Leave',
-        detail: 'Reporting Manager decision with HR oversight.',
-        icon: CalendarDays,
-      },
-      { label: 'Timesheets', detail: 'Show-specific task approval.', icon: FileClock },
-    ],
-  },
   people: {
     eyebrow: 'Company structure',
     title: 'People',
@@ -143,6 +133,12 @@ export function ModulePage({ view, onNavigate }: ModulePageProps) {
         canManageShows={user?.permissions.includes('show:manage') ?? false}
       />
     );
+  }
+  if (view === 'regularisation') {
+    return <RegularisationPage onBack={() => onNavigate('overview')} />;
+  }
+  if (view === 'approvals') {
+    return <ApprovalQueuePage onBack={() => onNavigate('overview')} />;
   }
   if (view === 'shows') return <ShowManagementPage onBack={() => onNavigate('overview')} />;
   if (view === 'administration') {
