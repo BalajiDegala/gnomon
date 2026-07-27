@@ -4,6 +4,7 @@ import {
   getWorkdayWindow,
   type DailyAttendanceStatus,
   type DailyReconciliationDto,
+  type LeaveDayPart,
   type ReconciliationAnomaly,
   type ReconciliationSource,
   type WorkSessionStatus,
@@ -11,6 +12,7 @@ import {
 
 import { HttpError } from '../../middleware/errors.js';
 import { AttendanceEvent, type AttendanceEventType } from '../attendance/attendance-event.model.js';
+import { LeaveRequest } from '../leaves/leave.model.js';
 import { WorkSession } from '../timecard/work-session.model.js';
 import { TimeEntry } from '../timesheets/time-entry.model.js';
 import { RegularisationRequest } from '../regularisations/regularisation.model.js';
@@ -49,6 +51,47 @@ type ReconciliationCalculation = Omit<DailyReconciliationDto, 'id'>;
 type BiometricSummary = DailyReconciliationDto['sourceSummary']['biometric'];
 type AccessCardSummary = DailyReconciliationDto['sourceSummary']['accessCard'];
 type WebsiteSummary = DailyReconciliationDto['sourceSummary']['website'];
+
+export function applyApprovedLeaveToReconciliation(
+  calculation: ReconciliationCalculation,
+  dayPart: LeaveDayPart,
+): ReconciliationCalculation {
+  if (dayPart === 'full_day') {
+    return {
+      ...calculation,
+      calculated: {
+        ...calculation.calculated,
+        status: 'leave',
+        anomalies: [],
+        provisional: false,
+        requiresReview: false,
+      },
+    };
+  }
+
+  const requiredMinutes = Math.ceil(calculation.calculated.requiredMinutes / 2);
+  const anomalies = calculation.calculated.anomalies.filter(
+    (anomaly) =>
+      anomaly !== 'insufficient_hours' || calculation.calculated.grossMinutes < requiredMinutes,
+  );
+  const hasCompletePrimaryEvidence =
+    calculation.calculated.primarySource === 'biometric' &&
+    calculation.sourceSummary.biometric.status === 'complete';
+  return {
+    ...calculation,
+    calculated: {
+      ...calculation.calculated,
+      requiredMinutes,
+      differenceMinutes: calculation.calculated.grossMinutes - requiredMinutes,
+      status:
+        hasCompletePrimaryEvidence && calculation.calculated.grossMinutes >= requiredMinutes
+          ? 'present'
+          : calculation.calculated.status,
+      anomalies,
+      requiresReview: anomalies.length > 0,
+    },
+  };
+}
 
 function minutesBetween(start: Date, end: Date): number {
   return Math.max(0, Math.floor((end.getTime() - start.getTime()) / 60_000));
@@ -328,7 +371,7 @@ export async function reconcileDailyTimecard(
   if (workDate > getWorkDate(now)) {
     throw new HttpError(400, 'A future work date cannot be reconciled', 'FUTURE_WORK_DATE');
   }
-  const [events, sessions, timeEntries, regularisations] = await Promise.all([
+  const [events, sessions, timeEntries, regularisations, approvedLeave] = await Promise.all([
     AttendanceEvent.find({ employeeId, workDate })
       .select({ source: 1, eventType: 1, occurredAt: 1 })
       .lean()
@@ -349,6 +392,7 @@ export async function reconcileDailyTimecard(
       .sort({ submittedAt: -1 })
       .lean()
       .exec(),
+    LeaveRequest.findOne({ employeeId, status: 'approved', workingDates: workDate }).lean().exec(),
   ]);
   const calculation = calculateDailyReconciliation({
     workDate,
@@ -372,8 +416,13 @@ export async function reconcileDailyTimecard(
   const finalApproval = approvedRegularisation?.decisions.find(
     (decision) => decision.step === 2 && decision.decision === 'approved',
   );
+  const fullDayLeave = approvedLeave?.dayPart === 'full_day';
+  const effectiveCalculation =
+    approvedLeave && !approvedRegularisation
+      ? applyApprovedLeaveToReconciliation(calculation, approvedLeave.dayPart)
+      : calculation;
   const persistedCalculation: Record<string, unknown> = {
-    ...calculation,
+    ...effectiveCalculation,
     regularisationStatus,
     finalisation: approvedRegularisation
       ? {
@@ -385,15 +434,25 @@ export async function reconcileDailyTimecard(
           finalisedBy: finalApproval?.actorUserId ?? null,
           finalisedAt: finalApproval?.decidedAt ?? approvedRegularisation.updatedAt,
         }
-      : {
-          isFinal: false,
-          finalSource: 'calculated',
-          finalStart: calculation.calculated.attendanceStart,
-          finalEnd: calculation.calculated.attendanceEnd,
-          finalMinutes: calculation.calculated.payableMinutes,
-          finalisedBy: null,
-          finalisedAt: null,
-        },
+      : fullDayLeave
+        ? {
+            isFinal: true,
+            finalSource: 'approved_leave',
+            finalStart: null,
+            finalEnd: null,
+            finalMinutes: 0,
+            finalisedBy: approvedLeave.decision?.actorUserId ?? null,
+            finalisedAt: approvedLeave.decision?.decidedAt ?? approvedLeave.updatedAt,
+          }
+        : {
+            isFinal: false,
+            finalSource: 'calculated',
+            finalStart: effectiveCalculation.calculated.attendanceStart,
+            finalEnd: effectiveCalculation.calculated.attendanceEnd,
+            finalMinutes: effectiveCalculation.calculated.payableMinutes,
+            finalisedBy: null,
+            finalisedAt: null,
+          },
   };
 
   const record = await DailyTimecard.findOneAndUpdate(
@@ -413,5 +472,5 @@ export async function reconcileDailyTimecard(
     .lean()
     .exec();
 
-  return { id: String(record!._id), ...calculation };
+  return { id: String(record!._id), ...effectiveCalculation };
 }

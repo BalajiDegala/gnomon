@@ -97,8 +97,12 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
           },
         ]
       : []),
-    { view: 'leave' as const, label: 'Leave requests', icon: CalendarDays },
-    ...(user?.permissions.includes('regularisation:approve')
+    ...(user?.permissions.includes('leave:create')
+      ? [{ view: 'leave' as const, label: 'Leave requests', icon: CalendarDays }]
+      : []),
+    ...(user?.permissions.some(
+      (permission) => permission === 'regularisation:approve' || permission === 'leave:approve',
+    )
       ? [{ view: 'approvals' as const, label: 'Manager approvals', icon: ShieldCheck }]
       : []),
   ];

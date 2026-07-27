@@ -2,6 +2,7 @@ import { DailyReconciliationDtoSchema } from '@gnomon/shared';
 import { describe, expect, it } from 'vitest';
 
 import {
+  applyApprovedLeaveToReconciliation,
   calculateDailyReconciliation,
   type ReconciliationInput,
 } from '../src/modules/reconciliation/reconciliation.service.js';
@@ -147,5 +148,34 @@ describe('calculateDailyReconciliation', () => {
 
     expect(result.calculated.status).toBe('weekend');
     expect(result.calculated.anomalies).toEqual([]);
+  });
+
+  it('applies full-day approved leave without rewriting source evidence', () => {
+    const calculated = calculate();
+    const result = applyApprovedLeaveToReconciliation(calculated, 'full_day');
+
+    expect(result.calculated).toMatchObject({
+      status: 'leave',
+      anomalies: [],
+      provisional: false,
+      requiresReview: false,
+    });
+    expect(result.sourceSummary).toEqual(calculated.sourceSummary);
+  });
+
+  it('reduces a half-day requirement while retaining attendance evidence', () => {
+    const calculated = calculate({
+      events: [
+        { source: 'biometric', eventType: 'in', occurredAt: new Date('2026-07-27T03:30:00Z') },
+        { source: 'biometric', eventType: 'out', occurredAt: new Date('2026-07-27T08:00:00Z') },
+      ],
+    });
+    const result = applyApprovedLeaveToReconciliation(calculated, 'second_half');
+
+    expect(result.calculated.requiredMinutes).toBe(270);
+    expect(result.calculated.differenceMinutes).toBe(0);
+    expect(result.calculated.status).toBe('present');
+    expect(result.calculated.anomalies).not.toContain('insufficient_hours');
+    expect(result.sourceSummary.biometric.workedMinutes).toBe(270);
   });
 });

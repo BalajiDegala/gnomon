@@ -1,7 +1,7 @@
 # Daily Reconciliation Policy
 
-This document records the `0.5.0` employee attendance calculation and
-regularisation finalisation. It is a
+This document records the `0.6.0` employee attendance calculation,
+regularisation finalisation, and approved-leave interaction. It is a
 provisional MVP policy: immutable evidence is preserved, calculations can be
 regenerated, and unresolved business settings remain explicit rather than being
 treated as final payroll rules.
@@ -49,8 +49,7 @@ start/stop activity, the nine-hour requirement, and unsubmitted task drafts.
 A closed working day without biometric, access-card, or website evidence is
 `absent`. A complete biometric day of at least 540 minutes is `present`.
 Incomplete or lower-priority evidence remains `partial`. Saturdays and Sundays
-are `weekend`; leave and holiday states will be connected in the leave/calendar
-slice.
+are `weekend`.
 
 ## Review anomalies
 
@@ -86,6 +85,24 @@ minutes, final approver, and decision time. Raw biometric, access-card, website,
 and task evidence is never rewritten. See
 [`REGULARISATION_WORKFLOW.md`](REGULARISATION_WORKFLOW.md).
 
+## Approved leave
+
+An approved full-day leave request overrides the calculated attendance status with
+`leave`, clears attendance anomalies for that date, and finalises the daily record
+with `approved_leave` as its source. The approver and decision time are retained.
+All biometric, access-card, website, and task summaries remain unchanged.
+
+An approved first- or second-half request does not classify the entire day as leave.
+It reduces the calculated requirement from 540 to 270 minutes, recalculates the
+difference, and keeps source/anomaly evidence for the worked portion. A complete
+biometric interval of at least 270 minutes can therefore be present for the worked
+half. Approved regularisation retains precedence if both records exist.
+
+Future leave can be approved immediately and appears in the personal calendar, but
+the service does not create future daily-timecard records. Reconciliation is applied
+when the work date is current/past. See
+[`LEAVE_CALENDAR_WORKFLOW.md`](LEAVE_CALENDAR_WORKFLOW.md).
+
 ## Duration caveat
 
 `breakMinutes` is currently zero and `payableMinutes` equals gross presence.
@@ -108,6 +125,6 @@ against 540 minutes; and translates anomaly codes into review messages.
 
 ## Next slice
 
-The reconciliation service will next consume approved leave and holiday state.
-Policy administration will later make the 15-minute source tolerance, shift,
-workday boundary, required duration, and approval path configurable.
+The reconciliation service will next consume configured holiday state. Policy
+administration will later make the 15-minute source tolerance, shift, workday
+boundary, required duration, half-day duration, and approval path configurable.

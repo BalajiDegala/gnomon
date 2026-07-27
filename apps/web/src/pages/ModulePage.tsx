@@ -13,13 +13,9 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import {
   ArrowLeft,
-  CalendarDays,
   CheckCircle2,
   Clock3,
-  DatabaseZap,
   FileClock,
-  Gauge,
-  ShieldCheck,
   Sparkles,
   UserRoundCog,
   UsersRound,
@@ -30,6 +26,8 @@ import { useAuth } from '../lib/auth';
 import type { AppView } from '../navigation';
 import { AttendanceImportsPage } from './AttendanceImportsPage';
 import { ApprovalQueuePage } from './ApprovalQueuePage';
+import { CalendarPage } from './CalendarPage';
+import { LeavePage } from './LeavePage';
 import { RegularisationPage } from './RegularisationPage';
 import { ShowManagementPage } from './ShowManagementPage';
 import { TimesheetsPage } from './TimesheetsPage';
@@ -54,52 +52,14 @@ const moduleDefinitions: Record<
     | 'timecard'
     | 'timesheets'
     | 'regularisation'
+    | 'leave'
+    | 'calendar'
     | 'approvals'
     | 'shows'
     | 'administration'
   >,
   ModuleDefinition
 > = {
-  leave: {
-    eyebrow: 'Time away',
-    title: 'Leave',
-    description:
-      'Request full-day or half-day leave, track balances and follow Reporting Manager approval without exposing private reasons broadly.',
-    icon: Gauge,
-    capabilities: [
-      { label: 'Leave balances', detail: 'Balances by configured leave type.', icon: DatabaseZap },
-      {
-        label: 'Working-day rules',
-        detail: 'Weekends and holidays are excluded.',
-        icon: CalendarDays,
-      },
-      {
-        label: 'Manager approval',
-        detail: 'Requests follow the scoped approval policy.',
-        icon: ShieldCheck,
-      },
-    ],
-  },
-  calendar: {
-    eyebrow: 'Unified schedule',
-    title: 'Calendar',
-    description:
-      'Bring attendance, leave, holidays, timesheet status and show availability into one permission-aware calendar.',
-    icon: CalendarDays,
-    capabilities: [
-      {
-        label: 'Personal calendar',
-        detail: 'Your attendance, leave and holidays.',
-        icon: CalendarDays,
-      },
-      {
-        label: 'Team visibility',
-        detail: 'Reporting Managers see direct reports.',
-        icon: UsersRound,
-      },
-      { label: 'Show availability', detail: 'Show Managers see assigned artists.', icon: Sparkles },
-    ],
-  },
   people: {
     eyebrow: 'Company structure',
     title: 'People',
@@ -137,6 +97,8 @@ export function ModulePage({ view, onNavigate }: ModulePageProps) {
   if (view === 'regularisation') {
     return <RegularisationPage onBack={() => onNavigate('overview')} />;
   }
+  if (view === 'leave') return <LeavePage onBack={() => onNavigate('overview')} />;
+  if (view === 'calendar') return <CalendarPage onBack={() => onNavigate('overview')} />;
   if (view === 'approvals') {
     return <ApprovalQueuePage onBack={() => onNavigate('overview')} />;
   }

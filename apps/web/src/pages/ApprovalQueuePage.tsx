@@ -27,6 +27,7 @@ import { useState } from 'react';
 import { useRegularisationApprovals } from '../lib/regularisations';
 import { formatIndiaTime } from '../lib/timecard';
 import { formatMinutes } from '../lib/timesheets';
+import { LeaveApprovalSection } from './LeaveApprovalSection';
 
 interface ApprovalQueuePageProps {
   onBack: () => void;
@@ -67,98 +68,109 @@ export function ApprovalQueuePage({ onBack }: ApprovalQueuePageProps) {
           Approvals
         </Typography>
         <Typography sx={{ maxWidth: 780, color: 'text.secondary', fontSize: 13.5, mt: 0.7 }}>
-          Decide only the regularisation requests assigned to your reporting or HR/Attendance scope.
-          Self approval is always blocked.
+          Decide regularisation and leave requests assigned to your reporting or HR/Attendance
+          scope. Self approval is always blocked.
         </Typography>
       </Box>
 
       {!approvals.canApprove && (
-        <Alert severity="warning">Your account cannot approve regularisation requests.</Alert>
+        <Alert severity="info">
+          Regularisation requests are hidden because this account does not have that approval
+          permission.
+        </Alert>
       )}
       {approvals.error && <Alert severity="error">{approvals.error.message}</Alert>}
 
-      <Card
-        sx={{
-          border: 0,
-          color: '#fff',
-          background:
-            'radial-gradient(circle at 88% 15%, rgba(56,211,222,.2), transparent 38%), linear-gradient(135deg, #111c30, #0b1423)',
-        }}
-      >
-        <CardContent sx={{ p: { xs: 2.75, md: 3.5 } }}>
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' }, gap: 2 }}
+      {approvals.canApprove && (
+        <>
+          <Card
+            sx={{
+              border: 0,
+              color: '#fff',
+              background:
+                'radial-gradient(circle at 88% 15%, rgba(56,211,222,.2), transparent 38%), linear-gradient(135deg, #111c30, #0b1423)',
+            }}
           >
-            <Stack direction="row" sx={{ alignItems: 'center', gap: 1.5 }}>
-              <Box
-                sx={{
-                  width: 42,
-                  height: 42,
-                  display: 'grid',
-                  placeItems: 'center',
-                  borderRadius: 2.25,
-                  bgcolor: 'rgba(56,211,222,.14)',
-                }}
+            <CardContent sx={{ p: { xs: 2.75, md: 3.5 } }}>
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' }, gap: 2 }}
               >
-                <ShieldCheck size={20} color="#45d4df" />
-              </Box>
-              <Box>
-                <Typography sx={{ fontSize: 15.5, fontWeight: 820 }}>
-                  Regularisation queue
-                </Typography>
-                <Typography sx={{ color: 'rgba(255,255,255,.5)', fontSize: 11.5 }}>
-                  Reporting Manager → HR / Attendance final approval
-                </Typography>
-              </Box>
-            </Stack>
-            <Box sx={{ textAlign: { sm: 'right' } }}>
-              <Typography sx={{ fontSize: 34, fontWeight: 850, lineHeight: 1 }}>
-                {approvals.requests.length}
-              </Typography>
-              <Typography sx={{ color: 'rgba(255,255,255,.5)', fontSize: 10.5 }}>
-                awaiting your decision
-              </Typography>
-            </Box>
-          </Stack>
-        </CardContent>
-      </Card>
+                <Stack direction="row" sx={{ alignItems: 'center', gap: 1.5 }}>
+                  <Box
+                    sx={{
+                      width: 42,
+                      height: 42,
+                      display: 'grid',
+                      placeItems: 'center',
+                      borderRadius: 2.25,
+                      bgcolor: 'rgba(56,211,222,.14)',
+                    }}
+                  >
+                    <ShieldCheck size={20} color="#45d4df" />
+                  </Box>
+                  <Box>
+                    <Typography sx={{ fontSize: 15.5, fontWeight: 820 }}>
+                      Regularisation queue
+                    </Typography>
+                    <Typography sx={{ color: 'rgba(255,255,255,.5)', fontSize: 11.5 }}>
+                      Reporting Manager → HR / Attendance final approval
+                    </Typography>
+                  </Box>
+                </Stack>
+                <Box sx={{ textAlign: { sm: 'right' } }}>
+                  <Typography sx={{ fontSize: 34, fontWeight: 850, lineHeight: 1 }}>
+                    {approvals.requests.length}
+                  </Typography>
+                  <Typography sx={{ color: 'rgba(255,255,255,.5)', fontSize: 10.5 }}>
+                    awaiting your decision
+                  </Typography>
+                </Box>
+              </Stack>
+            </CardContent>
+          </Card>
 
-      {approvals.isLoading ? (
-        <Box sx={{ py: 12, textAlign: 'center' }}>
-          <CircularProgress size={28} />
-        </Box>
-      ) : approvals.requests.length ? (
-        <Stack spacing={1.5}>
-          {approvals.requests.map((request) => (
-            <ApprovalCard
-              key={request.id}
-              request={request}
-              comment={comments[request.id] ?? ''}
-              isUpdating={approvals.isUpdating}
-              onComment={(comment) =>
-                setComments((current) => ({ ...current, [request.id]: comment }))
-              }
-              onApprove={() => void decide(request.id, 'approved')}
-              onReject={() => void decide(request.id, 'rejected')}
-            />
-          ))}
-        </Stack>
-      ) : (
-        <Card sx={{ boxShadow: 'none' }}>
-          <CardContent
-            sx={{ minHeight: 360, display: 'grid', placeItems: 'center', textAlign: 'center' }}
-          >
-            <Box>
-              <Inbox size={30} color="#8995a6" />
-              <Typography sx={{ mt: 1, fontSize: 14, fontWeight: 800 }}>Queue is clear</Typography>
-              <Typography sx={{ mt: 0.35, color: 'text.secondary', fontSize: 12 }}>
-                New requests inside your authorization scope will appear here.
-              </Typography>
+          {approvals.isLoading ? (
+            <Box sx={{ py: 12, textAlign: 'center' }}>
+              <CircularProgress size={28} />
             </Box>
-          </CardContent>
-        </Card>
+          ) : approvals.requests.length ? (
+            <Stack spacing={1.5}>
+              {approvals.requests.map((request) => (
+                <ApprovalCard
+                  key={request.id}
+                  request={request}
+                  comment={comments[request.id] ?? ''}
+                  isUpdating={approvals.isUpdating}
+                  onComment={(comment) =>
+                    setComments((current) => ({ ...current, [request.id]: comment }))
+                  }
+                  onApprove={() => void decide(request.id, 'approved')}
+                  onReject={() => void decide(request.id, 'rejected')}
+                />
+              ))}
+            </Stack>
+          ) : (
+            <Card sx={{ boxShadow: 'none' }}>
+              <CardContent
+                sx={{ minHeight: 360, display: 'grid', placeItems: 'center', textAlign: 'center' }}
+              >
+                <Box>
+                  <Inbox size={30} color="#8995a6" />
+                  <Typography sx={{ mt: 1, fontSize: 14, fontWeight: 800 }}>
+                    Queue is clear
+                  </Typography>
+                  <Typography sx={{ mt: 0.35, color: 'text.secondary', fontSize: 12 }}>
+                    New requests inside your authorization scope will appear here.
+                  </Typography>
+                </Box>
+              </CardContent>
+            </Card>
+          )}
+        </>
       )}
+
+      <LeaveApprovalSection />
     </Stack>
   );
 }

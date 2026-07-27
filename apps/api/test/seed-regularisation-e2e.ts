@@ -5,6 +5,7 @@ import { env } from '../src/config/env.js';
 import { connectDatabase, disconnectDatabase } from '../src/db/mongoose.js';
 import { User } from '../src/modules/auth/user.model.js';
 import { Employee } from '../src/modules/employees/employee.model.js';
+import { LeaveBalance, LeaveRequest } from '../src/modules/leaves/leave.model.js';
 import { DailyTimecard } from '../src/modules/reconciliation/daily-timecard.model.js';
 import { RegularisationRequest } from '../src/modules/regularisations/regularisation.model.js';
 import { RoleAssignment } from '../src/modules/roles/role.model.js';
@@ -31,7 +32,7 @@ const FixtureEnvSchema = z.object({
 function assertIsolatedTestDatabase(): void {
   const databaseName = new URL(env.MONGODB_URI).pathname.replace(/^\//, '');
   if (env.NODE_ENV !== 'test' || !databaseName.endsWith('_test')) {
-    throw new Error('Regularisation E2E fixtures may only be seeded into a *_test database');
+    throw new Error('Workflow E2E fixtures may only be seeded into a *_test database');
   }
 }
 
@@ -71,7 +72,7 @@ async function upsertUser(employeeId: unknown, email: string, password: string) 
   );
 }
 
-async function seedRegularisationFixtures(): Promise<void> {
+async function seedWorkflowFixtures(): Promise<void> {
   assertIsolatedTestDatabase();
   const input = FixtureEnvSchema.parse(process.env);
   await connectDatabase();
@@ -98,6 +99,8 @@ async function seedRegularisationFixtures(): Promise<void> {
   const fixtureUserIds = [employeeUser._id, managerUser._id, hrUser._id];
   await Promise.all([
     RegularisationRequest.deleteMany({ employeeId: { $in: fixtureEmployeeIds } }),
+    LeaveRequest.deleteMany({ employeeId: { $in: fixtureEmployeeIds } }),
+    LeaveBalance.deleteMany({ employeeId: { $in: fixtureEmployeeIds } }),
     DailyTimecard.deleteMany({ employeeId: { $in: fixtureEmployeeIds } }),
     RoleAssignment.deleteMany({ userId: { $in: fixtureUserIds } }),
   ]);
@@ -158,10 +161,10 @@ async function seedRegularisationFixtures(): Promise<void> {
     },
   ]);
 
-  process.stdout.write('Seeded isolated regularisation E2E fixtures\n');
+  process.stdout.write('Seeded isolated regularisation and leave E2E fixtures\n');
 }
 
-seedRegularisationFixtures()
+seedWorkflowFixtures()
   .then(disconnectDatabase)
   .catch(async (error: unknown) => {
     process.stderr.write(`${String(error)}\n`);

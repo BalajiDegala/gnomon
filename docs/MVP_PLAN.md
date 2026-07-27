@@ -2,7 +2,7 @@
 
 ## Document status
 
-- Status: Phase 4 regularisation and scoped approval slice implemented
+- Status: Phase 5 leave and personal-calendar slice implemented
 - Created: 2026-07-27
 - Company: DIGITAL DOMAIN INDIA
 - Application scope: Single company
@@ -99,6 +99,8 @@ separates the concepts:
 - `time_entries`: task-level start/end intervals.
 - `daily_timecards`: reconciled daily attendance summary.
 - `regularisation_requests`: requested corrections and their approval history.
+- `leave_requests`: private leave requests, reserved working dates, and manager decision.
+- `leave_balances`: optional annual paid-leave entitlement and adjustment records.
 
 This separation prevents task edits or website activity from silently modifying
 official biometric records.
@@ -451,13 +453,23 @@ Approval behavior must be policy-driven rather than hardcoded.
 ## 10. Leave and calendar
 
 - Saturday and Sunday are non-working days by default.
-- Leave duration excludes weekends and configured holidays.
-- The schema supports location-specific holidays.
-- Employees see their attendance, time entries, leave, holidays, and approval
-  status on a unified calendar.
-- Reporting Managers see authorized team calendars.
-- Show Managers see availability for employees assigned to their shows.
+- Release `0.6.0` excludes weekends and supports casual, sick, earned, and unpaid
+  leave as full days or a single first/second half-day.
+- Release `0.6.0` prevents overlapping pending/approved requests with a database
+  invariant and requires the assigned active Reporting Manager.
+- Paid balance enforcement activates only when an annual entitlement exists;
+  unconfigured balances are displayed as not configured rather than guessed.
+- Employees see reconciled attendance plus pending/approved leave on a personal
+  monthly calendar. Calendar responses deliberately omit the private reason.
+- Approved full-day leave becomes the final effective daily attendance state while
+  preserving source evidence. Half-day leave reduces the effective requirement to
+  270 minutes and keeps evidence for the worked portion.
+- Location-specific holidays, Reporting Manager team calendars, and Show Manager
+  availability calendars remain next-slice work.
 - Leave reasons remain private unless the viewer has an explicit permission.
+
+See [`LEAVE_CALENDAR_WORKFLOW.md`](LEAVE_CALENDAR_WORKFLOW.md) for the implemented
+contracts, APIs, approval scope, reconciliation behavior, and test procedure.
 
 ## 11. Administration pages
 
@@ -599,10 +611,14 @@ CPU does not expose the AVX instructions required by newer MongoDB releases.
 
 ### Phase 5: Leave and calendar
 
-- Leave types and balances.
-- Leave request and approval.
-- Holidays and working-day calculations.
-- Employee, team, and show calendars.
+- Implemented in `0.6.0`: leave types, optional annual balances, full/half-day
+  requests, weekday calculation, overlap prevention, cancellation, and history.
+- Implemented in `0.6.0`: direct-report Reporting Manager approval with private
+  reasons, self-approval prevention, and immutable decision attribution.
+- Implemented in `0.6.0`: personal month calendar and approved-leave attendance
+  reconciliation.
+- Next: holiday administration and location-aware working-day calculation.
+- Next: Reporting Manager team and Show Manager availability calendars.
 
 ### Phase 6: Administration and reporting
 
@@ -649,7 +665,9 @@ rather than as a weekly sheet. Release `0.4.0` uses 15 minutes as an explicitly
 provisional mismatch tolerance until item 4 is confirmed and moved into the
 attendance-policy administration page. Release `0.5.0` implements the two-step
 regularisation path in item 2 as the explicit MVP baseline without treating that
-policy choice as permanently fixed.
+policy choice as permanently fixed. Release `0.6.0` implements item 3's leave
+ownership baseline as a single Reporting Manager decision; HR leave oversight and
+override administration remain separate follow-up capabilities.
 
 An anonymized example of both the biometric CSV and access-card CSV is required
 before finalizing the import mappings.

@@ -40,8 +40,18 @@ export const workspaceNavigation: NavigationItem[] = [
     icon: Fingerprint,
     requiredPermissions: ['regularisation:create'],
   },
-  { id: 'leave', label: 'Leave', icon: Gauge },
-  { id: 'calendar', label: 'Calendar', icon: CalendarDays },
+  {
+    id: 'leave',
+    label: 'Leave',
+    icon: Gauge,
+    requiredPermissions: ['leave:create'],
+  },
+  {
+    id: 'calendar',
+    label: 'Calendar',
+    icon: CalendarDays,
+    requiredPermissions: ['attendance:self:read'],
+  },
 ];
 
 export const managementNavigation: NavigationItem[] = [
@@ -49,7 +59,7 @@ export const managementNavigation: NavigationItem[] = [
     id: 'approvals',
     label: 'Approvals',
     icon: ShieldCheck,
-    requiredPermissions: ['regularisation:approve'],
+    requiredPermissions: ['regularisation:approve', 'leave:approve'],
   },
   {
     id: 'shows',

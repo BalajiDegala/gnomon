@@ -32,6 +32,21 @@ function closedWeekdayDate(): string {
   return date.toISOString().slice(0, 10);
 }
 
+function previousWeekdayDate(daysAgo: number): string {
+  const localDate = new Intl.DateTimeFormat('en-CA', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    timeZone: 'Asia/Kolkata',
+  }).format(new Date());
+  const date = new Date(`${localDate}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() - daysAgo);
+  while (date.getUTCDay() === 0 || date.getUTCDay() === 6) {
+    date.setUTCDate(date.getUTCDate() - 1);
+  }
+  return date.toISOString().slice(0, 10);
+}
+
 async function signIn(
   page: import('@playwright/test').Page,
   user: typeof regularisationUsers.employee,
@@ -252,6 +267,68 @@ test('completes scoped regularisation approval and attendance finalisation', asy
   await expect(page.getByText(/Step 2 approved by Harini HR/)).toBeVisible();
   await page.screenshot({
     path: testInfo.outputPath('regularisation-approved.png'),
+    fullPage: true,
+  });
+});
+
+test('completes leave approval and shows approved leave in the personal calendar', async ({
+  page,
+}, testInfo) => {
+  const credentialsReady = regularisationUsers.employee.email && regularisationUsers.manager.email;
+  test.skip(!credentialsReady, 'Employee and manager E2E credentials are required');
+
+  if (testInfo.project.name === 'mobile-chromium') {
+    await signIn(page, regularisationUsers.employee);
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+    await page.getByRole('button', { name: 'Leave', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Leave', exact: true })).toBeVisible();
+    await expect(page.getByText('New leave request')).toBeVisible();
+    await expect(page.getByText('Request history')).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath('leave-mobile.png'), fullPage: true });
+
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+    await page.getByRole('button', { name: 'Calendar', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Calendar', exact: true })).toBeVisible();
+    await page.screenshot({ path: testInfo.outputPath('calendar-mobile.png'), fullPage: true });
+    return;
+  }
+
+  const leaveDate = previousWeekdayDate(14);
+  const reason = `E2E personal leave ${Date.now()}`;
+
+  await signIn(page, regularisationUsers.employee);
+  await page.getByRole('button', { name: 'Leave', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Leave', exact: true })).toBeVisible();
+  await page.getByLabel('Start date').fill(leaveDate);
+  await page.getByLabel('End date').fill(leaveDate);
+  await page.getByLabel('Private reason').fill(reason);
+  await page.getByRole('button', { name: 'Submit for manager review' }).click();
+  await expect(page.getByText(reason)).toBeVisible();
+  await expect(page.getByText('Manager review', { exact: true })).toBeVisible();
+  await signOut(page);
+
+  await signIn(page, regularisationUsers.manager);
+  await page.getByRole('button', { name: 'Approvals', exact: true }).click();
+  const leaveCard = page
+    .getByText(reason)
+    .locator('xpath=ancestor::*[contains(@class,"MuiCard-root")][1]');
+  await expect(leaveCard.getByText('Eshan Artist')).toBeVisible();
+  await leaveCard.getByRole('button', { name: 'Approve' }).click();
+  await expect(page.getByText('No leave decisions waiting')).toBeVisible();
+  await signOut(page);
+
+  await signIn(page, regularisationUsers.employee);
+  await page.getByRole('button', { name: 'Leave', exact: true }).click();
+  const historyCard = page
+    .getByText(reason)
+    .locator('xpath=ancestor::*[contains(@class,"MuiCard-root")][1]');
+  await expect(historyCard.getByText('Approved', { exact: true })).toBeVisible();
+
+  await page.getByRole('button', { name: 'Calendar', exact: true }).click();
+  await page.getByLabel('Jump to month').fill(leaveDate.slice(0, 7));
+  await expect(page.getByText('Casual leave', { exact: true })).toBeVisible();
+  await page.screenshot({
+    path: testInfo.outputPath('leave-calendar-approved.png'),
     fullPage: true,
   });
 });

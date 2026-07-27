@@ -7,7 +7,8 @@ regularisation, calendars, approval workflows, and scoped administration.
 
 ## Current implementation
 
-The Phase 1 foundation and Phase 2–4 attendance, task-time, and correction slices include:
+The Phase 1 foundation and Phase 2–5 attendance, task-time, correction, leave, and
+personal-calendar slices include:
 
 - Responsive React and Material UI application shell with a polished login page,
   permission-aware navigation, desktop sidebar, and mobile drawer.
@@ -38,17 +39,29 @@ The Phase 1 foundation and Phase 2–4 attendance, task-time, and correction sli
   immutable decision history.
 - Approved corrections finalise the daily timecard while preserving all imported
   biometric, access-card, and website evidence.
+- Casual, sick, earned, and unpaid leave requests with full-day or single-day
+  half-day support, weekend exclusion, overlap prevention, cancellation, and
+  private employee reasons.
+- Optional annual paid-leave balances that are enforced when configured and shown
+  explicitly as not configured otherwise; the MVP does not invent entitlements.
+- Single-step Reporting Manager leave approval with direct-report scope and
+  self-approval prevention.
+- Approved full-day leave finalises the effective attendance state while keeping
+  source evidence intact; approved half-day leave reduces the attendance requirement
+  to 270 minutes and retains the worked portion.
+- Responsive personal calendar combining reconciled attendance with pending and
+  approved leave without exposing leave reasons.
 - Responsive Shows & tasks and Timesheets pages for desktop and mobile.
-- Focused timecard detail view plus clear delivery states for leave, calendar,
-  approvals, people, and administration.
+- Focused timecard detail view plus operational leave, calendar, approvals, show,
+  timesheet, import, and regularisation pages.
 - Playwright coverage for authenticated desktop and mobile application flows.
 - Seeded Employee, Reporting Manager, Show Manager, HR, Attendance Administrator,
   and System Administrator permission sets.
 - Development Docker Compose configuration.
 - Kubeadm/containerd-compatible Helm chart aligned with the local cluster.
 
-Submitted-timesheet approval decisions, leave, and calendar workflows will be
-added in the following slices.
+Submitted-timesheet approval decisions, holiday administration, leave-balance
+administration, and scoped team/show calendars remain for the following slices.
 
 The accepted attendance CSV contract is documented in
 [`docs/ATTENDANCE_CSV_FORMAT.md`](docs/ATTENDANCE_CSV_FORMAT.md).
@@ -58,16 +71,18 @@ The daily calculation and provisional policy are documented in
 [`docs/RECONCILIATION_POLICY.md`](docs/RECONCILIATION_POLICY.md).
 The attendance correction and approval workflow is documented in
 [`docs/REGULARISATION_WORKFLOW.md`](docs/REGULARISATION_WORKFLOW.md).
+The leave, approval, balance, calendar, and attendance interaction is documented in
+[`docs/LEAVE_CALENDAR_WORKFLOW.md`](docs/LEAVE_CALENDAR_WORKFLOW.md).
 
 ## Release status
 
 | Item                     | Status                                      |
 | ------------------------ | ------------------------------------------- |
-| Source and Helm version  | `0.5.0`                                     |
+| Source and Helm version  | `0.6.0`                                     |
 | Git branch               | `main`                                      |
-| Source release commit    | `42dcb1e`                                   |
+| Source release commit    | Current `0.6.0` feature commit              |
 | Local Kubernetes release | `0.5.0`, Helm revision 7, deployed          |
-| Local `0.5.0` images     | Imported into containerd and running        |
+| Local `0.6.0` images     | Awaiting local build and containerd import  |
 | Container target         | kubeadm/containerd `k8s.io`, `linux/amd64`  |
 | Ingress                  | `http://gnomon.local` through NGINX Ingress |
 
