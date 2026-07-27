@@ -1,0 +1,62 @@
+nameOverride: ''
+fullnameOverride: ''
+
+imagePullSecrets: []
+
+web:
+  replicaCount: 1
+  image:
+    repository: gnomon-web
+    tag: '0.2.0'
+    pullPolicy: IfNotPresent
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+api:
+  replicaCount: 1
+  image:
+    repository: gnomon-api
+    tag: '0.2.0'
+    pullPolicy: IfNotPresent
+  webOrigin: http://gnomon.local
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+mongodb:
+  image:
+    repository: mongo
+    tag: '4.4.29'
+    pullPolicy: IfNotPresent
+  storage: 10Gi
+  storageClassName: local-path
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: '1'
+      memory: 1Gi
+
+ingress:
+  enabled: true
+  className: nginx
+  host: gnomon.local
+  tls: []
+
+# Pass these with a private values file or --set-string. Never commit real values.
+secrets:
+  existingSecret: ''
+  accessTokenSecret: ''
+  refreshTokenSecret: ''
+  mongodbRootPassword: ''
+  mongodbUri: ''
