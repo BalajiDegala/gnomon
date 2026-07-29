@@ -54,6 +54,10 @@ personal-calendar slices include:
   to 270 minutes and retains the worked portion.
 - Responsive personal calendar combining reconciled attendance with pending and
   approved leave without exposing leave reasons.
+- Scoped Reporting Manager direct-report calendars and Show Manager assigned-artist
+  availability calendars with responsive month matrices and private-reason redaction.
+- Assignment-date enforcement that prevents show-scoped viewers from seeing attendance,
+  leave, or holiday signals outside an artist's show assignment window.
 - Auditable company- and studio-location holiday administration with scope
   enforcement, archive/reactivate support, leave-range conflict protection, and
   automatic exclusion from leave days.
@@ -75,7 +79,7 @@ personal-calendar slices include:
 - Development Docker Compose configuration.
 - Kubeadm/containerd-compatible Helm chart aligned with the local cluster.
 
-Scoped team/show calendars and project-level task grouping remain for the following
+Project-level task grouping and manager reconciliation queues remain for the following
 slices.
 
 The accepted attendance CSV contract is documented in
@@ -90,16 +94,18 @@ The leave, approval, balance, calendar, and attendance interaction is documented
 [`docs/LEAVE_CALENDAR_WORKFLOW.md`](docs/LEAVE_CALENDAR_WORKFLOW.md).
 Location, holiday, and leave-balance administration is documented in
 [`docs/POLICY_ADMINISTRATION.md`](docs/POLICY_ADMINISTRATION.md).
+Manager and show availability calendars are documented in
+[`docs/TEAM_CALENDAR_WORKFLOW.md`](docs/TEAM_CALENDAR_WORKFLOW.md).
 
 ## Release status
 
 | Item                     | Status                                      |
 | ------------------------ | ------------------------------------------- |
-| Source and Helm version  | `0.9.0`                                     |
+| Source and Helm version  | `0.10.0`                                    |
 | Git branch               | `main`                                      |
-| Source release commit    | `7341ed8`                                   |
+| Source release commit    | Current `0.10.0` feature commit             |
 | Local Kubernetes release | `0.9.0`, Helm revision 11, deployed         |
-| Local `0.9.0` images     | Imported into containerd and running        |
+| Local `0.10.0` images    | Awaiting local build and containerd import  |
 | Container target         | kubeadm/containerd `k8s.io`, `linux/amd64`  |
 | Ingress                  | `http://gnomon.local` through NGINX Ingress |
 

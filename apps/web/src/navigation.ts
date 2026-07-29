@@ -18,6 +18,7 @@ export type AppView =
   | 'regularisation'
   | 'leave'
   | 'calendar'
+  | 'team-calendar'
   | 'approvals'
   | 'shows'
   | 'people'
@@ -55,6 +56,12 @@ export const workspaceNavigation: NavigationItem[] = [
 ];
 
 export const managementNavigation: NavigationItem[] = [
+  {
+    id: 'team-calendar',
+    label: 'Team calendar',
+    icon: CalendarDays,
+    requiredPermissions: ['attendance:team:read'],
+  },
   {
     id: 'approvals',
     label: 'Approvals',

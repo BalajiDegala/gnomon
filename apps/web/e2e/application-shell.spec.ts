@@ -240,6 +240,21 @@ test('completes scoped timesheet submission and manager approval', async ({ page
       path: testInfo.outputPath('timesheet-approvals-mobile.png'),
       fullPage: true,
     });
+    await page.getByRole('button', { name: 'Open navigation' }).click();
+    await page.getByRole('button', { name: 'Team calendar', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Team calendar' })).toBeVisible();
+    await expect(page.locator('main p:visible').filter({ hasText: 'Eshan Artist' })).toBeVisible();
+    await page.getByRole('combobox', { name: 'Calendar audience' }).click();
+    await page.getByRole('option', { name: /E2ECAL · Calendar Show/ }).click();
+    await expect(page.locator('main p:visible').filter({ hasText: 'Eshan Artist' })).toBeVisible();
+    const preAssignmentDate = previousWeekdayDate(2);
+    await expect(
+      page.locator(`[aria-label="${preAssignmentDate}: Not assigned"]:visible`),
+    ).toBeVisible();
+    await page.screenshot({
+      path: testInfo.outputPath('team-calendar-mobile.png'),
+      fullPage: true,
+    });
     return;
   }
 
@@ -431,6 +446,18 @@ test('completes leave approval and shows approved leave in the personal calendar
   await expect(leaveCard.getByText('Eshan Artist')).toBeVisible();
   await leaveCard.getByRole('button', { name: 'Approve' }).click();
   await expect(page.getByText('No leave decisions waiting')).toBeVisible();
+  await page.getByRole('button', { name: 'Team calendar', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Team calendar' })).toBeVisible();
+  await page.getByLabel('Calendar month').fill(leaveDate.slice(0, 7));
+  await expect(page.locator('main p:visible').filter({ hasText: 'Eshan Artist' })).toBeVisible();
+  await expect(
+    page.locator(`[aria-label="${leaveDate}: Approved leave · Full day"]:visible`),
+  ).toBeVisible();
+  await expect(page.getByText(reason)).toHaveCount(0);
+  await page.screenshot({
+    path: testInfo.outputPath('team-calendar-approved-leave.png'),
+    fullPage: true,
+  });
   await signOut(page);
 
   await signIn(page, regularisationUsers.employee);

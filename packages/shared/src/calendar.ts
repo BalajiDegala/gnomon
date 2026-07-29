@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { LeaveDayPartSchema, LeaveStatusSchema, LeaveTypeSchema } from './leave.js';
+import { DailyAttendanceStatusSchema } from './reconciliation.js';
 
 export const CalendarMonthSchema = z
   .string()
@@ -58,3 +59,77 @@ export type PersonalCalendarDto = z.infer<typeof PersonalCalendarDtoSchema>;
 export const CalendarQuerySchema = z.object({
   month: CalendarMonthSchema.optional(),
 });
+
+export const ManagedCalendarAudienceTypeSchema = z.enum(['direct_reports', 'show']);
+export type ManagedCalendarAudienceType = z.infer<typeof ManagedCalendarAudienceTypeSchema>;
+
+export const ManagedCalendarQuerySchema = z
+  .object({
+    month: CalendarMonthSchema.optional(),
+    audienceType: ManagedCalendarAudienceTypeSchema.optional(),
+    showId: z
+      .string()
+      .regex(/^[a-f\d]{24}$/i, 'A valid show identifier is required')
+      .optional(),
+  })
+  .refine((value) => value.audienceType !== 'show' || value.showId, {
+    path: ['showId'],
+    message: 'A show is required for a show calendar',
+  });
+export type ManagedCalendarQuery = z.infer<typeof ManagedCalendarQuerySchema>;
+
+export const ManagedCalendarAudienceDtoSchema = z.object({
+  type: ManagedCalendarAudienceTypeSchema,
+  id: z.string(),
+  code: z.string().nullable(),
+  label: z.string(),
+  memberCount: z.number().int().nonnegative(),
+});
+export type ManagedCalendarAudienceDto = z.infer<typeof ManagedCalendarAudienceDtoSchema>;
+
+export const ManagedCalendarAvailabilitySchema = z.enum([
+  'available',
+  'partial',
+  'unavailable',
+  'pending',
+  'no_record',
+  'non_working',
+  'not_assigned',
+]);
+export type ManagedCalendarAvailability = z.infer<typeof ManagedCalendarAvailabilitySchema>;
+
+export const ManagedCalendarDayDtoSchema = z.object({
+  date: z.string().date(),
+  weekday: z.number().int().min(1).max(7),
+  availability: ManagedCalendarAvailabilitySchema,
+  attendanceStatus: DailyAttendanceStatusSchema.nullable(),
+  leave: z
+    .object({
+      dayPart: LeaveDayPartSchema,
+      status: z.enum(['pending_manager', 'approved']),
+    })
+    .nullable(),
+  holiday: z
+    .object({
+      name: z.string(),
+      scopeType: z.enum(['company', 'location']),
+    })
+    .nullable(),
+});
+export type ManagedCalendarDayDto = z.infer<typeof ManagedCalendarDayDtoSchema>;
+
+export const ManagedCalendarMemberDtoSchema = z.object({
+  employeeId: z.string(),
+  employeeCode: z.string(),
+  displayName: z.string(),
+  days: z.array(ManagedCalendarDayDtoSchema),
+});
+export type ManagedCalendarMemberDto = z.infer<typeof ManagedCalendarMemberDtoSchema>;
+
+export const ManagedCalendarDtoSchema = z.object({
+  month: CalendarMonthSchema,
+  audiences: z.array(ManagedCalendarAudienceDtoSchema),
+  selectedAudience: ManagedCalendarAudienceDtoSchema.nullable(),
+  members: z.array(ManagedCalendarMemberDtoSchema),
+});
+export type ManagedCalendarDto = z.infer<typeof ManagedCalendarDtoSchema>;

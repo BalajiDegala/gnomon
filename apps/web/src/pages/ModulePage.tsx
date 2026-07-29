@@ -30,6 +30,7 @@ import { CalendarPage } from './CalendarPage';
 import { LeavePage } from './LeavePage';
 import { RegularisationPage } from './RegularisationPage';
 import { ShowManagementPage } from './ShowManagementPage';
+import { TeamCalendarPage } from './TeamCalendarPage';
 import { TimesheetsPage } from './TimesheetsPage';
 
 interface ModulePageProps {
@@ -54,6 +55,7 @@ const moduleDefinitions: Record<
     | 'regularisation'
     | 'leave'
     | 'calendar'
+    | 'team-calendar'
     | 'approvals'
     | 'shows'
     | 'administration'
@@ -99,6 +101,9 @@ export function ModulePage({ view, onNavigate }: ModulePageProps) {
   }
   if (view === 'leave') return <LeavePage onBack={() => onNavigate('overview')} />;
   if (view === 'calendar') return <CalendarPage onBack={() => onNavigate('overview')} />;
+  if (view === 'team-calendar') {
+    return <TeamCalendarPage onBack={() => onNavigate('overview')} />;
+  }
   if (view === 'approvals') {
     return <ApprovalQueuePage onBack={() => onNavigate('overview')} />;
   }

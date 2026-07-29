@@ -120,11 +120,27 @@ async function seedWorkflowFixtures(): Promise<void> {
   const roles = await ensureSystemRoles();
   const employeeRole = roles.get('EMPLOYEE');
   const managerRole = roles.get('REPORTING_MANAGER');
+  const showManagerRole = roles.get('SHOW_MANAGER');
   const hrRole = roles.get('HR');
   const attendanceRole = roles.get('ATTENDANCE_ADMIN');
-  if (!employeeRole || !managerRole || !hrRole || !attendanceRole) {
+  if (!employeeRole || !managerRole || !showManagerRole || !hrRole || !attendanceRole) {
     throw new Error('Required system roles could not be seeded');
   }
+
+  const calendarShow = await Show.create({
+    code: 'E2ECAL',
+    name: 'Calendar Show',
+    status: 'active',
+    createdBy: managerUser._id,
+  });
+  await ShowAssignment.create({
+    showId: calendarShow._id,
+    employeeId: employee._id,
+    status: 'active',
+    activeFrom: new Date(),
+    activeUntil: null,
+    assignedBy: managerUser._id,
+  });
 
   await RoleAssignment.insertMany([
     {
@@ -150,6 +166,15 @@ async function seedWorkflowFixtures(): Promise<void> {
       roleId: managerRole._id,
       scopeType: 'direct_reports',
       scopeIds: [employee._id],
+      validFrom: new Date(),
+      validUntil: null,
+      grantedBy: null,
+    },
+    {
+      userId: managerUser._id,
+      roleId: showManagerRole._id,
+      scopeType: 'show',
+      scopeIds: [calendarShow._id],
       validFrom: new Date(),
       validUntil: null,
       grantedBy: null,

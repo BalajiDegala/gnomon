@@ -3,7 +3,8 @@
 ## Document status
 
 - Status: Phase 3–6 task approval, attendance, regularisation, leave, location,
-  holiday, balance, personal-calendar, and scoped policy-administration slices implemented
+  holiday, balance, personal/team/show-calendar, and scoped policy-administration
+  slices implemented
 - Created: 2026-07-27
 - Company: DIGITAL DOMAIN INDIA
 - Application scope: Single company
@@ -489,8 +490,8 @@ later approval-engine slice.
 - Release `0.9.0` adds the studio location directory, effective-dated employee
   location assignment history, exact-location RBAC/ABAC, location holiday selection,
   and location-aware leave, calendar, and attendance reconciliation.
-- Reporting Manager team calendars and Show Manager availability calendars remain
-  next-slice work.
+- Release `0.10.0` adds Reporting Manager team calendars and Show Manager
+  assigned-artist availability calendars with privacy-safe signals.
 - Leave reasons remain private unless the viewer has an explicit permission.
 
 See [`LEAVE_CALENDAR_WORKFLOW.md`](LEAVE_CALENDAR_WORKFLOW.md) for the implemented
@@ -651,7 +652,9 @@ CPU does not expose the AVX instructions required by newer MongoDB releases.
 - Implemented in `0.9.0`: location directory, effective-dated employee assignment,
   exact-location authorization, location-specific holidays, and date-effective
   calendar/leave/reconciliation applicability.
-- Next: Reporting Manager team and Show Manager availability calendars.
+- Implemented in `0.10.0`: Reporting Manager direct-report calendars and Show Manager
+  assigned-artist availability calendars with leave-reason privacy and assignment-date
+  scope enforcement.
 
 ### Phase 6: Administration and reporting
 

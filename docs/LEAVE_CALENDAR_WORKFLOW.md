@@ -138,6 +138,4 @@ checks `NODE_ENV=test` and the `_test` suffix before writing.
 
 - Leave-type catalogue administration
 - HR oversight/override with audit reporting
-- Reporting Manager team calendar
-- Show Manager assigned-artist availability calendar
 - Policy-configurable half-day duration and approval steps

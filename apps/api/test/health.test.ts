@@ -52,6 +52,7 @@ describe('protected routes', () => {
       timesheetApprovals,
       locations,
       employeeLocations,
+      managedCalendar,
     ] = await Promise.all([
       request(app).get('/api/v1/shows'),
       request(app).get('/api/v1/timesheets'),
@@ -66,6 +67,7 @@ describe('protected routes', () => {
       request(app).get('/api/v1/approvals/timesheets'),
       request(app).get('/api/v1/administration/locations'),
       request(app).get('/api/v1/administration/employee-locations?employeeCode=DDI0001'),
+      request(app).get('/api/v1/calendar/managed'),
     ]);
 
     expect(shows.status).toBe(401);
@@ -81,6 +83,7 @@ describe('protected routes', () => {
     expect(timesheetApprovals.status).toBe(401);
     expect(locations.status).toBe(401);
     expect(employeeLocations.status).toBe(401);
+    expect(managedCalendar.status).toBe(401);
     expect(shows.body.error.code).toBe('AUTHENTICATION_REQUIRED');
     expect(timesheets.body.error.code).toBe('AUTHENTICATION_REQUIRED');
     expect(reconciliation.body.error.code).toBe('AUTHENTICATION_REQUIRED');
@@ -94,5 +97,6 @@ describe('protected routes', () => {
     expect(timesheetApprovals.body.error.code).toBe('AUTHENTICATION_REQUIRED');
     expect(locations.body.error.code).toBe('AUTHENTICATION_REQUIRED');
     expect(employeeLocations.body.error.code).toBe('AUTHENTICATION_REQUIRED');
+    expect(managedCalendar.body.error.code).toBe('AUTHENTICATION_REQUIRED');
   });
 });
