@@ -103,7 +103,7 @@ Manager and show availability calendars are documented in
 | ------------------------ | ------------------------------------------- |
 | Source and Helm version  | `0.10.0`                                    |
 | Git branch               | `main`                                      |
-| Source release commit    | Current `0.10.0` feature commit             |
+| Source release commit    | `26ad298`                                   |
 | Local Kubernetes release | `0.9.0`, Helm revision 11, deployed         |
 | Local `0.10.0` images    | Awaiting local build and containerd import  |
 | Container target         | kubeadm/containerd `k8s.io`, `linux/amd64`  |
