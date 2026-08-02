@@ -1,116 +1,69 @@
-# Show and Timesheet Workflow
+# Direct Show Timesheet Workflow
 
-This document records the `0.8.0` workflow for configuring shows, recording
-employee task time, and deciding submitted entries. The UI calls task-level time
-records **Timesheets**; the API and database call each interval a **time entry**.
+Gnomon timesheets record employee time directly against active shows. They are not
+approval requests and do not use a task catalog or employee-show assignments.
 
-## Manager setup
+## Fixed MVP Rules
 
-The **Shows & tasks** page is visible to users with `show:manage` permission.
+- Every employee with `timesheet:create` may select any active show.
+- No show or task is assigned to an employee.
+- The employee describes the task or work performed in a mandatory free-text comment.
+- Progress is selected as 10%, 20%, through 100%.
+- Start and end are mandatory, must stay inside one 07:00-to-07:00 workday, and may
+  not overlap another entry owned by the employee.
+- Saving creates the final operational entry immediately. There is no draft,
+  submission, approval, rejection, or approver-routing state.
+- The employee may edit or delete their own entry.
 
-1. A company-scoped manager creates a show with a unique code and name.
-2. A company-scoped or exact show-scoped manager creates active tasks inside a
-   show.
-3. The manager assigns an active employee using the employee code.
-4. The assigned employee immediately sees that active show and its active tasks
-   in the Timesheets page.
+The progress percentage describes completion of the work in that entry. It is not a
+work-progress percentage and does not need to total 100% across the day.
 
-Creating a new show requires company scope. Reading or changing an existing
-show requires either company scope or a `show` scope grant containing that exact
-show identifier. This prevents a Show Manager from administering another show.
+## User Interface
 
-## Employee entry workflow
+The Timesheets page provides:
 
-An employee with `timesheet:create` permission can open **Timesheets**, choose a
-work date, and add an interval containing:
+- one work-date selector with previous/next-day controls;
+- one Show filter;
+- sortable Time, Show, Duration, and Progress columns;
+- Work comment, Duration, Progress, and Edit/Delete actions;
+- daily total duration, entry count, and average progress;
+- a create/edit dialog and read-only detail drawer.
 
-- Assigned show and active task
-- Start and end timestamp
-- Task details, from 3 to 1,000 characters
-- Billable or non-billable flag
+There are no workflow-status tabs or submit buttons. Timesheets do not appear on the
+Approvals page. Team Calendar does not filter or group people by show.
 
-New entries are drafts. The page shows the daily duration, progress toward the
-nine-hour target, and entry counts. An employee can delete their own draft but
-cannot delete an entry after submission. **Submit work date** changes all drafts
-on that work date to `submitted`.
+## Show Administration
 
-The submitted state is final for employee editing. An authorized manager can
-approve or reject each submitted entry. Rejected entries no longer block a
-replacement interval; approved entries remain immutable. The employee page shows
-awaiting, approved, and rejected counts plus the actor, decision date, and comment.
+Show administration creates, edits, and lists shows. Managers can update a show's code,
+name, and lifecycle status. An `active` show is immediately available to every employee in
+the timesheet Show selector. `on_hold`, `completed`, and `archived` shows remain historical
+records and cannot be selected for a new entry. An existing entry may retain its inactive
+show while its time, comment, or progress is corrected.
 
-## Approval workflow and authorization
+A Show Manager role may administer shows inside its configured show/company scope.
+That role does not receive timesheet approval or employee attendance access.
 
-The **Approvals** page is visible to users with `timesheet:approve`. Its responsive
-timesheet queue includes only submitted entries the current actor may decide:
+## API
 
-- A Show Manager with company scope may decide any company show entry.
-- A Show Manager with `show` scope may decide only entries whose show identifier
-  appears in that exact grant.
-- A Reporting Manager may decide only an employee whose `reportingManagerId`
-  matches the actor and whose employee identifier is inside the actor's
-  `direct_reports` grant. An empty identifier list means all of that manager's
-  actual direct reports.
-- A System Administrator may decide within an assigned company or exact show scope.
-- HR does not receive timesheet approval implicitly; it needs an explicit role
-  containing `timesheet:approve` if the policy changes later.
-- Self approval is rejected even when another role or company scope would otherwise
-  permit the decision.
+| Method   | Route                                 | Behavior                      |
+| -------- | ------------------------------------- | ----------------------------- |
+| `GET`    | `/api/v1/timesheets/options`          | List every active show        |
+| `GET`    | `/api/v1/timesheets?workDate=...`     | Read the employee's day       |
+| `POST`   | `/api/v1/timesheets/entries`          | Save a direct timesheet entry |
+| `PATCH`  | `/api/v1/timesheets/entries/:entryId` | Edit the employee's entry     |
+| `DELETE` | `/api/v1/timesheets/entries/:entryId` | Delete the employee's entry   |
+| `GET`    | `/api/v1/shows`                       | List manageable shows         |
+| `POST`   | `/api/v1/shows`                       | Create a company-scoped show  |
+| `PATCH`  | `/api/v1/shows/:showId`               | Edit show identity and status |
 
-A rejection requires a reason of at least three characters. An approval comment is
-optional. The API uses an atomic `submitted` status condition so concurrent actors
-cannot decide the same entry twice.
+All timesheet routes require authentication and `timesheet:create` in self/company
+scope. Ownership is checked again for update and delete operations.
 
-Every submitted entry records the `TIMESHEET_V1` policy version and submission time.
-The terminal decision retains the decision, actor user and employee identifiers,
-actor display name, effective actor role, comment, and timestamp. This history is
-embedded with the entry and is never replaced by a later policy grant change.
+## Reconciliation And Reporting
 
-## Time and workday rules
+Show time remains supporting attendance evidence. The reconciliation engine may flag
+show time outside website sessions or show time exceeding known presence, but show time
+never replaces biometric, access-card, or website attendance evidence.
 
-- The company timezone is `Asia/Kolkata`.
-- A work date starts at 07:00 and ends at 07:00 the following calendar day.
-- An interval must remain inside one such workday.
-- Cross-midnight work is supported. For example, Monday 20:00 to Tuesday 05:00
-  belongs to Monday.
-- The end must be after the start, cannot be more than five minutes in the
-  future, and the interval cannot exceed 24 hours.
-- An employee cannot create overlapping entries. Rejected entries do not block
-  a replacement interval.
-- Duration is calculated by the server in whole minutes.
-
-When an interval fits inside one of the employee's website start/stop sessions,
-the API stores that work-session identifier on the entry. This provides a link
-for later comparison without changing the original website session.
-
-## API surface
-
-All routes require authentication.
-
-| Method   | Route                                            | Purpose                         |
-| -------- | ------------------------------------------------ | ------------------------------- |
-| `GET`    | `/api/v1/shows`                                  | List manageable shows           |
-| `POST`   | `/api/v1/shows`                                  | Create a company-scoped show    |
-| `POST`   | `/api/v1/shows/:showId/tasks`                    | Add a task to a manageable show |
-| `POST`   | `/api/v1/shows/:showId/assignments`              | Assign an employee to a show    |
-| `GET`    | `/api/v1/timesheets/options`                     | List the employee's assignments |
-| `GET`    | `/api/v1/timesheets?workDate=YYYY-MM-DD`         | Read one task-time day          |
-| `POST`   | `/api/v1/timesheets/entries`                     | Create a draft entry            |
-| `DELETE` | `/api/v1/timesheets/entries/:entryId`            | Delete the employee's draft     |
-| `POST`   | `/api/v1/timesheets/submit`                      | Submit all drafts for a date    |
-| `GET`    | `/api/v1/approvals/timesheets`                   | List scoped submitted entries   |
-| `POST`   | `/api/v1/approvals/timesheets/:entryId/decision` | Approve or reject one entry     |
-
-Show routes require `show:manage`. Timesheet routes require
-`timesheet:create` with `self` or `company` scope; every read and mutation is
-still pinned to the authenticated employee identifier on the server.
-
-Approval routes require `timesheet:approve`. The service re-evaluates role, scope,
-show, reporting relationship, and self-approval rules for both queue reads and every
-decision; hiding the UI alone is not treated as authorization.
-
-## Next slice
-
-Daily source reconciliation is implemented in `0.4.0` and consumes non-rejected
-task entries as supporting evidence. Project-level task grouping and manager
-reconciliation queues remain future work.
+Timesheet reports include Employee, Date, Show, Duration, Progress, and Work comment.
+There is no timesheet approval status or pending-approval count.

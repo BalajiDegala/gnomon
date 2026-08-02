@@ -1,8 +1,4 @@
-import type {
-  ManagedCalendarAudienceType,
-  ManagedCalendarDto,
-  PersonalCalendarDto,
-} from '@gnomon/shared';
+import type { ManagedCalendarDto, PersonalCalendarDto } from '@gnomon/shared';
 import { useQuery } from '@tanstack/react-query';
 
 import { useAuth } from './auth';
@@ -39,20 +35,14 @@ export function usePersonalCalendar(month: string) {
   };
 }
 
-export function useManagedCalendar(
-  month: string,
-  audienceType?: ManagedCalendarAudienceType,
-  showId?: string,
-) {
+export function useManagedCalendar(month: string) {
   const { request, user } = useAuth();
   const canRead = user?.permissions.includes('attendance:team:read') ?? false;
   const parameters = new URLSearchParams({ month });
-  if (audienceType) parameters.set('audienceType', audienceType);
-  if (audienceType === 'show' && showId) parameters.set('showId', showId);
   const query = useQuery({
-    queryKey: ['managed-calendar', month, audienceType, showId],
+    queryKey: ['managed-calendar', month],
     queryFn: () => request<ManagedCalendarResponse>(`/api/v1/calendar/managed?${parameters}`),
-    enabled: canRead && (audienceType !== 'show' || Boolean(showId)),
+    enabled: canRead,
   });
   return {
     canRead,

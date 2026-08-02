@@ -3,7 +3,6 @@ import {
   Avatar,
   Box,
   Button,
-  Divider,
   Drawer,
   IconButton,
   List,
@@ -13,16 +12,12 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material';
-import { Bell, ChevronRight, LogOut, Menu, Sparkles } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { ChevronRight, LogOut, Menu, Sparkles } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
+import { useAppNavigation } from '../lib/app-navigation';
 import { useAuth } from '../lib/auth';
-import {
-  managementNavigation,
-  type AppView,
-  type NavigationItem,
-  workspaceNavigation,
-} from '../navigation';
+import { type AppView, appViewPath, navigationGroups, type NavigationItem } from '../navigation';
 import { DashboardPage } from '../pages/DashboardPage';
 import { ModulePage } from '../pages/ModulePage';
 
@@ -67,8 +62,22 @@ function NavigationList({ activeView, items, label, onSelect }: NavigationListPr
           return (
             <ListItemButton
               key={item.id}
+              component="a"
+              href={appViewPath(item.id)}
               selected={selected}
-              onClick={() => onSelect(item.id)}
+              onClick={(event) => {
+                if (
+                  event.button !== 0 ||
+                  event.metaKey ||
+                  event.ctrlKey ||
+                  event.shiftKey ||
+                  event.altKey
+                ) {
+                  return;
+                }
+                event.preventDefault();
+                onSelect(item.id);
+              }}
               sx={{
                 minHeight: 44,
                 px: 1.5,
@@ -98,24 +107,37 @@ function NavigationList({ activeView, items, label, onSelect }: NavigationListPr
 
 export function AppShell() {
   const { user, logout } = useAuth();
-  const [activeView, setActiveView] = useState<AppView>('overview');
   const [mobileOpen, setMobileOpen] = useState(false);
   const permissions = user?.permissions ?? [];
-  const workspaceItems = useMemo(
-    () => workspaceNavigation.filter((item) => canSeeNavigationItem(item, permissions)),
+  const visibleGroups = useMemo(
+    () =>
+      navigationGroups
+        .map((group) => ({
+          ...group,
+          items: group.items.filter((item) => canSeeNavigationItem(item, permissions)),
+        }))
+        .filter((group) => group.items.length > 0),
     [permissions],
   );
-  const managementItems = useMemo(
-    () => managementNavigation.filter((item) => canSeeNavigationItem(item, permissions)),
-    [permissions],
+  const allVisibleItems = useMemo(
+    () => visibleGroups.flatMap((group) => group.items),
+    [visibleGroups],
   );
-  const allVisibleItems = [...workspaceItems, ...managementItems];
+  const allowedViews = useMemo(
+    () => new Set<AppView>(['overview', ...allVisibleItems.map((item) => item.id)]),
+    [allVisibleItems],
+  );
+  const { activeView, navigate } = useAppNavigation(allowedViews);
   const activeLabel = allVisibleItems.find((item) => item.id === activeView)?.label ?? 'Overview';
 
   const selectView = (view: AppView) => {
-    setActiveView(view);
+    navigate(view);
     setMobileOpen(false);
   };
+
+  useEffect(() => {
+    document.title = `${activeLabel} | Gnomon`;
+  }, [activeLabel]);
 
   const drawer = (
     <Stack sx={{ height: '100%', bgcolor: '#0c1220', color: '#fff' }}>
@@ -144,18 +166,15 @@ export function AppShell() {
       </Stack>
 
       <Box sx={{ pt: 1, flex: 1, overflowY: 'auto' }}>
-        <NavigationList
-          label="Workspace"
-          items={workspaceItems}
-          activeView={activeView}
-          onSelect={selectView}
-        />
-        <NavigationList
-          label="Manage"
-          items={managementItems}
-          activeView={activeView}
-          onSelect={selectView}
-        />
+        {visibleGroups.map((group) => (
+          <NavigationList
+            key={group.label}
+            label={group.label}
+            items={group.items}
+            activeView={activeView}
+            onSelect={selectView}
+          />
+        ))}
       </Box>
 
       <Box sx={{ p: 1.5 }}>
@@ -237,12 +256,6 @@ export function AppShell() {
             </Typography>
           </Box>
           <Stack direction="row" sx={{ alignItems: 'center', gap: 0.75 }}>
-            <Tooltip title="Notifications">
-              <IconButton aria-label="Notifications" sx={{ color: 'text.secondary' }}>
-                <Bell size={19} />
-              </IconButton>
-            </Tooltip>
-            <Divider orientation="vertical" flexItem sx={{ mx: 0.75 }} />
             <Button
               color="inherit"
               onClick={() => selectView('timecard')}

@@ -1,7 +1,7 @@
 import {
   CreateTimeEntryRequestSchema,
   TimesheetDateQuerySchema,
-  TimesheetDecisionRequestSchema,
+  UpdateTimeEntryRequestSchema,
 } from '@gnomon/shared';
 import { Router } from 'express';
 import { z } from 'zod';
@@ -9,23 +9,20 @@ import { z } from 'zod';
 import { requireAuth, requirePermission } from '../../middleware/auth.js';
 import {
   createTimeEntry,
-  decideTimeEntry,
-  deleteDraftTimeEntry,
+  deleteTimeEntry,
   getTimesheetDay,
   getTimesheetOptions,
-  listTimesheetApprovals,
-  submitTimesheetDay,
+  updateTimeEntry,
 } from './timesheet.service.js';
 
 const EntryParamsSchema = z.object({ entryId: z.string().regex(/^[a-f\d]{24}$/i) });
-const SubmitRequestSchema = z.object({ workDate: z.string().date() });
 
 export const timesheetRouter = Router();
 
 timesheetRouter.use(requireAuth, requirePermission('timesheet:create', ['self', 'company']));
 
-timesheetRouter.get('/options', async (request, response) => {
-  response.json({ options: await getTimesheetOptions(request.authUser!.employeeId) });
+timesheetRouter.get('/options', async (_request, response) => {
+  response.json({ options: await getTimesheetOptions() });
 });
 
 timesheetRouter.get('/', async (request, response) => {
@@ -38,26 +35,13 @@ timesheetRouter.post('/entries', async (request, response) => {
   response.status(201).json({ day: await createTimeEntry(request.authUser!.employeeId, input) });
 });
 
+timesheetRouter.patch('/entries/:entryId', async (request, response) => {
+  const { entryId } = EntryParamsSchema.parse(request.params);
+  const input = UpdateTimeEntryRequestSchema.parse(request.body);
+  response.json({ day: await updateTimeEntry(request.authUser!.employeeId, entryId, input) });
+});
+
 timesheetRouter.delete('/entries/:entryId', async (request, response) => {
   const { entryId } = EntryParamsSchema.parse(request.params);
-  response.json({ day: await deleteDraftTimeEntry(request.authUser!.employeeId, entryId) });
-});
-
-timesheetRouter.post('/submit', async (request, response) => {
-  const { workDate } = SubmitRequestSchema.parse(request.body);
-  response.json({ day: await submitTimesheetDay(request.authUser!.employeeId, workDate) });
-});
-
-export const timesheetApprovalRouter = Router();
-
-timesheetApprovalRouter.use(requireAuth, requirePermission('timesheet:approve'));
-
-timesheetApprovalRouter.get('/', async (request, response) => {
-  response.json({ entries: await listTimesheetApprovals(request.authUser!) });
-});
-
-timesheetApprovalRouter.post('/:entryId/decision', async (request, response) => {
-  const { entryId } = EntryParamsSchema.parse(request.params);
-  const input = TimesheetDecisionRequestSchema.parse(request.body);
-  response.json({ entry: await decideTimeEntry(request.authUser!, entryId, input) });
+  response.json({ day: await deleteTimeEntry(request.authUser!.employeeId, entryId) });
 });

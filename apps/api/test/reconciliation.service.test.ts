@@ -42,7 +42,7 @@ describe('calculateDailyReconciliation', () => {
           startedAt: new Date('2026-07-27T03:30:00Z'),
           endedAt: new Date('2026-07-27T12:30:00Z'),
           durationMinutes: 540,
-          status: 'submitted',
+          percentage: 100,
         },
       ],
     });
@@ -55,7 +55,7 @@ describe('calculateDailyReconciliation', () => {
       requiresReview: false,
       anomalies: [],
     });
-    expect(result.sourceSummary.taskEntries.totalMinutes).toBe(540);
+    expect(result.sourceSummary.showEntries.totalMinutes).toBe(540);
     expect(() =>
       DailyReconciliationDtoSchema.parse({ id: 'daily-timecard', ...result }),
     ).not.toThrow();
@@ -97,7 +97,7 @@ describe('calculateDailyReconciliation', () => {
     expect(result.calculated.anomalies).toContain('source_time_mismatch');
   });
 
-  it('flags task time that is outside website presence', () => {
+  it('flags show time that is outside website presence', () => {
     const result = calculate({
       now: new Date('2026-07-27T06:00:00Z'),
       sessions: [
@@ -112,13 +112,13 @@ describe('calculateDailyReconciliation', () => {
           startedAt: new Date('2026-07-27T05:00:00Z'),
           endedAt: new Date('2026-07-27T06:00:00Z'),
           durationMinutes: 60,
-          status: 'draft',
+          percentage: 60,
         },
       ],
     });
 
     expect(result.calculated.workdayClosed).toBe(false);
-    expect(result.calculated.anomalies).toContain('task_outside_web_session');
+    expect(result.calculated.anomalies).toContain('show_time_outside_web_session');
     expect(result.calculated.anomalies).not.toContain('insufficient_hours');
   });
 

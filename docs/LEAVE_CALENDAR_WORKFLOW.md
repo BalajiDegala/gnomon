@@ -82,7 +82,7 @@ workflow.
   anomalies for that date, and finalises the daily timecard as `approved_leave`.
 - Approved half-day leave reduces the effective attendance requirement from 540 to
   270 minutes and preserves evidence/anomalies for the worked half.
-- Biometric, access-card, website-session, and task-time summaries are never changed.
+- Biometric, access-card, website-session, and show-time summaries are never changed.
 - Approved regularisation takes precedence over leave when both exist.
 - An applicable holiday sets effective attendance to `holiday`, clears attendance
   anomalies, and finalises the derived daily record as `holiday` without changing

@@ -3,26 +3,37 @@ import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  Drawer,
   FormControl,
+  IconButton,
   InputLabel,
   MenuItem,
   Select,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
-import { ArrowLeft, CalendarDays, CheckCircle2, Clock3, Gauge, Send, Trash2 } from 'lucide-react';
+import { CalendarDays, ChevronRight, Plus, Send, Trash2, X } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 
+import {
+  DataTable,
+  type DataTableColumn,
+  type SortDirection,
+} from '../components/data-view/DataTable';
+import { FilterBar } from '../components/data-view/FilterBar';
+import { PageHeader } from '../components/data-view/PageHeader';
+import { PageTabs, type PageTab } from '../components/data-view/PageTabs';
 import { useMyLeaves } from '../lib/leaves';
-
-interface LeavePageProps {
-  onBack: () => void;
-}
+import { parseEnumValue, parseShortSearch, useUrlQueryState } from '../lib/url-query-state';
 
 export const leaveTypeLabels: Record<LeaveType, string> = {
   casual: 'Casual leave',
@@ -31,14 +42,21 @@ export const leaveTypeLabels: Record<LeaveType, string> = {
   unpaid: 'Unpaid leave',
 };
 
+type LeaveTab = 'all' | LeaveStatus;
+type LeaveSortKey = 'date' | 'type' | 'days' | 'status' | 'submitted';
+
+const leaveTabs = ['all', 'pending_manager', 'approved', 'rejected', 'cancelled'] as const;
+const leaveSortKeys = ['date', 'type', 'days', 'status', 'submitted'] as const;
+const sortDirections = ['asc', 'desc'] as const;
+const pageSizes = [10, 25, 50, 100] as const;
+
 function nextWorkingDate(): string {
-  const now = new Date();
   const indiaDate = new Intl.DateTimeFormat('en-CA', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
     timeZone: 'Asia/Kolkata',
-  }).format(now);
+  }).format(new Date());
   const date = new Date(`${indiaDate}T00:00:00.000Z`);
   do date.setUTCDate(date.getUTCDate() + 1);
   while (date.getUTCDay() === 0 || date.getUTCDay() === 6);
@@ -90,21 +108,76 @@ function dayPartLabel(dayPart: LeaveDayPart): string {
   return 'Full day';
 }
 
-export function LeavePage({ onBack }: LeavePageProps) {
+function parseLeaveTab(value: string): LeaveTab | null {
+  return parseEnumValue(value, leaveTabs);
+}
+
+function parseLeaveSort(value: string): LeaveSortKey | null {
+  return parseEnumValue(value, leaveSortKeys);
+}
+
+function parseSortDirection(value: string): SortDirection | null {
+  return parseEnumValue(value, sortDirections);
+}
+
+function parsePage(value: string): number | null {
+  const page = Number(value);
+  return Number.isInteger(page) && page >= 1 ? page : null;
+}
+
+function parsePageSize(value: string): number | null {
+  const size = Number(value);
+  return pageSizes.includes(size as (typeof pageSizes)[number]) ? size : null;
+}
+
+function parseYear(value: string): number | null {
+  const year = Number(value);
+  return Number.isInteger(year) && year >= 2000 && year <= 2200 ? year : null;
+}
+
+function parseRequestId(value: string): string | null {
+  return /^[a-f\d]{24}$/i.test(value) ? value : null;
+}
+
+function compareRequests(left: LeaveRequestDto, right: LeaveRequestDto, key: LeaveSortKey): number {
+  if (key === 'date') return left.startDate.localeCompare(right.startDate);
+  if (key === 'type')
+    return leaveTypeLabels[left.leaveType].localeCompare(leaveTypeLabels[right.leaveType]);
+  if (key === 'days') return left.requestedDays - right.requestedDays;
+  if (key === 'status') return left.status.localeCompare(right.status);
+  return left.submittedAt.localeCompare(right.submittedAt);
+}
+
+export function LeavePage() {
   const defaultDate = useMemo(nextWorkingDate, []);
+  const currentYear = Number(defaultDate.slice(0, 4));
+  const [year, setYear] = useUrlQueryState('year', currentYear, parseYear);
+  const [tab, setTab] = useUrlQueryState<LeaveTab>('tab', 'all', parseLeaveTab);
+  const [search, setSearch] = useUrlQueryState('q', '', parseShortSearch);
+  const [sortKey, setSortKey] = useUrlQueryState<LeaveSortKey>('sort', 'date', parseLeaveSort);
+  const [sortDirection, setSortDirection] = useUrlQueryState<SortDirection>(
+    'order',
+    'desc',
+    parseSortDirection,
+  );
+  const [pageNumber, setPageNumber] = useUrlQueryState('page', 1, parsePage);
+  const [rowsPerPage, setRowsPerPage] = useUrlQueryState('size', 25, parsePageSize);
+  const [selectedRequestId, setSelectedRequestId] = useUrlQueryState('request', '', parseRequestId);
+  const leaves = useMyLeaves(year);
+  const [createOpen, setCreateOpen] = useState(false);
   const [startDate, setStartDate] = useState(defaultDate);
   const [endDate, setEndDate] = useState(defaultDate);
   const [leaveType, setLeaveType] = useState<LeaveType>('casual');
   const [dayPart, setDayPart] = useState<LeaveDayPart>('full_day');
   const [reason, setReason] = useState('');
-  const year = Number(startDate.slice(0, 4));
-  const leaves = useMyLeaves(year);
   const holidayDates = useMemo(
     () => new Set(leaves.holidays.map((holiday) => holiday.date)),
     [leaves.holidays],
   );
   const requestedDays = workingDayCount(startDate, endDate, dayPart, holidayDates);
   const selectedBalance = leaves.balances.find((balance) => balance.leaveType === leaveType);
+  const selectedRequest =
+    leaves.requests.find((request) => request.id === selectedRequestId) ?? null;
 
   useEffect(() => {
     if (endDate < startDate || endDate.slice(0, 4) !== startDate.slice(0, 4)) {
@@ -116,320 +189,619 @@ export function LeavePage({ onBack }: LeavePageProps) {
     if (startDate !== endDate && dayPart !== 'full_day') setDayPart('full_day');
   }, [dayPart, endDate, startDate]);
 
+  useEffect(() => {
+    if (selectedRequestId && !selectedRequest && !leaves.isLoading) setSelectedRequestId('');
+  }, [leaves.isLoading, selectedRequest, selectedRequestId, setSelectedRequestId]);
+
+  const filteredRequests = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const direction = sortDirection === 'asc' ? 1 : -1;
+    return leaves.requests
+      .filter((request) => tab === 'all' || request.status === tab)
+      .filter(
+        (request) =>
+          !term ||
+          request.reason.toLowerCase().includes(term) ||
+          request.startDate.includes(term) ||
+          request.endDate.includes(term) ||
+          leaveTypeLabels[request.leaveType].toLowerCase().includes(term) ||
+          statusLabel(request.status).toLowerCase().includes(term),
+      )
+      .slice()
+      .sort(
+        (left, right) =>
+          compareRequests(left, right, sortKey) * direction || left.id.localeCompare(right.id),
+      );
+  }, [leaves.requests, search, sortDirection, sortKey, tab]);
+
+  useEffect(() => {
+    const lastPage = Math.max(1, Math.ceil(filteredRequests.length / rowsPerPage));
+    if (pageNumber > lastPage) setPageNumber(lastPage);
+  }, [filteredRequests.length, pageNumber, rowsPerPage, setPageNumber]);
+
+  const tabs = useMemo<ReadonlyArray<PageTab<LeaveTab>>>(
+    () => [
+      { value: 'all', label: 'All', count: leaves.requests.length },
+      {
+        value: 'pending_manager',
+        label: 'Manager review',
+        count: leaves.requests.filter((request) => request.status === 'pending_manager').length,
+      },
+      {
+        value: 'approved',
+        label: 'Approved',
+        count: leaves.requests.filter((request) => request.status === 'approved').length,
+      },
+      {
+        value: 'rejected',
+        label: 'Rejected',
+        count: leaves.requests.filter((request) => request.status === 'rejected').length,
+      },
+      {
+        value: 'cancelled',
+        label: 'Cancelled',
+        count: leaves.requests.filter((request) => request.status === 'cancelled').length,
+      },
+    ],
+    [leaves.requests],
+  );
+
+  const updateSort = (key: LeaveSortKey) => {
+    if (sortKey === key) setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    else {
+      setSortKey(key);
+      setSortDirection('asc');
+    }
+    setPageNumber(1);
+  };
+
+  const clearFilters = () => {
+    setSearch('');
+    setTab('all');
+    setYear(currentYear);
+    setPageNumber(1);
+  };
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     try {
-      await leaves.create({ leaveType, startDate, endDate, dayPart, reason });
+      const result = await leaves.create({ leaveType, startDate, endDate, dayPart, reason });
+      const requestYear = Number(startDate.slice(0, 4));
       setReason('');
+      setCreateOpen(false);
+      setYear(requestYear);
+      setTab('all');
+      setSelectedRequestId(result.request.id);
     } catch {
-      // Mutation errors are rendered by the hook.
+      // Mutation errors are rendered above the form.
     }
   };
 
+  const cancel = async (requestId: string) => {
+    try {
+      await leaves.cancel(requestId);
+    } catch {
+      // Mutation errors are rendered on the page and in the drawer.
+    }
+  };
+
+  const columns: ReadonlyArray<DataTableColumn<LeaveRequestDto, LeaveSortKey>> = [
+    {
+      id: 'date',
+      label: 'Dates',
+      sortKey: 'date',
+      minWidth: 170,
+      render: (request) => (
+        <Box sx={{ minWidth: 0 }}>
+          <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 800 }}>
+            {request.startDate === request.endDate
+              ? request.startDate
+              : `${request.startDate} - ${request.endDate}`}
+          </Typography>
+          <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
+            {leaveTypeLabels[request.leaveType]} - {dayPartLabel(request.dayPart)}
+          </Typography>
+        </Box>
+      ),
+    },
+    {
+      id: 'type',
+      label: 'Leave type',
+      sortKey: 'type',
+      hideBelow: 'sm',
+      width: 150,
+      render: (request) => leaveTypeLabels[request.leaveType],
+    },
+    {
+      id: 'days',
+      label: 'Days',
+      sortKey: 'days',
+      align: 'right',
+      hideBelow: 'sm',
+      width: 80,
+      render: (request) => request.requestedDays,
+    },
+    {
+      id: 'reason',
+      label: 'Private reason',
+      hideBelow: 'md',
+      minWidth: 260,
+      render: (request) => (
+        <Typography noWrap sx={{ maxWidth: 380, fontSize: 12 }}>
+          {request.reason}
+        </Typography>
+      ),
+    },
+    {
+      id: 'status',
+      label: 'Status',
+      sortKey: 'status',
+      width: 145,
+      render: (request) => (
+        <Chip
+          size="small"
+          variant="outlined"
+          color={statusColor(request.status)}
+          label={statusLabel(request.status)}
+        />
+      ),
+    },
+    {
+      id: 'actions',
+      label: 'Actions',
+      align: 'right',
+      hideBelow: 'sm',
+      width: 88,
+      render: (request) => (
+        <Stack direction="row" sx={{ justifyContent: 'flex-end', gap: 0.25 }}>
+          {request.status === 'pending_manager' && (
+            <Tooltip title="Cancel request">
+              <IconButton
+                size="small"
+                color="error"
+                aria-label={`Cancel ${request.startDate} leave`}
+                disabled={leaves.isUpdating}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  void cancel(request.id);
+                }}
+              >
+                <Trash2 size={15} />
+              </IconButton>
+            </Tooltip>
+          )}
+          <Tooltip title="View request">
+            <IconButton
+              size="small"
+              aria-label={`View ${request.startDate} leave`}
+              onClick={(event) => {
+                event.stopPropagation();
+                setSelectedRequestId(request.id);
+              }}
+            >
+              <ChevronRight size={16} />
+            </IconButton>
+          </Tooltip>
+        </Stack>
+      ),
+    },
+  ];
+
   return (
-    <Stack spacing={3} sx={{ width: '100%', maxWidth: 1280, mx: 'auto' }}>
-      <Box>
-        <Button color="inherit" startIcon={<ArrowLeft size={16} />} onClick={onBack} sx={{ mb: 2 }}>
-          Back to overview
-        </Button>
-        <Typography
-          sx={{ color: 'primary.dark', fontSize: 11, fontWeight: 800, letterSpacing: 1.3 }}
-        >
-          TIME AWAY
-        </Typography>
-        <Typography variant="h4" sx={{ mt: 0.5, fontWeight: 850, letterSpacing: '-0.035em' }}>
-          Leave
-        </Typography>
-        <Typography sx={{ maxWidth: 780, color: 'text.secondary', fontSize: 13.5, mt: 0.7 }}>
-          Request full-day or half-day leave. Weekends and configured holidays are excluded, and
-          your Reporting Manager owns the decision.
-        </Typography>
-      </Box>
+    <Stack spacing={2.5} sx={{ width: '100%', maxWidth: 1440, mx: 'auto' }}>
+      <PageHeader
+        eyebrow="TIME AWAY"
+        title="Leave"
+        meta={`${leaves.requests.length} requests in ${year}`}
+        action={
+          <Button
+            variant="contained"
+            startIcon={<Plus size={17} />}
+            disabled={!leaves.canCreate}
+            onClick={() => setCreateOpen(true)}
+          >
+            New request
+          </Button>
+        }
+      />
 
       {!leaves.canCreate && (
         <Alert severity="warning">Your account cannot create leave requests.</Alert>
       )}
-      {leaves.error && <Alert severity="error">{leaves.error.message}</Alert>}
+      {leaves.error && !createOpen && <Alert severity="error">{leaves.error.message}</Alert>}
 
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr', lg: 'minmax(380px, .78fr) minmax(0, 1.22fr)' },
-          gap: 2.5,
-          alignItems: 'start',
-        }}
-      >
-        <Stack spacing={2.5}>
-          <Card sx={{ boxShadow: 'none' }}>
-            <CardContent component="form" onSubmit={(event) => void submit(event)} sx={{ p: 3 }}>
-              <Stack direction="row" sx={{ alignItems: 'center', gap: 1, mb: 2.5 }}>
-                <CalendarDays size={19} color="#137f8d" />
-                <Box>
-                  <Typography sx={{ fontSize: 15, fontWeight: 800 }}>New leave request</Typography>
-                  <Typography sx={{ color: 'text.secondary', fontSize: 11 }}>
-                    Private reason visible only to authorized approvers.
-                  </Typography>
-                </Box>
-              </Stack>
-              <Stack spacing={2}>
-                <FormControl fullWidth>
-                  <InputLabel id="leave-type-label">Leave type</InputLabel>
-                  <Select
-                    labelId="leave-type-label"
-                    label="Leave type"
-                    value={leaveType}
-                    onChange={(event) => setLeaveType(event.target.value as LeaveType)}
-                  >
-                    {Object.entries(leaveTypeLabels).map(([value, label]) => (
-                      <MenuItem key={value} value={value}>
-                        {label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <Box
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                    gap: 2,
-                  }}
-                >
-                  <TextField
-                    type="date"
-                    label="Start date"
-                    value={startDate}
-                    onChange={(event) => setStartDate(event.target.value)}
-                    slotProps={{ inputLabel: { shrink: true } }}
-                    required
-                  />
-                  <TextField
-                    type="date"
-                    label="End date"
-                    value={endDate}
-                    onChange={(event) => setEndDate(event.target.value)}
-                    slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: startDate } }}
-                    required
-                  />
-                </Box>
-                <FormControl fullWidth>
-                  <InputLabel id="leave-day-part-label">Day portion</InputLabel>
-                  <Select
-                    labelId="leave-day-part-label"
-                    label="Day portion"
-                    value={dayPart}
-                    onChange={(event) => setDayPart(event.target.value as LeaveDayPart)}
-                  >
-                    <MenuItem value="full_day">Full day</MenuItem>
-                    {startDate === endDate && <MenuItem value="first_half">First half</MenuItem>}
-                    {startDate === endDate && <MenuItem value="second_half">Second half</MenuItem>}
-                  </Select>
-                </FormControl>
-                <TextField
-                  multiline
-                  minRows={4}
-                  label="Private reason"
-                  placeholder="Briefly explain the leave request."
-                  value={reason}
-                  onChange={(event) => setReason(event.target.value)}
-                  slotProps={{ htmlInput: { maxLength: 1_000 } }}
-                  helperText={`${reason.trim().length}/1000 · minimum 5 characters`}
-                  required
-                />
-                <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: '#f4f8f9' }}>
-                  <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 1 }}>
-                    <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
-                      Working-day duration
-                    </Typography>
-                    <Typography sx={{ fontSize: 12.5, fontWeight: 850 }}>
-                      {requestedDays} day{requestedDays === 1 ? '' : 's'}
-                    </Typography>
-                  </Stack>
-                  <Typography sx={{ mt: 0.5, color: 'text.secondary', fontSize: 10.5 }}>
-                    {selectedBalance?.availableDays === null
-                      ? 'Entitlement is not configured yet; approval remains available.'
-                      : selectedBalance?.availableDays !== undefined
-                        ? `${selectedBalance.availableDays} configured days remain after pending and approved leave.`
-                        : 'Loading balance policy…'}
-                  </Typography>
-                  {leaves.holidays.some(
-                    (holiday) => holiday.date >= startDate && holiday.date <= endDate,
-                  ) && (
-                    <Typography sx={{ mt: 0.45, color: 'primary.dark', fontSize: 10.5 }}>
-                      Company holidays inside this range are excluded automatically.
-                    </Typography>
-                  )}
-                </Box>
-                <Button
-                  type="submit"
-                  size="large"
-                  variant="contained"
-                  disabled={requestedDays <= 0 || reason.trim().length < 5 || leaves.isUpdating}
-                  startIcon={
-                    leaves.isUpdating ? <CircularProgress size={16} /> : <Send size={17} />
-                  }
-                >
-                  Submit for manager review
-                </Button>
-              </Stack>
-            </CardContent>
-          </Card>
+      <BalanceSummary balances={leaves.balances} />
 
-          <BalanceSummary balances={leaves.balances} />
-        </Stack>
-
-        <Card sx={{ boxShadow: 'none' }}>
-          <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
-            <Stack direction="row" sx={{ justifyContent: 'space-between', mb: 2.25 }}>
-              <Box>
-                <Typography sx={{ fontSize: 15, fontWeight: 800 }}>Request history</Typography>
-                <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
-                  Decisions and comments remain available for the selected year.
-                </Typography>
-              </Box>
-              <Clock3 size={19} color="#738094" />
-            </Stack>
-            {leaves.isLoading ? (
-              <Box sx={{ py: 10, textAlign: 'center' }}>
-                <CircularProgress size={24} />
-              </Box>
-            ) : leaves.requests.length ? (
-              <Stack spacing={1.25}>
-                {leaves.requests.map((request) => (
-                  <LeaveHistoryCard
-                    key={request.id}
-                    request={request}
-                    isUpdating={leaves.isUpdating}
-                    onCancel={() => void leaves.cancel(request.id).catch(() => undefined)}
-                  />
-                ))}
-              </Stack>
-            ) : (
-              <Box
-                sx={{
-                  minHeight: 360,
-                  display: 'grid',
-                  placeItems: 'center',
-                  textAlign: 'center',
-                  border: '1px dashed',
-                  borderColor: 'divider',
-                  borderRadius: 2.5,
-                }}
-              >
-                <Box>
-                  <CheckCircle2 size={27} color="#8794a6" />
-                  <Typography sx={{ mt: 0.75, fontSize: 13.5, fontWeight: 750 }}>
-                    No leave requests
-                  </Typography>
-                  <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
-                    New requests and decisions will appear here.
-                  </Typography>
-                </Box>
-              </Box>
-            )}
-          </CardContent>
-        </Card>
+      <Box>
+        <PageTabs
+          value={tab}
+          tabs={tabs}
+          onChange={(value) => {
+            setTab(value);
+            setPageNumber(1);
+          }}
+          ariaLabel="Leave request status"
+        />
+        <FilterBar
+          search={search}
+          onSearchChange={(value) => {
+            setSearch(value);
+            setPageNumber(1);
+          }}
+          searchLabel="Search leave requests"
+          resultCount={filteredRequests.length}
+          resultLabel={filteredRequests.length === 1 ? 'request' : 'requests'}
+          hasActiveFilters={Boolean(search) || tab !== 'all' || year !== currentYear}
+          onClear={clearFilters}
+        >
+          <TextField
+            size="small"
+            type="number"
+            label="Year"
+            value={year}
+            onChange={(event) => {
+              const nextYear = Number(event.target.value);
+              if (nextYear >= 2000 && nextYear <= 2200) setYear(nextYear);
+              setPageNumber(1);
+            }}
+            slotProps={{ htmlInput: { min: 2000, max: 2200 } }}
+            sx={{ width: { xs: '100%', md: 120 } }}
+          />
+        </FilterBar>
       </Box>
+
+      <DataTable
+        ariaLabel="Leave requests"
+        rows={filteredRequests}
+        columns={columns}
+        getRowId={(request) => request.id}
+        sortKey={sortKey}
+        sortDirection={sortDirection}
+        onSort={updateSort}
+        page={pageNumber - 1}
+        rowsPerPage={rowsPerPage}
+        onPageChange={(page) => setPageNumber(page + 1)}
+        onRowsPerPageChange={(size) => {
+          setRowsPerPage(size);
+          setPageNumber(1);
+        }}
+        onRowClick={(request) => setSelectedRequestId(request.id)}
+        isLoading={leaves.isLoading}
+        emptyTitle={leaves.requests.length ? 'No requests match this view' : 'No leave requests'}
+        emptyMessage={
+          leaves.requests.length
+            ? 'Change or clear the status, year, or search filters.'
+            : 'New requests and manager decisions will appear here.'
+        }
+      />
+
+      <CreateLeaveDialog
+        open={createOpen}
+        leaveType={leaveType}
+        startDate={startDate}
+        endDate={endDate}
+        dayPart={dayPart}
+        reason={reason}
+        requestedDays={requestedDays}
+        selectedBalance={selectedBalance}
+        hasHoliday={leaves.holidays.some(
+          (holiday) => holiday.date >= startDate && holiday.date <= endDate,
+        )}
+        isUpdating={leaves.isUpdating}
+        error={createOpen ? leaves.error?.message : undefined}
+        onLeaveTypeChange={setLeaveType}
+        onStartDateChange={setStartDate}
+        onEndDateChange={setEndDate}
+        onDayPartChange={setDayPart}
+        onReasonChange={setReason}
+        onClose={() => setCreateOpen(false)}
+        onSubmit={submit}
+      />
+
+      <LeaveDetailsDrawer
+        request={selectedRequest}
+        isUpdating={leaves.isUpdating}
+        error={selectedRequest ? leaves.error?.message : undefined}
+        onCancel={(requestId) => void cancel(requestId)}
+        onClose={() => setSelectedRequestId('')}
+      />
     </Stack>
   );
 }
 
 function BalanceSummary({ balances }: { balances: ReturnType<typeof useMyLeaves>['balances'] }) {
   return (
-    <Card sx={{ boxShadow: 'none' }}>
-      <CardContent sx={{ p: 2.5 }}>
-        <Stack direction="row" sx={{ alignItems: 'center', gap: 1, mb: 1.75 }}>
-          <Gauge size={17} color="#137f8d" />
-          <Typography sx={{ fontSize: 14, fontWeight: 800 }}>Leave balances</Typography>
-        </Stack>
-        <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 1 }}>
-          {balances.map((balance) => (
-            <Box key={balance.leaveType} sx={{ p: 1.4, borderRadius: 2, bgcolor: '#f7f9fb' }}>
-              <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
-                {leaveTypeLabels[balance.leaveType]}
-              </Typography>
-              <Typography sx={{ mt: 0.2, fontSize: 16, fontWeight: 850 }}>
-                {balance.balanceTracked
-                  ? balance.availableDays === null
-                    ? 'Not set'
-                    : balance.availableDays
-                  : 'As approved'}
-              </Typography>
-              <Typography sx={{ color: 'text.secondary', fontSize: 9.5 }}>
-                {balance.pendingDays} pending · {balance.approvedDays} approved
-              </Typography>
-            </Box>
-          ))}
+    <Box
+      aria-label="Leave balances"
+      sx={{
+        display: 'grid',
+        gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, 1fr)' },
+        gap: { xs: 1.5, md: 3 },
+        px: 2,
+        py: 1.5,
+        borderTop: '1px solid',
+        borderBottom: '1px solid',
+        borderColor: 'divider',
+        bgcolor: '#fff',
+      }}
+    >
+      {balances.map((balance) => (
+        <Box key={balance.leaveType} sx={{ minWidth: 0 }}>
+          <Typography noWrap sx={{ color: 'text.secondary', fontSize: 10.5 }}>
+            {leaveTypeLabels[balance.leaveType]}
+          </Typography>
+          <Typography sx={{ mt: 0.2, fontSize: 15, fontWeight: 850 }}>
+            {balance.balanceTracked
+              ? balance.availableDays === null
+                ? 'Not set'
+                : `${balance.availableDays} available`
+              : 'As approved'}
+          </Typography>
+          <Typography sx={{ color: 'text.secondary', fontSize: 9.5 }}>
+            {balance.pendingDays} pending - {balance.approvedDays} approved
+          </Typography>
         </Box>
-      </CardContent>
-    </Card>
+      ))}
+    </Box>
   );
 }
 
-function LeaveHistoryCard({
+interface CreateLeaveDialogProps {
+  open: boolean;
+  leaveType: LeaveType;
+  startDate: string;
+  endDate: string;
+  dayPart: LeaveDayPart;
+  reason: string;
+  requestedDays: number;
+  selectedBalance: ReturnType<typeof useMyLeaves>['balances'][number] | undefined;
+  hasHoliday: boolean;
+  isUpdating: boolean;
+  error?: string;
+  onLeaveTypeChange: (value: LeaveType) => void;
+  onStartDateChange: (value: string) => void;
+  onEndDateChange: (value: string) => void;
+  onDayPartChange: (value: LeaveDayPart) => void;
+  onReasonChange: (value: string) => void;
+  onClose: () => void;
+  onSubmit: (event: FormEvent) => void;
+}
+
+function CreateLeaveDialog({
+  open,
+  leaveType,
+  startDate,
+  endDate,
+  dayPart,
+  reason,
+  requestedDays,
+  selectedBalance,
+  hasHoliday,
+  isUpdating,
+  error,
+  onLeaveTypeChange,
+  onStartDateChange,
+  onEndDateChange,
+  onDayPartChange,
+  onReasonChange,
+  onClose,
+  onSubmit,
+}: CreateLeaveDialogProps) {
+  return (
+    <Dialog open={open} onClose={isUpdating ? undefined : onClose} fullWidth maxWidth="sm">
+      <Box component="form" onSubmit={onSubmit}>
+        <DialogTitle>New leave request</DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={2} sx={{ pt: 0.5 }}>
+            {error && <Alert severity="error">{error}</Alert>}
+            <FormControl fullWidth>
+              <InputLabel id="leave-type-label">Leave type</InputLabel>
+              <Select
+                labelId="leave-type-label"
+                label="Leave type"
+                value={leaveType}
+                onChange={(event) => onLeaveTypeChange(event.target.value as LeaveType)}
+              >
+                {Object.entries(leaveTypeLabels).map(([value, label]) => (
+                  <MenuItem key={value} value={value}>
+                    {label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Box
+              sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}
+            >
+              <TextField
+                type="date"
+                label="Start date"
+                value={startDate}
+                onChange={(event) => onStartDateChange(event.target.value)}
+                slotProps={{ inputLabel: { shrink: true } }}
+                required
+              />
+              <TextField
+                type="date"
+                label="End date"
+                value={endDate}
+                onChange={(event) => onEndDateChange(event.target.value)}
+                slotProps={{ inputLabel: { shrink: true }, htmlInput: { min: startDate } }}
+                required
+              />
+            </Box>
+            <FormControl fullWidth>
+              <InputLabel id="leave-day-part-label">Day portion</InputLabel>
+              <Select
+                labelId="leave-day-part-label"
+                label="Day portion"
+                value={dayPart}
+                onChange={(event) => onDayPartChange(event.target.value as LeaveDayPart)}
+              >
+                <MenuItem value="full_day">Full day</MenuItem>
+                {startDate === endDate && <MenuItem value="first_half">First half</MenuItem>}
+                {startDate === endDate && <MenuItem value="second_half">Second half</MenuItem>}
+              </Select>
+            </FormControl>
+            <TextField
+              multiline
+              minRows={4}
+              label="Private reason"
+              placeholder="Briefly explain the leave request."
+              value={reason}
+              onChange={(event) => onReasonChange(event.target.value)}
+              slotProps={{ htmlInput: { maxLength: 1_000 } }}
+              helperText={`${reason.trim().length}/1000 - minimum 5 characters`}
+              required
+            />
+            <Box sx={{ p: 1.5, bgcolor: '#f4f8f9', borderRadius: 1.5 }}>
+              <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 1 }}>
+                <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
+                  Working-day duration
+                </Typography>
+                <Typography sx={{ fontSize: 12.5, fontWeight: 850 }}>
+                  {requestedDays} day{requestedDays === 1 ? '' : 's'}
+                </Typography>
+              </Stack>
+              <Typography sx={{ mt: 0.5, color: 'text.secondary', fontSize: 10.5 }}>
+                {selectedBalance?.availableDays === null
+                  ? 'Entitlement is not configured yet; approval remains available.'
+                  : selectedBalance?.availableDays !== undefined
+                    ? `${selectedBalance.availableDays} configured days remain after pending and approved leave.`
+                    : 'Loading balance policy...'}
+              </Typography>
+              {hasHoliday && (
+                <Typography sx={{ mt: 0.45, color: 'primary.dark', fontSize: 10.5 }}>
+                  Company holidays inside this range are excluded automatically.
+                </Typography>
+              )}
+            </Box>
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button color="inherit" onClick={onClose} disabled={isUpdating}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            variant="contained"
+            disabled={requestedDays <= 0 || reason.trim().length < 5 || isUpdating}
+            startIcon={isUpdating ? <CircularProgress size={16} /> : <Send size={17} />}
+          >
+            Submit for manager review
+          </Button>
+        </DialogActions>
+      </Box>
+    </Dialog>
+  );
+}
+
+function LeaveDetailsDrawer({
   request,
   isUpdating,
+  error,
   onCancel,
+  onClose,
 }: {
-  request: LeaveRequestDto;
+  request: LeaveRequestDto | null;
   isUpdating: boolean;
-  onCancel: () => void;
+  error?: string;
+  onCancel: (requestId: string) => void;
+  onClose: () => void;
 }) {
   return (
-    <Box sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2.5 }}>
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        sx={{ justifyContent: 'space-between', gap: 1.25 }}
-      >
-        <Box>
-          <Typography sx={{ fontSize: 12.5, fontWeight: 820 }}>
-            {leaveTypeLabels[request.leaveType]} · {request.requestedDays} day
-            {request.requestedDays === 1 ? '' : 's'}
-          </Typography>
-          <Typography sx={{ color: 'text.secondary', fontSize: 11 }}>
-            {request.startDate}
-            {request.endDate !== request.startDate ? ` – ${request.endDate}` : ''} ·{' '}
-            {dayPartLabel(request.dayPart)}
-          </Typography>
-        </Box>
-        <Stack direction="row" sx={{ alignItems: 'center', gap: 0.75, alignSelf: 'flex-start' }}>
-          <Chip
-            size="small"
-            color={statusColor(request.status)}
-            label={statusLabel(request.status)}
-          />
-          {request.status === 'pending_manager' && (
-            <Button
-              aria-label={`Cancel ${request.startDate} leave`}
-              color="error"
-              size="small"
-              disabled={isUpdating}
-              onClick={onCancel}
-              sx={{ minWidth: 34, px: 0.75 }}
-            >
-              <Trash2 size={15} />
-            </Button>
-          )}
+    <Drawer
+      anchor="right"
+      open={Boolean(request)}
+      onClose={isUpdating ? undefined : onClose}
+      slotProps={{ paper: { sx: { width: { xs: '100%', sm: 500 }, maxWidth: '100vw' } } }}
+    >
+      <Stack sx={{ height: '100%' }}>
+        <Stack direction="row" sx={{ minHeight: 72, px: 2.5, alignItems: 'center', gap: 1.25 }}>
+          <CalendarDays size={19} />
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography sx={{ fontSize: 17, fontWeight: 850 }}>Leave request</Typography>
+            <Typography noWrap sx={{ color: 'text.secondary', fontSize: 11 }}>
+              {request ? leaveTypeLabels[request.leaveType] : ''}
+            </Typography>
+          </Box>
+          <Tooltip title="Close leave details">
+            <IconButton aria-label="Close leave details" onClick={onClose} disabled={isUpdating}>
+              <X size={19} />
+            </IconButton>
+          </Tooltip>
         </Stack>
+        <Divider />
+        {request && (
+          <Stack spacing={2.5} sx={{ flex: 1, overflowY: 'auto', p: 2.5 }}>
+            {error && <Alert severity="error">{error}</Alert>}
+            <DetailGrid
+              values={[
+                [
+                  'Dates',
+                  request.startDate === request.endDate
+                    ? request.startDate
+                    : `${request.startDate} - ${request.endDate}`,
+                ],
+                ['Day portion', dayPartLabel(request.dayPart)],
+                ['Requested days', String(request.requestedDays)],
+                ['Status', statusLabel(request.status)],
+                ['Submitted', new Date(request.submittedAt).toLocaleString('en-IN')],
+                ['Policy', request.approvalPolicyVersion],
+              ]}
+            />
+            <Detail label="Private reason" value={request.reason} />
+            {request.decision && (
+              <Box sx={{ pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+                <Typography sx={{ fontSize: 12.5, fontWeight: 800 }}>
+                  {request.decision.decision === 'approved' ? 'Approved' : 'Rejected'} by{' '}
+                  {request.decision.actorDisplayName}
+                </Typography>
+                <Typography sx={{ mt: 0.4, color: 'text.secondary', fontSize: 11.5 }}>
+                  {request.decision.comment || 'No decision comment.'}
+                </Typography>
+              </Box>
+            )}
+          </Stack>
+        )}
+        {request?.status === 'pending_manager' && (
+          <>
+            <Divider />
+            <Box sx={{ p: 2 }}>
+              <Button
+                fullWidth
+                color="error"
+                variant="outlined"
+                startIcon={<Trash2 size={16} />}
+                disabled={isUpdating}
+                onClick={() => onCancel(request.id)}
+              >
+                Cancel request
+              </Button>
+            </Box>
+          </>
+        )}
       </Stack>
-      <Typography sx={{ mt: 1.1, color: 'text.secondary', fontSize: 11.5 }}>
-        {request.reason}
+    </Drawer>
+  );
+}
+
+function DetailGrid({ values }: { values: Array<[string, string]> }) {
+  return (
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 2 }}>
+      {values.map(([label, value]) => (
+        <Detail key={label} label={label} value={value} />
+      ))}
+    </Box>
+  );
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <Box sx={{ minWidth: 0 }}>
+      <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>{label}</Typography>
+      <Typography sx={{ mt: 0.25, fontSize: 12.5, fontWeight: 700, overflowWrap: 'anywhere' }}>
+        {value}
       </Typography>
-      {request.decision && (
-        <Typography
-          sx={{
-            mt: 1,
-            pt: 1,
-            borderTop: '1px solid',
-            borderColor: 'divider',
-            color: 'text.secondary',
-            fontSize: 10.75,
-          }}
-        >
-          {request.decision.decision === 'approved' ? 'Approved' : 'Rejected'} by{' '}
-          {request.decision.actorDisplayName}
-          {request.decision.comment ? ` · ${request.decision.comment}` : ''}
-        </Typography>
-      )}
     </Box>
   );
 }

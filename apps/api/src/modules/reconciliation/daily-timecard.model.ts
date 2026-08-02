@@ -47,12 +47,10 @@ const dailyTimecardSchema = new Schema(
         workedMinutes: { type: Number, required: true, min: 0 },
         sessionCount: { type: Number, required: true, min: 0 },
       },
-      taskEntries: {
+      showEntries: {
         totalMinutes: { type: Number, required: true, min: 0 },
         entryCount: { type: Number, required: true, min: 0 },
-        draftCount: { type: Number, required: true, min: 0 },
-        submittedCount: { type: Number, required: true, min: 0 },
-        approvedCount: { type: Number, required: true, min: 0 },
+        averageProgress: { type: Number, required: true, min: 0, max: 100 },
       },
     },
     calculated: {
@@ -93,9 +91,8 @@ const dailyTimecardSchema = new Schema(
             'missing_web_stop',
             'source_time_mismatch',
             'insufficient_hours',
-            'task_outside_web_session',
-            'task_exceeds_presence',
-            'unsubmitted_task_time',
+            'show_time_outside_web_session',
+            'show_time_exceeds_presence',
             'invalid_event_order',
           ],
         },

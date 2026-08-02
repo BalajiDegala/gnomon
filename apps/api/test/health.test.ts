@@ -49,7 +49,6 @@ describe('protected routes', () => {
       calendar,
       holidayAdministration,
       leaveBalanceAdministration,
-      timesheetApprovals,
       locations,
       employeeLocations,
       managedCalendar,
@@ -64,7 +63,6 @@ describe('protected routes', () => {
       request(app).get('/api/v1/calendar'),
       request(app).get('/api/v1/administration/holidays'),
       request(app).get('/api/v1/administration/leave-balances'),
-      request(app).get('/api/v1/approvals/timesheets'),
       request(app).get('/api/v1/administration/locations'),
       request(app).get('/api/v1/administration/employee-locations?employeeCode=DDI0001'),
       request(app).get('/api/v1/calendar/managed'),
@@ -80,7 +78,6 @@ describe('protected routes', () => {
     expect(calendar.status).toBe(401);
     expect(holidayAdministration.status).toBe(401);
     expect(leaveBalanceAdministration.status).toBe(401);
-    expect(timesheetApprovals.status).toBe(401);
     expect(locations.status).toBe(401);
     expect(employeeLocations.status).toBe(401);
     expect(managedCalendar.status).toBe(401);
@@ -94,7 +91,6 @@ describe('protected routes', () => {
     expect(calendar.body.error.code).toBe('AUTHENTICATION_REQUIRED');
     expect(holidayAdministration.body.error.code).toBe('AUTHENTICATION_REQUIRED');
     expect(leaveBalanceAdministration.body.error.code).toBe('AUTHENTICATION_REQUIRED');
-    expect(timesheetApprovals.body.error.code).toBe('AUTHENTICATION_REQUIRED');
     expect(locations.body.error.code).toBe('AUTHENTICATION_REQUIRED');
     expect(employeeLocations.body.error.code).toBe('AUTHENTICATION_REQUIRED');
     expect(managedCalendar.body.error.code).toBe('AUTHENTICATION_REQUIRED');

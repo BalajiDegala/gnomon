@@ -1,6 +1,6 @@
 {
   "name": "gnomon",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "private": true,
   "description": "DIGITAL DOMAIN INDIA workforce management platform",
   "workspaces": [
@@ -14,6 +14,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "release:local-images": "bash scripts/build-import-local-images.sh",
+    "seed:demo": "npm run seed:demo --workspace @gnomon/api",
     "test": "npm run build --workspace @gnomon/shared && npm run test --workspaces --if-present",
     "typecheck": "npm run build --workspace @gnomon/shared && npm run typecheck --workspaces --if-present"
   },
@@ -25,6 +26,7 @@
   },
   "devDependencies": {
     "concurrently": "latest",
+    "cross-env": "^10.1.0",
     "esbuild": "0.28.1",
     "prettier": "latest",
     "typescript": "latest"

@@ -1,4 +1,4 @@
-import type { ShowStatus, TaskStatus } from '@gnomon/shared';
+import type { ShowStatus } from '@gnomon/shared';
 import { model, Schema, Types } from 'mongoose';
 
 export interface ShowDocument {
@@ -29,33 +29,6 @@ const showSchema = new Schema<ShowDocument>(
 showSchema.index({ status: 1, name: 1 });
 
 export const Show = model<ShowDocument>('Show', showSchema);
-
-export interface TaskDocument {
-  _id: Types.ObjectId;
-  showId: Types.ObjectId;
-  code: string;
-  name: string;
-  status: TaskStatus;
-  createdBy: Types.ObjectId;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-const taskSchema = new Schema<TaskDocument>(
-  {
-    showId: { type: Schema.Types.ObjectId, ref: 'Show', required: true },
-    code: { type: String, required: true, uppercase: true, trim: true, maxlength: 32 },
-    name: { type: String, required: true, trim: true, maxlength: 160 },
-    status: { type: String, enum: ['active', 'inactive'], required: true, default: 'active' },
-    createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-  },
-  { timestamps: true },
-);
-
-taskSchema.index({ showId: 1, code: 1 }, { unique: true });
-taskSchema.index({ showId: 1, status: 1, name: 1 });
-
-export const Task = model<TaskDocument>('Task', taskSchema);
 
 export interface ShowAssignmentDocument {
   _id: Types.ObjectId;

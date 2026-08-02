@@ -58,12 +58,12 @@ Do not deploy `latest` for normal releases. Use a tag that identifies the build,
 for example:
 
 ```text
-0.10.0
-0.10.0-20260727
-0.10.0-<short-git-commit>
+0.11.0
+0.11.0-20260801
+0.11.0-<short-git-commit>
 ```
 
-The examples below use `0.10.0`. Use the same tag for the API and web images so a
+The examples below use `0.11.0`. Use the same tag for the API and web images so a
 deployed pair can be identified easily.
 
 ## 3. Build the images
@@ -80,11 +80,11 @@ Docker socket:
 ./scripts/build-import-local-images.sh
 ```
 
-The script reads the release from `package.json` (`0.10.0` currently). An
+The script reads the release from `package.json` (`0.11.0` currently). An
 explicit version can also be supplied:
 
 ```bash
-./scripts/build-import-local-images.sh 0.10.0
+./scripts/build-import-local-images.sh 0.11.0
 ```
 
 The equivalent manual build commands are shown below.
@@ -92,20 +92,20 @@ The equivalent manual build commands are shown below.
 ```bash
 docker build \
   --file apps/api/Dockerfile \
-  --tag gnomon-api:0.10.0 \
+  --tag gnomon-api:0.11.0 \
   .
 
 docker build \
   --file apps/web/Dockerfile \
-  --tag gnomon-web:0.10.0 \
+  --tag gnomon-web:0.11.0 \
   .
 ```
 
 Confirm both images exist:
 
 ```bash
-docker image inspect gnomon-api:0.10.0
-docker image inspect gnomon-web:0.10.0
+docker image inspect gnomon-api:0.11.0
+docker image inspect gnomon-web:0.11.0
 docker images gnomon-api
 docker images gnomon-web
 ```
@@ -117,7 +117,7 @@ server differ:
 docker buildx build \
   --platform linux/amd64 \
   --file apps/api/Dockerfile \
-  --tag gnomon-api:0.10.0 \
+  --tag gnomon-api:0.11.0 \
   --load \
   .
 ```
@@ -164,15 +164,15 @@ Assume the registry is `registry.example.internal:5000`:
 docker login registry.example.internal:5000
 
 docker tag \
-  gnomon-api:0.10.0 \
-  registry.example.internal:5000/ddi/gnomon-api:0.10.0
+  gnomon-api:0.11.0 \
+  registry.example.internal:5000/ddi/gnomon-api:0.11.0
 
 docker tag \
-  gnomon-web:0.10.0 \
-  registry.example.internal:5000/ddi/gnomon-web:0.10.0
+  gnomon-web:0.11.0 \
+  registry.example.internal:5000/ddi/gnomon-web:0.11.0
 
-docker push registry.example.internal:5000/ddi/gnomon-api:0.10.0
-docker push registry.example.internal:5000/ddi/gnomon-web:0.10.0
+docker push registry.example.internal:5000/ddi/gnomon-api:0.11.0
+docker push registry.example.internal:5000/ddi/gnomon-web:0.11.0
 ```
 
 Create a Kubernetes pull secret when the registry requires authentication:
@@ -196,14 +196,14 @@ is required:
 
 ```bash
 docker save \
-  --output /tmp/gnomon-0.10.0-images.tar \
-  gnomon-api:0.10.0 \
-  gnomon-web:0.10.0
+  --output /tmp/gnomon-0.11.0-images.tar \
+  gnomon-api:0.11.0 \
+  gnomon-web:0.11.0
 
 sudo ctr \
   --address /var/run/containerd/containerd.sock \
   --namespace k8s.io \
-  images import /tmp/gnomon-0.10.0-images.tar
+  images import /tmp/gnomon-0.11.0-images.tar
 
 sudo ctr \
   --address /var/run/containerd/containerd.sock \
@@ -233,13 +233,13 @@ imagePullSecrets:
 web:
   image:
     repository: registry.example.internal:5000/ddi/gnomon-web
-    tag: '0.10.0'
+    tag: '0.11.0'
     pullPolicy: IfNotPresent
 
 api:
   image:
     repository: registry.example.internal:5000/ddi/gnomon-api
-    tag: '0.10.0'
+    tag: '0.11.0'
     pullPolicy: IfNotPresent
   webOrigin: http://gnomon.local
 
@@ -282,13 +282,13 @@ and use:
 web:
   image:
     repository: gnomon-web
-    tag: '0.10.0'
+    tag: '0.11.0'
     pullPolicy: IfNotPresent
 
 api:
   image:
     repository: gnomon-api
-    tag: '0.10.0'
+    tag: '0.11.0'
     pullPolicy: IfNotPresent
 
 mongodb:
@@ -353,8 +353,8 @@ Ingress LoadBalancer address, and then open `http://gnomon.local`:
 Build a new immutable tag; do not replace the old tag:
 
 ```bash
-docker build --file apps/api/Dockerfile --tag gnomon-api:0.10.0 .
-docker build --file apps/web/Dockerfile --tag gnomon-web:0.10.0 .
+docker build --file apps/api/Dockerfile --tag gnomon-api:0.11.0 .
+docker build --file apps/web/Dockerfile --tag gnomon-web:0.11.0 .
 ```
 
 Push or import the images, update both tags in `private-values.yaml`, and run the

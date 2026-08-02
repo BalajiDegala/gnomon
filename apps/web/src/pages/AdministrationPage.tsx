@@ -1,78 +1,83 @@
-import { Box, Button, Card, CardContent, Stack, Typography } from '@mui/material';
-import { ArrowLeft, CalendarCog, UploadCloud } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Stack } from '@mui/material';
+import { useEffect, useMemo } from 'react';
 
+import { PageHeader } from '../components/data-view/PageHeader';
+import { PageTabs, type PageTab } from '../components/data-view/PageTabs';
 import { useAuth } from '../lib/auth';
+import { parseEnumValue, useUrlQueryState } from '../lib/url-query-state';
 import { AttendanceImportsPage } from './AttendanceImportsPage';
 import { PolicyAdministrationPage } from './PolicyAdministrationPage';
+import { SecurityAdministrationSection } from './SecurityAdministrationSection';
 
-type AdministrationSection = 'imports' | 'leave_policy';
+type AdministrationSection = 'imports' | 'leave_policy' | 'security';
 
-export function AdministrationPage({ onBack }: { onBack: () => void }) {
+const administrationSections = ['imports', 'leave_policy', 'security'] as const;
+
+function parseAdministrationSection(value: string): AdministrationSection | null {
+  return parseEnumValue(value, administrationSections);
+}
+
+export function AdministrationPage() {
   const { user } = useAuth();
   const canImport = user?.permissions.includes('imports:create') ?? false;
   const canManagePolicy = user?.permissions.includes('policy:manage') ?? false;
   const canManageBalances = user?.permissions.includes('employee:update') ?? false;
   const canSeeLeavePolicy = canManagePolicy || canManageBalances;
-  const [section, setSection] = useState<AdministrationSection>(
-    canImport ? 'imports' : 'leave_policy',
+  const canManageSecurity =
+    user?.grants.some(
+      (grant) => grant.roleCode === 'SYSTEM_ADMIN' && grant.scope.type === 'company',
+    ) ?? false;
+  const defaultSection: AdministrationSection = canImport
+    ? 'imports'
+    : canSeeLeavePolicy
+      ? 'leave_policy'
+      : 'security';
+  const [section, setSection] = useUrlQueryState(
+    'section',
+    defaultSection,
+    parseAdministrationSection,
   );
 
   useEffect(() => {
-    if (section === 'imports' && !canImport && canSeeLeavePolicy) setSection('leave_policy');
-    if (section === 'leave_policy' && !canSeeLeavePolicy && canImport) setSection('imports');
-  }, [canImport, canSeeLeavePolicy, section]);
+    const canSeeSection =
+      (section === 'imports' && canImport) ||
+      (section === 'leave_policy' && canSeeLeavePolicy) ||
+      (section === 'security' && canManageSecurity);
+    if (!canSeeSection) setSection(defaultSection);
+  }, [canImport, canManageSecurity, canSeeLeavePolicy, defaultSection, section, setSection]);
+
+  const tabs = useMemo<ReadonlyArray<PageTab<AdministrationSection>>>(() => {
+    const availableTabs: PageTab<AdministrationSection>[] = [];
+    if (canImport) availableTabs.push({ value: 'imports', label: 'Attendance imports' });
+    if (canManageSecurity) availableTabs.push({ value: 'security', label: 'Access & roles' });
+    if (canSeeLeavePolicy) availableTabs.push({ value: 'leave_policy', label: 'Leave & holidays' });
+    return availableTabs;
+  }, [canImport, canManageSecurity, canSeeLeavePolicy]);
 
   return (
-    <Stack spacing={3} sx={{ width: '100%', maxWidth: 1280, mx: 'auto' }}>
-      <Box>
-        <Button color="inherit" startIcon={<ArrowLeft size={16} />} onClick={onBack} sx={{ mb: 2 }}>
-          Back to overview
-        </Button>
-        <Typography
-          sx={{ color: 'primary.dark', fontSize: 11, fontWeight: 800, letterSpacing: 1.3 }}
-        >
-          WORKFORCE OPERATIONS
-        </Typography>
-        <Typography variant="h4" sx={{ mt: 0.5, fontWeight: 850, letterSpacing: '-0.035em' }}>
-          Administration
-        </Typography>
-        <Typography sx={{ maxWidth: 780, color: 'text.secondary', fontSize: 13.5, mt: 0.7 }}>
-          Permission-aware operational tools for attendance evidence, leave balances, and
-          working-day policy.
-        </Typography>
-      </Box>
+    <Stack spacing={2.5} sx={{ width: '100%', maxWidth: 1440, mx: 'auto' }}>
+      <PageHeader
+        eyebrow="WORKFORCE OPERATIONS"
+        title="Administration"
+        meta="Attendance evidence, access control, leave balances, and working-day policy."
+      />
 
-      {canImport && canSeeLeavePolicy && (
-        <Card sx={{ boxShadow: 'none' }}>
-          <CardContent sx={{ p: 1 }}>
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-              <Button
-                fullWidth
-                variant={section === 'imports' ? 'contained' : 'text'}
-                startIcon={<UploadCloud size={16} />}
-                onClick={() => setSection('imports')}
-              >
-                Attendance imports
-              </Button>
-              <Button
-                fullWidth
-                variant={section === 'leave_policy' ? 'contained' : 'text'}
-                startIcon={<CalendarCog size={16} />}
-                onClick={() => setSection('leave_policy')}
-              >
-                Leave & holidays
-              </Button>
-            </Stack>
-          </CardContent>
-        </Card>
+      {tabs.length > 1 && (
+        <PageTabs
+          value={section}
+          tabs={tabs}
+          onChange={setSection}
+          ariaLabel="Administration sections"
+        />
       )}
 
       {section === 'imports' && canImport ? (
         <AttendanceImportsPage embedded />
-      ) : (
-        canSeeLeavePolicy && <PolicyAdministrationPage />
-      )}
+      ) : section === 'leave_policy' && canSeeLeavePolicy ? (
+        <PolicyAdministrationPage />
+      ) : section === 'security' && canManageSecurity ? (
+        <SecurityAdministrationSection />
+      ) : null}
     </Stack>
   );
 }

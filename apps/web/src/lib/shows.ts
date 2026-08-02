@@ -1,9 +1,4 @@
-import type {
-  AssignShowEmployeeRequest,
-  CreateShowRequest,
-  CreateTaskRequest,
-  ShowAdminDto,
-} from '@gnomon/shared';
+import type { CreateShowRequest, ShowAdminDto, UpdateShowRequest } from '@gnomon/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from './auth';
@@ -35,33 +30,26 @@ export function useShowAdministration() {
       request<ShowResponse>('/api/v1/shows', { method: 'POST', body: JSON.stringify(input) }),
     onSuccess: refresh,
   });
-  const createTask = useMutation({
-    mutationFn: ({ showId, input }: { showId: string; input: CreateTaskRequest }) =>
-      request<ShowResponse>(`/api/v1/shows/${showId}/tasks`, {
-        method: 'POST',
+  const updateShow = useMutation({
+    mutationFn: ({ showId, input }: { showId: string; input: UpdateShowRequest }) =>
+      request<ShowResponse>(`/api/v1/shows/${showId}`, {
+        method: 'PATCH',
         body: JSON.stringify(input),
       }),
     onSuccess: refresh,
   });
-  const assignEmployee = useMutation({
-    mutationFn: ({ showId, input }: { showId: string; input: AssignShowEmployeeRequest }) =>
-      request<ShowResponse>(`/api/v1/shows/${showId}/assignments`, {
-        method: 'POST',
-        body: JSON.stringify(input),
-      }),
-    onSuccess: refresh,
-  });
-
   return {
     canManage,
     shows: query.data?.shows ?? [],
     isLoading: query.isLoading,
-    error: query.error ?? createShow.error ?? createTask.error ?? assignEmployee.error,
-    isUpdating: createShow.isPending || createTask.isPending || assignEmployee.isPending,
+    error: query.error ?? createShow.error ?? updateShow.error,
+    isUpdating: createShow.isPending || updateShow.isPending,
     createShow: (input: CreateShowRequest) => createShow.mutateAsync(input),
-    createTask: (showId: string, input: CreateTaskRequest) =>
-      createTask.mutateAsync({ showId, input }),
-    assignEmployee: (showId: string, input: AssignShowEmployeeRequest) =>
-      assignEmployee.mutateAsync({ showId, input }),
+    updateShow: (showId: string, input: UpdateShowRequest) =>
+      updateShow.mutateAsync({ showId, input }),
+    clearError: () => {
+      createShow.reset();
+      updateShow.reset();
+    },
   };
 }

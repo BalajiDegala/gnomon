@@ -162,16 +162,15 @@ export async function getManagedCalendar(
   const window = monthWindow(month);
   const grants = attendanceTeamGrants(user);
   const directReportGrants = grants.filter((grant) => grant.scope.type === 'direct_reports');
-  const companyShowAccess = grants.some((grant) => grant.scope.type === 'company');
-  const scopedShowIds = validObjectIds(
-    grants.filter((grant) => grant.scope.type === 'show').flatMap((grant) => grant.scope.ids),
-  );
+  const companyTeamAccess = grants.some((grant) => grant.scope.type === 'company');
+  const companyShowAccess = false;
+  const scopedShowIds: Types.ObjectId[] = [];
 
-  const directReportFilter: Record<string, unknown> = {
-    reportingManagerId: new Types.ObjectId(user.employeeId),
-    status: 'active',
-  };
+  const directReportFilter: Record<string, unknown> = companyTeamAccess
+    ? { _id: { $ne: new Types.ObjectId(user.employeeId) }, status: 'active' }
+    : { reportingManagerId: new Types.ObjectId(user.employeeId), status: 'active' };
   if (
+    !companyTeamAccess &&
     directReportGrants.length > 0 &&
     !directReportGrants.some((grant) => grant.scope.ids.length === 0)
   ) {
@@ -181,7 +180,7 @@ export async function getManagedCalendar(
   }
 
   const [directReports, shows] = await Promise.all([
-    directReportGrants.length > 0
+    directReportGrants.length > 0 || companyTeamAccess
       ? Employee.find(directReportFilter)
           .select({ employeeCode: 1, firstName: 1, lastName: 1 })
           .sort({ firstName: 1, lastName: 1 })
@@ -229,12 +228,12 @@ export async function getManagedCalendar(
   }
 
   const audiences: ManagedCalendarDto['audiences'] = [];
-  if (directReportGrants.length > 0) {
+  if (directReportGrants.length > 0 || companyTeamAccess) {
     audiences.push({
       type: 'direct_reports',
       id: 'direct-reports',
       code: null,
-      label: 'My direct reports',
+      label: companyTeamAccess ? 'Company workforce' : 'My direct reports',
       memberCount: directReports.length,
     });
   }

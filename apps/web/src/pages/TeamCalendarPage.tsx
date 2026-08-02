@@ -1,8 +1,4 @@
-import type {
-  ManagedCalendarAudienceType,
-  ManagedCalendarDayDto,
-  ManagedCalendarMemberDto,
-} from '@gnomon/shared';
+import type { ManagedCalendarDayDto, ManagedCalendarMemberDto } from '@gnomon/shared';
 import {
   Alert,
   Box,
@@ -11,10 +7,6 @@ import {
   CardContent,
   Chip,
   CircularProgress,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
   Stack,
   Table,
   TableBody,
@@ -27,9 +19,10 @@ import {
   Typography,
 } from '@mui/material';
 import { ArrowLeft, ChevronLeft, ChevronRight, UsersRound } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo } from 'react';
 
 import { currentIndiaMonth, useManagedCalendar } from '../lib/calendar';
+import { parseYearMonth, useUrlQueryState } from '../lib/url-query-state';
 
 interface TeamCalendarPageProps {
   onBack: () => void;
@@ -129,41 +122,15 @@ function MobileMemberCalendar({ member }: { member: ManagedCalendarMemberDto }) 
 }
 
 export function TeamCalendarPage({ onBack }: TeamCalendarPageProps) {
-  const [month, setMonth] = useState(currentIndiaMonth);
-  const [audienceType, setAudienceType] = useState<ManagedCalendarAudienceType>();
-  const [showId, setShowId] = useState<string>();
-  const managed = useManagedCalendar(month, audienceType, showId);
+  const defaultMonth = useMemo(currentIndiaMonth, []);
+  const [month, setMonth] = useUrlQueryState('month', defaultMonth, parseYearMonth);
+  const managed = useManagedCalendar(month);
   const calendar = managed.calendar;
-  const candidateSelectedValue = audienceType
-    ? audienceType === 'direct_reports'
-      ? 'direct_reports'
-      : `show:${showId}`
-    : calendar?.selectedAudience?.type === 'show'
-      ? `show:${calendar.selectedAudience.id}`
-      : calendar?.selectedAudience?.type === 'direct_reports'
-        ? 'direct_reports'
-        : '';
-  const audienceValues = (calendar?.audiences ?? []).map((audience) =>
-    audience.type === 'show' ? `show:${audience.id}` : 'direct_reports',
-  );
-  const selectedValue = audienceValues.includes(candidateSelectedValue)
-    ? candidateSelectedValue
-    : '';
   const allDays = calendar?.members.flatMap((member) => member.days) ?? [];
   const unavailableDays = allDays.filter((day) => day.availability === 'unavailable').length;
   const partialDays = allDays.filter((day) => day.availability === 'partial').length;
   const pendingDays = allDays.filter((day) => day.availability === 'pending').length;
   const headerDays = calendar?.members[0]?.days ?? [];
-
-  const selectAudience = (value: string) => {
-    if (value === 'direct_reports') {
-      setAudienceType('direct_reports');
-      setShowId(undefined);
-      return;
-    }
-    setAudienceType('show');
-    setShowId(value.replace(/^show:/, ''));
-  };
 
   return (
     <Stack spacing={3} sx={{ width: '100%', maxWidth: 1500, mx: 'auto' }}>
@@ -180,8 +147,8 @@ export function TeamCalendarPage({ onBack }: TeamCalendarPageProps) {
           Team calendar
         </Typography>
         <Typography sx={{ maxWidth: 820, color: 'text.secondary', fontSize: 13.5, mt: 0.7 }}>
-          Direct-report and assigned-show availability. Leave reasons are never included in this
-          view.
+          Direct-report availability across attendance and leave. Leave reasons are never included
+          in this view.
         </Typography>
       </Box>
 
@@ -221,25 +188,6 @@ export function TeamCalendarPage({ onBack }: TeamCalendarPageProps) {
               </Button>
             </Stack>
             <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ gap: 1.25 }}>
-              <FormControl size="small" sx={{ minWidth: 240 }}>
-                <InputLabel id="calendar-audience-label">Calendar audience</InputLabel>
-                <Select
-                  labelId="calendar-audience-label"
-                  label="Calendar audience"
-                  value={selectedValue}
-                  onChange={(event) => selectAudience(event.target.value)}
-                >
-                  {(calendar?.audiences ?? []).map((audience) => (
-                    <MenuItem
-                      key={`${audience.type}:${audience.id}`}
-                      value={audience.type === 'show' ? `show:${audience.id}` : 'direct_reports'}
-                    >
-                      {audience.code ? `${audience.code} · ${audience.label}` : audience.label} (
-                      {audience.memberCount})
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
               <TextField
                 type="month"
                 label="Calendar month"
@@ -291,12 +239,10 @@ export function TeamCalendarPage({ onBack }: TeamCalendarPageProps) {
           <CircularProgress size={28} />
         </Box>
       ) : !calendar?.selectedAudience ? (
-        <Alert severity="info">
-          No direct-report or assigned-show calendar scope is configured.
-        </Alert>
+        <Alert severity="info">No team calendar scope is configured.</Alert>
       ) : calendar.members.length === 0 ? (
         <Alert severity="info">
-          No active employees are assigned to {calendar.selectedAudience.label} for this month.
+          No active employees are available in {calendar.selectedAudience.label} for this month.
         </Alert>
       ) : (
         <>
@@ -369,14 +315,16 @@ export function TeamCalendarPage({ onBack }: TeamCalendarPageProps) {
       )}
 
       <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
-        {Object.entries(availabilityTones).map(([status, tone]) => (
-          <Chip
-            key={status}
-            size="small"
-            label={tone.label}
-            sx={{ bgcolor: tone.background, color: tone.color }}
-          />
-        ))}
+        {Object.entries(availabilityTones)
+          .filter(([status]) => status !== 'not_assigned')
+          .map(([status, tone]) => (
+            <Chip
+              key={status}
+              size="small"
+              label={tone.label}
+              sx={{ bgcolor: tone.background, color: tone.color }}
+            />
+          ))}
       </Stack>
     </Stack>
   );

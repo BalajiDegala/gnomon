@@ -29,7 +29,7 @@ The calculation chooses the first available source in this order:
 3. Website sessions
 4. No primary source
 
-Task entries support comparison but never become the official attendance
+Show time entries support comparison but never become the official attendance
 source. If biometric evidence exists but is incomplete, a lower-priority source
 does not silently replace it. Access-card or website-led results are marked
 provisional.
@@ -37,16 +37,15 @@ provisional.
 For a complete biometric or access-card source, gross presence is the interval
 between its first opening event and last closing event. Website presence is the
 sum of its sessions, including elapsed time for a currently running session.
-Rejected task entries are excluded from task totals. Draft, submitted, and approved
-entries remain supporting task-time evidence; manager approval never promotes task
-time into the official attendance source.
+Every saved show entry remains supporting show-time evidence. Timesheets have no
+submission or approval state, and show time never becomes the official attendance source.
 
 ## Open and closed workdays
 
 Missing closing events and insufficient hours are not raised prematurely while
 the 07:00–07:00 window remains open. Once it closes on a Monday–Friday work
 date, the calculation checks all expected source openings/closings, website
-start/stop activity, the nine-hour requirement, and unsubmitted task drafts.
+start/stop activity and the nine-hour requirement.
 
 A closed working day without biometric, access-card, or website evidence is
 `absent`. A complete biometric day of at least 540 minutes is `present`.
@@ -63,9 +62,8 @@ The current calculation can emit:
 - Invalid opening/closing event order
 - Source start/end mismatch
 - Insufficient hours
-- Task time outside every website session
-- Task time exceeding known presence
-- Draft task time remaining after the workday closes
+- Show time outside every website session
+- Show time exceeding known presence
 
 Source endpoints are considered mismatched when their starts or ends differ by
 more than 15 minutes. This value is provisional and isolated in the service as
@@ -84,7 +82,7 @@ While a request is pending, the calculated evidence remains visible and the dail
 record is marked `pending`. Final approval sets `finalisation.isFinal` to true,
 uses `regularised` as the final source, and records the requested start, end,
 minutes, final approver, and decision time. Raw biometric, access-card, website,
-and task evidence is never rewritten. See
+and show-time evidence is never rewritten. See
 [`REGULARISATION_WORKFLOW.md`](REGULARISATION_WORKFLOW.md).
 
 ## Approved leave
@@ -92,7 +90,7 @@ and task evidence is never rewritten. See
 An approved full-day leave request overrides the calculated attendance status with
 `leave`, clears attendance anomalies for that date, and finalises the daily record
 with `approved_leave` as its source. The approver and decision time are retained.
-All biometric, access-card, website, and task summaries remain unchanged.
+All biometric, access-card, website, and show-time summaries remain unchanged.
 
 An approved first- or second-half request does not classify the entire day as leave.
 It reduces the calculated requirement from 540 to 270 minutes, recalculates the
@@ -110,7 +108,7 @@ when the work date is current/past. See
 An applicable active holiday overrides ordinary calculated attendance with `holiday`,
 clears daily anomalies, and finalises the derived record with `holiday` as its source.
 The policy actor and update time are retained while biometric, access-card, website,
-and task summaries remain intact. Approved regularisation and approved leave retain
+and show-time summaries remain intact. Approved regularisation and approved leave retain
 precedence over holiday state.
 
 Company holidays apply to every employee. Studio holidays apply when the employee's
@@ -141,7 +139,7 @@ Future work dates are rejected. The `/api/v1/timecard/today` response also
 includes the live reconciliation so start/stop changes update the dashboard
 immediately.
 
-The responsive dashboard compares biometric, access-card, website, and task
+The responsive dashboard compares biometric, access-card, website, and show-time
 minutes; displays the primary source and provisional state; shows progress
 against 540 minutes; and translates anomaly codes into review messages.
 

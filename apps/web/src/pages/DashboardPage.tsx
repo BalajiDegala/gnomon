@@ -62,9 +62,8 @@ const anomalyLabels: Record<ReconciliationAnomaly, string> = {
   missing_web_stop: 'Missing website stop',
   source_time_mismatch: 'Source times differ',
   insufficient_hours: 'Below nine hours',
-  task_outside_web_session: 'Task outside website session',
-  task_exceeds_presence: 'Task time exceeds presence',
-  unsubmitted_task_time: 'Draft task time remains',
+  show_time_outside_web_session: 'Show time outside website session',
+  show_time_exceeds_presence: 'Show time exceeds presence',
   invalid_event_order: 'Invalid event order',
 };
 
@@ -87,7 +86,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
   }).format(new Date());
   const completion = Math.min(100, (timecard.trackedSeconds / (9 * 3_600)) * 100);
   const nextActions = [
-    { view: 'timesheets' as const, label: 'Task time entries', icon: FileClock },
+    { view: 'timesheets' as const, label: 'Show time entries', icon: FileClock },
     ...(user?.permissions.includes('regularisation:create')
       ? [
           {
@@ -101,10 +100,7 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
       ? [{ view: 'leave' as const, label: 'Leave requests', icon: CalendarDays }]
       : []),
     ...(user?.permissions.some(
-      (permission) =>
-        permission === 'regularisation:approve' ||
-        permission === 'leave:approve' ||
-        permission === 'timesheet:approve',
+      (permission) => permission === 'regularisation:approve' || permission === 'leave:approve',
     )
       ? [{ view: 'approvals' as const, label: 'Manager approvals', icon: ShieldCheck }]
       : []),
@@ -667,8 +663,8 @@ function ReconciliationCard({
                 value={formatMinutesCompact(reconciliation.sourceSummary.website.workedMinutes)}
               />
               <ReconciliationMetric
-                label="Task entries"
-                value={formatMinutesCompact(reconciliation.sourceSummary.taskEntries.totalMinutes)}
+                label="Show entries"
+                value={formatMinutesCompact(reconciliation.sourceSummary.showEntries.totalMinutes)}
               />
             </Box>
 

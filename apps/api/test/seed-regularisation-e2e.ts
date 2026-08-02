@@ -12,7 +12,7 @@ import { DailyTimecard } from '../src/modules/reconciliation/daily-timecard.mode
 import { RegularisationRequest } from '../src/modules/regularisations/regularisation.model.js';
 import { RoleAssignment } from '../src/modules/roles/role.model.js';
 import { ensureSystemRoles } from '../src/modules/roles/system-roles.js';
-import { Show, ShowAssignment, Task } from '../src/modules/shows/show.model.js';
+import { Show } from '../src/modules/shows/show.model.js';
 import { TimeEntry } from '../src/modules/timesheets/time-entry.model.js';
 
 const FixtureEnvSchema = z.object({
@@ -110,8 +110,6 @@ async function seedWorkflowFixtures(): Promise<void> {
     DailyTimecard.deleteMany({ employeeId: { $in: fixtureEmployeeIds } }),
     RoleAssignment.deleteMany({ userId: { $in: fixtureUserIds } }),
     TimeEntry.deleteMany({}),
-    ShowAssignment.deleteMany({}),
-    Task.deleteMany({}),
     Show.deleteMany({}),
     EmployeeLocationAssignment.deleteMany({ employeeId: { $in: fixtureEmployeeIds } }),
     Location.deleteMany({}),
@@ -133,15 +131,6 @@ async function seedWorkflowFixtures(): Promise<void> {
     status: 'active',
     createdBy: managerUser._id,
   });
-  await ShowAssignment.create({
-    showId: calendarShow._id,
-    employeeId: employee._id,
-    status: 'active',
-    activeFrom: new Date(),
-    activeUntil: null,
-    assignedBy: managerUser._id,
-  });
-
   await RoleAssignment.insertMany([
     {
       userId: employeeUser._id,

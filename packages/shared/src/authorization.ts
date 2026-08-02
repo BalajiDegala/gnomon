@@ -12,7 +12,6 @@ export const permissionCodes = [
   'leave:create',
   'leave:approve',
   'timesheet:create',
-  'timesheet:approve',
   'show:manage',
   'imports:create',
   'policy:manage',

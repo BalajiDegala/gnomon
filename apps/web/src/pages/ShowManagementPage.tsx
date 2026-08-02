@@ -1,422 +1,460 @@
+import type { ShowAdminDto, ShowStatus } from '@gnomon/shared';
 import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Divider,
+  Drawer,
+  FormControl,
+  IconButton,
+  InputLabel,
+  MenuItem,
+  Select,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
+import { BriefcaseBusiness, ChevronRight, Pencil, Plus, X } from 'lucide-react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
+
 import {
-  ArrowLeft,
-  BriefcaseBusiness,
-  CheckCircle2,
-  ListChecks,
-  Plus,
-  Sparkles,
-  UserPlus,
-  UsersRound,
-} from 'lucide-react';
-import { useEffect, useState, type FormEvent } from 'react';
-
+  DataTable,
+  type DataTableColumn,
+  type SortDirection,
+} from '../components/data-view/DataTable';
+import { FilterBar } from '../components/data-view/FilterBar';
+import { PageHeader } from '../components/data-view/PageHeader';
+import { PageTabs, type PageTab } from '../components/data-view/PageTabs';
 import { useShowAdministration } from '../lib/shows';
+import { parseEnumValue, parseShortSearch, useUrlQueryState } from '../lib/url-query-state';
 
-interface ShowManagementPageProps {
-  onBack: () => void;
+type ShowTab = 'all' | ShowStatus;
+type ShowSortKey = 'name' | 'code' | 'status';
+
+const showTabs = ['all', 'active', 'on_hold', 'completed', 'archived'] as const;
+const showSortKeys = ['name', 'code', 'status'] as const;
+const sortDirections = ['asc', 'desc'] as const;
+const pageSizes = [10, 25, 50, 100] as const;
+
+function parseShowTab(value: string): ShowTab | null {
+  return parseEnumValue(value, showTabs);
 }
 
-export function ShowManagementPage({ onBack }: ShowManagementPageProps) {
+function parseShowSort(value: string): ShowSortKey | null {
+  return parseEnumValue(value, showSortKeys);
+}
+
+function parseSortDirection(value: string): SortDirection | null {
+  return parseEnumValue(value, sortDirections);
+}
+
+function parsePage(value: string): number | null {
+  const page = Number(value);
+  return Number.isInteger(page) && page >= 1 ? page : null;
+}
+
+function parsePageSize(value: string): number | null {
+  const pageSize = Number(value);
+  return pageSizes.includes(pageSize as (typeof pageSizes)[number]) ? pageSize : null;
+}
+
+function parseShowId(value: string): string | null {
+  return /^[a-f\d]{24}$/i.test(value) ? value : null;
+}
+
+function showStatusLabel(status: ShowStatus): string {
+  return { active: 'Active', on_hold: 'On hold', completed: 'Completed', archived: 'Archived' }[
+    status
+  ];
+}
+
+function statusColor(status: ShowStatus): 'success' | 'warning' | 'info' | 'default' {
+  if (status === 'active') return 'success';
+  if (status === 'on_hold') return 'warning';
+  if (status === 'completed') return 'info';
+  return 'default';
+}
+
+export function ShowManagementPage() {
   const administration = useShowAdministration();
-  const [selectedShowId, setSelectedShowId] = useState('');
+  const [tab, setTab] = useUrlQueryState<ShowTab>('tab', 'all', parseShowTab);
+  const [search, setSearch] = useUrlQueryState('q', '', parseShortSearch);
+  const [sortKey, setSortKey] = useUrlQueryState<ShowSortKey>('sort', 'name', parseShowSort);
+  const [sortDirection, setSortDirection] = useUrlQueryState<SortDirection>(
+    'order',
+    'asc',
+    parseSortDirection,
+  );
+  const [pageNumber, setPageNumber] = useUrlQueryState('page', 1, parsePage);
+  const [rowsPerPage, setRowsPerPage] = useUrlQueryState('size', 25, parsePageSize);
+  const [selectedShowId, setSelectedShowId] = useUrlQueryState('show', '', parseShowId);
+  const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null);
   const [showCode, setShowCode] = useState('');
   const [showName, setShowName] = useState('');
-  const [taskCode, setTaskCode] = useState('');
-  const [taskName, setTaskName] = useState('');
-  const [employeeCode, setEmployeeCode] = useState('');
+  const [showStatus, setShowStatus] = useState<ShowStatus>('active');
   const selectedShow = administration.shows.find((show) => show.id === selectedShowId);
+  const formOpen = formMode !== null;
 
   useEffect(() => {
-    if (!administration.shows.length) return;
-    if (!administration.shows.some((show) => show.id === selectedShowId)) {
-      setSelectedShowId(administration.shows[0]!.id);
-    }
-  }, [administration.shows, selectedShowId]);
+    if (!administration.isLoading && selectedShowId && !selectedShow) setSelectedShowId('');
+  }, [administration.isLoading, selectedShow, selectedShowId, setSelectedShowId]);
+
+  const tabDefinitions = useMemo<ReadonlyArray<PageTab<ShowTab>>>(
+    () => [
+      { value: 'all', label: 'All', count: administration.shows.length },
+      ...(['active', 'on_hold', 'completed', 'archived'] as const).map((status) => ({
+        value: status,
+        label: showStatusLabel(status),
+        count: administration.shows.filter((show) => show.status === status).length,
+      })),
+    ],
+    [administration.shows],
+  );
+
+  const filteredShows = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const direction = sortDirection === 'asc' ? 1 : -1;
+    return administration.shows
+      .filter((show) => tab === 'all' || show.status === tab)
+      .filter(
+        (show) =>
+          !term || show.code.toLowerCase().includes(term) || show.name.toLowerCase().includes(term),
+      )
+      .slice()
+      .sort(
+        (left, right) =>
+          left[sortKey].localeCompare(right[sortKey], undefined, { numeric: true }) * direction ||
+          left.code.localeCompare(right.code),
+      );
+  }, [administration.shows, search, sortDirection, sortKey, tab]);
+
+  useEffect(() => {
+    const lastPage = Math.max(1, Math.ceil(filteredShows.length / rowsPerPage));
+    if (pageNumber > lastPage) setPageNumber(lastPage);
+  }, [filteredShows.length, pageNumber, rowsPerPage, setPageNumber]);
+
+  const openCreate = () => {
+    administration.clearError();
+    setShowCode('');
+    setShowName('');
+    setShowStatus('active');
+    setFormMode('create');
+  };
+
+  const openEdit = (show: ShowAdminDto) => {
+    administration.clearError();
+    setShowCode(show.code);
+    setShowName(show.name);
+    setShowStatus(show.status);
+    setFormMode('edit');
+  };
+
+  const closeForm = () => {
+    setFormMode(null);
+    administration.clearError();
+  };
 
   const submitShow = async (event: FormEvent) => {
     event.preventDefault();
     try {
-      const response = await administration.createShow({ code: showCode, name: showName });
-      setSelectedShowId(response.show.id);
+      const response =
+        formMode === 'edit' && selectedShow
+          ? await administration.updateShow(selectedShow.id, {
+              code: showCode,
+              name: showName,
+              status: showStatus,
+            })
+          : await administration.createShow({ code: showCode, name: showName });
       setShowCode('');
       setShowName('');
+      setFormMode(null);
+      setSelectedShowId(response.show.id);
     } catch {
-      // The mutation error is rendered by the administration hook.
-    }
-  };
-  const submitTask = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!selectedShow) return;
-    try {
-      await administration.createTask(selectedShow.id, { code: taskCode, name: taskName });
-      setTaskCode('');
-      setTaskName('');
-    } catch {
-      // The mutation error is rendered by the administration hook.
-    }
-  };
-  const submitAssignment = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!selectedShow) return;
-    try {
-      await administration.assignEmployee(selectedShow.id, { employeeCode });
-      setEmployeeCode('');
-    } catch {
-      // The mutation error is rendered by the administration hook.
+      // The mutation error is rendered in the dialog.
     }
   };
 
+  const updateSort = (key: ShowSortKey) => {
+    if (key === sortKey) setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    else {
+      setSortKey(key);
+      setSortDirection('asc');
+    }
+    setPageNumber(1);
+  };
+
+  const columns: ReadonlyArray<DataTableColumn<ShowAdminDto, ShowSortKey>> = [
+    {
+      id: 'show',
+      label: 'Show',
+      sortKey: 'name',
+      minWidth: 280,
+      render: (show) => (
+        <Box>
+          <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 800 }}>
+            {show.name}
+          </Typography>
+          <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>{show.code}</Typography>
+        </Box>
+      ),
+    },
+    { id: 'code', label: 'Code', sortKey: 'code', width: 180, render: (show) => show.code },
+    {
+      id: 'status',
+      label: 'Status',
+      sortKey: 'status',
+      width: 150,
+      render: (show) => (
+        <Chip
+          size="small"
+          variant="outlined"
+          color={statusColor(show.status)}
+          label={showStatusLabel(show.status)}
+        />
+      ),
+    },
+    {
+      id: 'details',
+      label: 'Details',
+      align: 'right',
+      width: 72,
+      render: (show) => (
+        <Tooltip title={`Open ${show.name}`}>
+          <IconButton
+            size="small"
+            aria-label={`Open ${show.name}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              setSelectedShowId(show.id);
+            }}
+          >
+            <ChevronRight size={17} />
+          </IconButton>
+        </Tooltip>
+      ),
+    },
+  ];
+
   return (
-    <Stack spacing={3} sx={{ width: '100%', maxWidth: 1280, mx: 'auto' }}>
-      <Box>
-        <Button color="inherit" startIcon={<ArrowLeft size={16} />} onClick={onBack} sx={{ mb: 2 }}>
-          Back to overview
-        </Button>
-        <Typography
-          sx={{ color: 'primary.dark', fontSize: 11, fontWeight: 800, letterSpacing: 1.3 }}
-        >
-          SHOW ADMINISTRATION
-        </Typography>
-        <Typography variant="h4" sx={{ mt: 0.5, fontWeight: 850, letterSpacing: '-0.035em' }}>
-          Shows &amp; tasks
-        </Typography>
-        <Typography sx={{ maxWidth: 760, color: 'text.secondary', fontSize: 13.5, mt: 0.7 }}>
-          Create VFX shows, define their task catalogue, and control which employees can record time
-          against each show.
-        </Typography>
-      </Box>
+    <Stack spacing={2.5} sx={{ width: '100%', maxWidth: 1440, mx: 'auto' }}>
+      <PageHeader
+        eyebrow="SHOW OPERATIONS"
+        title="Shows"
+        meta={`${administration.shows.length} managed shows`}
+        action={
+          administration.canManage ? (
+            <Button variant="contained" startIcon={<Plus size={17} />} onClick={openCreate}>
+              Add show
+            </Button>
+          ) : undefined
+        }
+      />
 
       {!administration.canManage && (
         <Alert severity="warning">Your account does not have show management permission.</Alert>
       )}
-      {administration.error && <Alert severity="error">{administration.error.message}</Alert>}
+      {administration.error && !formOpen && (
+        <Alert severity="error">{administration.error.message}</Alert>
+      )}
 
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr', lg: 'minmax(300px, .65fr) minmax(0, 1.35fr)' },
-          gap: 2.5,
-          alignItems: 'start',
+      <Box>
+        <PageTabs
+          value={tab}
+          tabs={tabDefinitions}
+          onChange={(value) => {
+            setTab(value);
+            setPageNumber(1);
+          }}
+          ariaLabel="Show status"
+        />
+        <FilterBar
+          search={search}
+          onSearchChange={(value) => {
+            setSearch(value);
+            setPageNumber(1);
+          }}
+          searchLabel="Search shows"
+          resultCount={filteredShows.length}
+          resultLabel={filteredShows.length === 1 ? 'show' : 'shows'}
+          hasActiveFilters={Boolean(search) || tab !== 'all'}
+          onClear={() => {
+            setSearch('');
+            setTab('all');
+            setPageNumber(1);
+          }}
+        />
+      </Box>
+
+      <DataTable
+        ariaLabel="Managed shows"
+        rows={filteredShows}
+        columns={columns}
+        getRowId={(show) => show.id}
+        sortKey={sortKey}
+        sortDirection={sortDirection}
+        onSort={updateSort}
+        page={pageNumber - 1}
+        rowsPerPage={rowsPerPage}
+        onPageChange={(page) => setPageNumber(page + 1)}
+        onRowsPerPageChange={(size) => {
+          setRowsPerPage(size);
+          setPageNumber(1);
         }}
+        onRowClick={(show) => setSelectedShowId(show.id)}
+        isLoading={administration.isLoading}
+        emptyTitle={administration.shows.length ? 'No shows match this view' : 'No shows yet'}
+        emptyMessage={
+          administration.shows.length
+            ? 'Change or clear the active filters.'
+            : 'Add the first active show for employee time entry.'
+        }
+      />
+
+      <Dialog
+        open={formOpen}
+        onClose={administration.isUpdating ? undefined : closeForm}
+        fullWidth
+        maxWidth="sm"
       >
-        <Stack spacing={2.5}>
-          <Card sx={{ boxShadow: 'none' }}>
-            <CardContent
-              component="form"
-              onSubmit={(event) => void submitShow(event)}
-              sx={{ p: 3 }}
-            >
-              <Stack direction="row" sx={{ alignItems: 'center', gap: 1, mb: 2.25 }}>
-                <Plus size={18} color="#137f8d" />
-                <Typography sx={{ fontSize: 15, fontWeight: 800 }}>Create a show</Typography>
-              </Stack>
-              <Stack spacing={2}>
-                <TextField
-                  label="Show code"
-                  placeholder="SHOW-001"
-                  value={showCode}
-                  onChange={(event) => setShowCode(event.target.value.toUpperCase())}
-                  slotProps={{ htmlInput: { maxLength: 24 } }}
-                  required
-                />
-                <TextField
-                  label="Show name"
-                  placeholder="Project or production name"
-                  value={showName}
-                  onChange={(event) => setShowName(event.target.value)}
-                  slotProps={{ htmlInput: { maxLength: 160 } }}
-                  required
-                />
-                <Button
-                  type="submit"
-                  variant="contained"
-                  disabled={
-                    showCode.trim().length < 2 ||
-                    showName.trim().length < 2 ||
-                    administration.isUpdating
-                  }
-                  startIcon={<BriefcaseBusiness size={17} />}
-                >
-                  Create show
-                </Button>
-              </Stack>
-            </CardContent>
-          </Card>
-
-          <Card sx={{ boxShadow: 'none' }}>
-            <CardContent sx={{ p: 2.5 }}>
-              <Typography sx={{ fontSize: 14, fontWeight: 800 }}>Managed shows</Typography>
-              <Typography sx={{ color: 'text.secondary', fontSize: 11, mt: 0.25, mb: 1.5 }}>
-                Limited by the show scope on your active role assignments.
-              </Typography>
-              {administration.isLoading ? (
-                <Box sx={{ py: 4, textAlign: 'center' }}>
-                  <CircularProgress size={22} />
-                </Box>
-              ) : administration.shows.length ? (
-                <Stack spacing={0.75}>
-                  {administration.shows.map((show) => (
-                    <Button
-                      key={show.id}
-                      color="inherit"
-                      onClick={() => setSelectedShowId(show.id)}
-                      sx={{
-                        justifyContent: 'flex-start',
-                        px: 1.5,
-                        py: 1.25,
-                        textAlign: 'left',
-                        border: '1px solid',
-                        borderColor: show.id === selectedShowId ? 'primary.main' : 'divider',
-                        bgcolor: show.id === selectedShowId ? '#eef9fa' : '#fff',
-                      }}
-                    >
-                      <Box sx={{ minWidth: 0 }}>
-                        <Typography sx={{ fontSize: 12.5, fontWeight: 800 }}>
-                          {show.code}
-                        </Typography>
-                        <Typography noWrap sx={{ color: 'text.secondary', fontSize: 11 }}>
-                          {show.name}
-                        </Typography>
-                      </Box>
-                    </Button>
-                  ))}
-                </Stack>
-              ) : (
-                <Typography
-                  sx={{ py: 3, textAlign: 'center', color: 'text.secondary', fontSize: 12 }}
-                >
-                  No shows have been created in your scope.
-                </Typography>
+        <Box component="form" onSubmit={(event) => void submitShow(event)}>
+          <DialogTitle sx={{ fontSize: 18, fontWeight: 850 }}>
+            {formMode === 'edit' ? 'Edit show' : 'Add show'}
+          </DialogTitle>
+          <DialogContent dividers>
+            <Stack spacing={2} sx={{ pt: 0.5 }}>
+              {administration.error && (
+                <Alert severity="error">{administration.error.message}</Alert>
               )}
-            </CardContent>
-          </Card>
-        </Stack>
-
-        {selectedShow ? (
-          <Stack spacing={2.5}>
-            <Card
-              sx={{
-                border: 0,
-                color: '#fff',
-                background:
-                  'radial-gradient(circle at 85% 10%, rgba(56,211,222,.2), transparent 38%), linear-gradient(135deg, #111c30, #0b1423)',
-              }}
-            >
-              <CardContent sx={{ p: { xs: 3, md: 3.5 } }}>
-                <Stack
-                  direction={{ xs: 'column', sm: 'row' }}
-                  sx={{ justifyContent: 'space-between', gap: 2 }}
-                >
-                  <Box>
-                    <Chip
-                      size="small"
-                      color="success"
-                      label={selectedShow.status}
-                      icon={<CheckCircle2 size={13} />}
-                    />
-                    <Typography variant="h5" sx={{ mt: 1.5, fontWeight: 850 }}>
-                      {selectedShow.name}
-                    </Typography>
-                    <Typography sx={{ color: 'rgba(255,255,255,.5)', fontSize: 12 }}>
-                      {selectedShow.code}
-                    </Typography>
-                  </Box>
-                  <Stack direction="row" spacing={1.25}>
-                    <Metric value={selectedShow.tasks.length} label="Tasks" />
-                    <Metric value={selectedShow.assignments.length} label="Artists" />
-                  </Stack>
-                </Stack>
-              </CardContent>
-            </Card>
-
-            <Box
-              sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 2.5 }}
-            >
-              <Card sx={{ boxShadow: 'none' }}>
-                <CardContent sx={{ p: 3 }}>
-                  <Stack direction="row" sx={{ alignItems: 'center', gap: 1, mb: 2 }}>
-                    <ListChecks size={18} color="#137f8d" />
-                    <Typography sx={{ fontSize: 14.5, fontWeight: 800 }}>Task catalogue</Typography>
-                  </Stack>
-                  <Stack
-                    component="form"
-                    onSubmit={(event) => void submitTask(event)}
-                    spacing={1.5}
+              <TextField
+                autoFocus
+                label="Show code"
+                placeholder="SHOW-001"
+                value={showCode}
+                onChange={(event) => setShowCode(event.target.value.toUpperCase())}
+                slotProps={{ htmlInput: { maxLength: 24 } }}
+                required
+              />
+              <TextField
+                label="Show name"
+                placeholder="Project or production name"
+                value={showName}
+                onChange={(event) => setShowName(event.target.value)}
+                slotProps={{ htmlInput: { maxLength: 160 } }}
+                required
+              />
+              {formMode === 'edit' && (
+                <FormControl fullWidth>
+                  <InputLabel id="show-status-label">Status</InputLabel>
+                  <Select
+                    labelId="show-status-label"
+                    label="Status"
+                    value={showStatus}
+                    onChange={(event) => setShowStatus(event.target.value as ShowStatus)}
                   >
-                    <TextField
-                      size="small"
-                      label="Task code"
-                      placeholder="COMP"
-                      value={taskCode}
-                      onChange={(event) => setTaskCode(event.target.value.toUpperCase())}
-                      required
-                    />
-                    <TextField
-                      size="small"
-                      label="Task name"
-                      placeholder="Compositing"
-                      value={taskName}
-                      onChange={(event) => setTaskName(event.target.value)}
-                      required
-                    />
-                    <Button
-                      type="submit"
-                      variant="outlined"
-                      disabled={
-                        taskCode.trim().length < 2 ||
-                        taskName.trim().length < 2 ||
-                        administration.isUpdating
-                      }
-                    >
-                      Add task
-                    </Button>
-                  </Stack>
-                  <Stack spacing={0.75} sx={{ mt: 2 }}>
-                    {selectedShow.tasks.map((task) => (
-                      <Stack
-                        key={task.id}
-                        direction="row"
-                        sx={{
-                          justifyContent: 'space-between',
-                          p: 1.25,
-                          borderRadius: 2,
-                          bgcolor: '#f7f9fb',
-                        }}
-                      >
-                        <Box>
-                          <Typography sx={{ fontSize: 12, fontWeight: 800 }}>
-                            {task.code}
-                          </Typography>
-                          <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
-                            {task.name}
-                          </Typography>
-                        </Box>
-                        <Chip size="small" label={task.status} color="success" variant="outlined" />
-                      </Stack>
+                    {(['active', 'on_hold', 'completed', 'archived'] as const).map((status) => (
+                      <MenuItem key={status} value={status}>
+                        {showStatusLabel(status)}
+                      </MenuItem>
                     ))}
-                  </Stack>
-                </CardContent>
-              </Card>
+                  </Select>
+                </FormControl>
+              )}
+            </Stack>
+          </DialogContent>
+          <DialogActions sx={{ p: 2 }}>
+            <Button color="inherit" onClick={closeForm} disabled={administration.isUpdating}>
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              disabled={
+                showCode.trim().length < 2 ||
+                showName.trim().length < 2 ||
+                administration.isUpdating
+              }
+              startIcon={
+                administration.isUpdating ? (
+                  <CircularProgress size={15} />
+                ) : (
+                  <BriefcaseBusiness size={16} />
+                )
+              }
+            >
+              {formMode === 'edit' ? 'Save changes' : 'Create show'}
+            </Button>
+          </DialogActions>
+        </Box>
+      </Dialog>
 
-              <Card sx={{ boxShadow: 'none' }}>
-                <CardContent sx={{ p: 3 }}>
-                  <Stack direction="row" sx={{ alignItems: 'center', gap: 1, mb: 2 }}>
-                    <UserPlus size={18} color="#137f8d" />
-                    <Typography sx={{ fontSize: 14.5, fontWeight: 800 }}>
-                      Employee assignment
-                    </Typography>
-                  </Stack>
-                  <Stack
-                    component="form"
-                    onSubmit={(event) => void submitAssignment(event)}
-                    spacing={1.5}
-                  >
-                    <TextField
-                      size="small"
-                      label="Employee code"
-                      placeholder="DDI0001"
-                      value={employeeCode}
-                      onChange={(event) => setEmployeeCode(event.target.value.toUpperCase())}
-                      required
-                    />
-                    <Button
-                      type="submit"
-                      variant="outlined"
-                      disabled={!employeeCode.trim() || administration.isUpdating}
-                    >
-                      Assign employee
-                    </Button>
-                  </Stack>
-                  <Stack spacing={0.75} sx={{ mt: 2 }}>
-                    {selectedShow.assignments.map((assignment) => (
-                      <Stack
-                        key={assignment.id}
-                        direction="row"
-                        sx={{
-                          alignItems: 'center',
-                          gap: 1.25,
-                          p: 1.25,
-                          borderRadius: 2,
-                          bgcolor: '#f7f9fb',
-                        }}
-                      >
-                        <Box
-                          sx={{
-                            width: 30,
-                            height: 30,
-                            display: 'grid',
-                            placeItems: 'center',
-                            borderRadius: '50%',
-                            bgcolor: '#e8f5f7',
-                            color: '#137f8d',
-                          }}
-                        >
-                          <UsersRound size={14} />
-                        </Box>
-                        <Box sx={{ minWidth: 0, flex: 1 }}>
-                          <Typography noWrap sx={{ fontSize: 12, fontWeight: 750 }}>
-                            {assignment.displayName}
-                          </Typography>
-                          <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
-                            {assignment.employeeCode}
-                          </Typography>
-                        </Box>
-                        <Chip size="small" label={assignment.status} color="success" />
-                      </Stack>
-                    ))}
-                  </Stack>
-                </CardContent>
-              </Card>
+      <Drawer
+        anchor="right"
+        open={Boolean(selectedShow)}
+        onClose={() => setSelectedShowId('')}
+        slotProps={{ paper: { sx: { width: { xs: '100%', sm: 440 }, maxWidth: '100vw' } } }}
+      >
+        <Stack sx={{ height: '100%' }}>
+          <Stack direction="row" sx={{ minHeight: 72, px: 2.5, alignItems: 'center', gap: 1.5 }}>
+            <Box sx={{ minWidth: 0, flex: 1 }}>
+              <Typography noWrap sx={{ fontSize: 17, fontWeight: 850 }}>
+                {selectedShow?.name ?? 'Show details'}
+              </Typography>
+              <Typography sx={{ color: 'text.secondary', fontSize: 11 }}>
+                {selectedShow?.code}
+              </Typography>
             </Box>
+            {selectedShow && (
+              <Chip
+                size="small"
+                variant="outlined"
+                color={statusColor(selectedShow.status)}
+                label={showStatusLabel(selectedShow.status)}
+              />
+            )}
+            <Tooltip title="Close show details">
+              <IconButton aria-label="Close show details" onClick={() => setSelectedShowId('')}>
+                <X size={19} />
+              </IconButton>
+            </Tooltip>
           </Stack>
-        ) : (
-          <Card sx={{ boxShadow: 'none' }}>
-            <CardContent
-              sx={{ minHeight: 420, display: 'grid', placeItems: 'center', textAlign: 'center' }}
-            >
+          <Divider />
+          {selectedShow && (
+            <Stack spacing={2.5} sx={{ p: 2.5 }}>
+              <Button
+                variant="outlined"
+                startIcon={<Pencil size={16} />}
+                onClick={() => openEdit(selectedShow)}
+                sx={{ alignSelf: 'flex-start' }}
+              >
+                Edit show
+              </Button>
               <Box>
-                <Sparkles size={28} color="#8c98a8" />
-                <Typography sx={{ mt: 1, fontSize: 14, fontWeight: 800 }}>
-                  Create the first show
-                </Typography>
-                <Typography sx={{ mt: 0.4, color: 'text.secondary', fontSize: 12 }}>
-                  Tasks and employee assignments will appear here.
+                <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>Show code</Typography>
+                <Typography sx={{ mt: 0.25, fontSize: 13, fontWeight: 750 }}>
+                  {selectedShow.code}
                 </Typography>
               </Box>
-            </CardContent>
-          </Card>
-        )}
-      </Box>
+              <Box>
+                <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
+                  Timesheet availability
+                </Typography>
+                <Typography sx={{ mt: 0.25, fontSize: 13, fontWeight: 750 }}>
+                  {selectedShow.status === 'active'
+                    ? 'Available to every employee'
+                    : 'Not available for new entries'}
+                </Typography>
+              </Box>
+            </Stack>
+          )}
+        </Stack>
+      </Drawer>
     </Stack>
-  );
-}
-
-function Metric({ value, label }: { value: number; label: string }) {
-  return (
-    <Box
-      sx={{
-        minWidth: 74,
-        px: 1.5,
-        py: 1,
-        textAlign: 'center',
-        borderRadius: 2,
-        bgcolor: 'rgba(255,255,255,.08)',
-      }}
-    >
-      <Typography sx={{ fontSize: 18, fontWeight: 850 }}>{value}</Typography>
-      <Typography sx={{ color: 'rgba(255,255,255,.5)', fontSize: 9.5 }}>{label}</Typography>
-    </Box>
   );
 }

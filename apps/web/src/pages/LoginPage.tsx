@@ -10,7 +10,7 @@ import {
   Typography,
 } from '@mui/material';
 import { Clock3, Fingerprint, ShieldCheck, Sparkles } from 'lucide-react';
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 
 import { useAuth } from '../lib/auth';
 
@@ -23,7 +23,7 @@ const platformSignals = [
   {
     icon: Clock3,
     title: 'Time and delivery',
-    detail: 'Start, stop and show-level task timesheets with clear ownership.',
+    detail: 'Start, stop and show-level timesheets with clear ownership.',
   },
   {
     icon: ShieldCheck,
@@ -38,6 +38,10 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    document.title = 'Sign in | Gnomon';
+  }, []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

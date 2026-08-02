@@ -1,9 +1,8 @@
 import type {
   CreateTimeEntryRequest,
-  TimesheetApprovalDto,
   TimesheetDayDto,
-  TimesheetDecisionRequest,
   TimesheetOption,
+  UpdateTimeEntryRequest,
 } from '@gnomon/shared';
 import { getWorkDate } from '@gnomon/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -18,51 +17,8 @@ interface DayResponse {
   day: TimesheetDayDto;
 }
 
-interface ApprovalListResponse {
-  entries: TimesheetApprovalDto[];
-}
-
-interface ApprovalResponse {
-  entry: TimesheetApprovalDto;
-}
-
 export function currentIndiaWorkDate(): string {
   return getWorkDate(new Date());
-}
-
-export function useTimesheetApprovals() {
-  const { request, user } = useAuth();
-  const queryClient = useQueryClient();
-  const canApprove = user?.permissions.includes('timesheet:approve') ?? false;
-  const query = useQuery({
-    queryKey: ['timesheet-approvals'],
-    queryFn: () => request<ApprovalListResponse>('/api/v1/approvals/timesheets'),
-    enabled: canApprove,
-  });
-  const decide = useMutation({
-    mutationFn: ({ entryId, input }: { entryId: string; input: TimesheetDecisionRequest }) =>
-      request<ApprovalResponse>(`/api/v1/approvals/timesheets/${entryId}/decision`, {
-        method: 'POST',
-        body: JSON.stringify(input),
-      }),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['timesheet-approvals'] }),
-        queryClient.invalidateQueries({ queryKey: ['timesheet-day'] }),
-        queryClient.invalidateQueries({ queryKey: ['timecard', 'today'] }),
-      ]);
-    },
-  });
-
-  return {
-    canApprove,
-    entries: query.data?.entries ?? [],
-    isLoading: query.isLoading,
-    isUpdating: decide.isPending,
-    error: query.error ?? decide.error,
-    decide: (entryId: string, input: TimesheetDecisionRequest) =>
-      decide.mutateAsync({ entryId, input }),
-  };
 }
 
 export function indiaLocalInputToIso(value: string): string {
@@ -107,11 +63,11 @@ export function useTimesheetDay(workDate: string) {
       request<DayResponse>(`/api/v1/timesheets/entries/${entryId}`, { method: 'DELETE' }),
     onSuccess: applyDay,
   });
-  const submit = useMutation({
-    mutationFn: () =>
-      request<DayResponse>('/api/v1/timesheets/submit', {
-        method: 'POST',
-        body: JSON.stringify({ workDate }),
+  const update = useMutation({
+    mutationFn: ({ entryId, input }: { entryId: string; input: UpdateTimeEntryRequest }) =>
+      request<DayResponse>(`/api/v1/timesheets/entries/${entryId}`, {
+        method: 'PATCH',
+        body: JSON.stringify(input),
       }),
     onSuccess: applyDay,
   });
@@ -121,10 +77,18 @@ export function useTimesheetDay(workDate: string) {
     options: options.data?.options ?? [],
     day: day.data?.day,
     isLoading: options.isLoading || day.isLoading,
-    isUpdating: create.isPending || remove.isPending || submit.isPending,
-    error: options.error ?? day.error ?? create.error ?? remove.error ?? submit.error,
+    isUpdating: create.isPending || update.isPending || remove.isPending,
+    isSaving: create.isPending || update.isPending,
+    isDeleting: remove.isPending,
+    error: options.error ?? day.error ?? create.error ?? update.error ?? remove.error,
     create: (input: CreateTimeEntryRequest) => create.mutateAsync(input),
+    update: (entryId: string, input: UpdateTimeEntryRequest) =>
+      update.mutateAsync({ entryId, input }),
     remove: (entryId: string) => remove.mutateAsync(entryId),
-    submit: () => submit.mutateAsync(),
+    clearError: () => {
+      create.reset();
+      update.reset();
+      remove.reset();
+    },
   };
 }

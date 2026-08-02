@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import {
+  BarChart3,
   CalendarDays,
   Clock3,
   FileClock,
@@ -22,7 +23,36 @@ export type AppView =
   | 'approvals'
   | 'shows'
   | 'people'
-  | 'administration';
+  | 'administration'
+  | 'reports';
+
+export const appViewPaths: Record<AppView, string> = {
+  overview: '/',
+  timecard: '/timecard',
+  timesheets: '/timesheets',
+  regularisation: '/regularisation',
+  leave: '/leave',
+  calendar: '/calendar',
+  'team-calendar': '/team-calendar',
+  approvals: '/approvals',
+  shows: '/shows',
+  people: '/people',
+  administration: '/administration',
+  reports: '/reports',
+};
+
+const viewByPath = new Map(
+  Object.entries(appViewPaths).map(([view, path]) => [path, view as AppView]),
+);
+
+export function appViewPath(view: AppView): string {
+  return appViewPaths[view];
+}
+
+export function appViewFromPath(pathname: string): AppView | null {
+  const normalized = pathname === '/' ? pathname : pathname.replace(/\/+$/, '');
+  return viewByPath.get(normalized) ?? null;
+}
 
 export interface NavigationItem {
   id: AppView;
@@ -31,10 +61,25 @@ export interface NavigationItem {
   requiredPermissions?: string[];
 }
 
-export const workspaceNavigation: NavigationItem[] = [
+export interface NavigationGroup {
+  label: string;
+  items: NavigationItem[];
+}
+
+const employeeNavigation: NavigationItem[] = [
   { id: 'overview', label: 'Overview', icon: LayoutDashboard },
-  { id: 'timecard', label: 'My timecard', icon: Clock3 },
-  { id: 'timesheets', label: 'Timesheets', icon: FileClock },
+  {
+    id: 'timecard',
+    label: 'My timecard',
+    icon: Clock3,
+    requiredPermissions: ['attendance:self:read'],
+  },
+  {
+    id: 'timesheets',
+    label: 'Timesheets',
+    icon: FileClock,
+    requiredPermissions: ['timesheet:create'],
+  },
   {
     id: 'regularisation',
     label: 'Regularisation',
@@ -55,7 +100,7 @@ export const workspaceNavigation: NavigationItem[] = [
   },
 ];
 
-export const managementNavigation: NavigationItem[] = [
+const managerNavigation: NavigationItem[] = [
   {
     id: 'team-calendar',
     label: 'Team calendar',
@@ -66,14 +111,17 @@ export const managementNavigation: NavigationItem[] = [
     id: 'approvals',
     label: 'Approvals',
     icon: ShieldCheck,
-    requiredPermissions: ['regularisation:approve', 'leave:approve', 'timesheet:approve'],
+    requiredPermissions: ['regularisation:approve', 'leave:approve'],
   },
   {
     id: 'shows',
-    label: 'Shows & tasks',
+    label: 'Shows',
     icon: FileClock,
     requiredPermissions: ['show:manage'],
   },
+];
+
+const administrationNavigation: NavigationItem[] = [
   {
     id: 'people',
     label: 'People',
@@ -86,4 +134,20 @@ export const managementNavigation: NavigationItem[] = [
     icon: Settings2,
     requiredPermissions: ['policy:manage', 'imports:create', 'employee:update', 'audit:read'],
   },
+];
+
+const reportingNavigation: NavigationItem[] = [
+  {
+    id: 'reports',
+    label: 'Reports',
+    icon: BarChart3,
+    requiredPermissions: ['attendance:team:read', 'attendance:all:read', 'audit:read'],
+  },
+];
+
+export const navigationGroups: NavigationGroup[] = [
+  { label: 'Employee', items: employeeNavigation },
+  { label: 'Manager', items: managerNavigation },
+  { label: 'HR & Admin', items: administrationNavigation },
+  { label: 'Reporting', items: reportingNavigation },
 ];

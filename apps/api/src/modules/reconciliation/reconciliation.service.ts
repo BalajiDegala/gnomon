@@ -37,7 +37,7 @@ export interface ReconciliationTimeEntry {
   startedAt: Date;
   endedAt: Date;
   durationMinutes: number;
-  status: 'draft' | 'submitted' | 'approved' | 'rejected';
+  percentage: number;
 }
 
 export interface ReconciliationInput {
@@ -244,13 +244,15 @@ export function calculateDailyReconciliation(
   const biometric = summarizeBiometric(input.events);
   const accessCard = summarizeAccessCard(input.events);
   const website = summarizeWebsite(input.sessions, input.now, window.end);
-  const activeEntries = input.timeEntries.filter((entry) => entry.status !== 'rejected');
-  const taskEntries = {
-    totalMinutes: activeEntries.reduce((total, entry) => total + entry.durationMinutes, 0),
-    entryCount: activeEntries.length,
-    draftCount: activeEntries.filter((entry) => entry.status === 'draft').length,
-    submittedCount: activeEntries.filter((entry) => entry.status === 'submitted').length,
-    approvedCount: activeEntries.filter((entry) => entry.status === 'approved').length,
+  const showEntries = {
+    totalMinutes: input.timeEntries.reduce((total, entry) => total + entry.durationMinutes, 0),
+    entryCount: input.timeEntries.length,
+    averageProgress: input.timeEntries.length
+      ? Math.round(
+          input.timeEntries.reduce((total, entry) => total + entry.percentage, 0) /
+            input.timeEntries.length,
+        )
+      : 0,
   };
   const primarySource = selectPrimarySource(biometric, accessCard, website);
   const primarySummary =
@@ -281,7 +283,6 @@ export function calculateDailyReconciliation(
     if (!website.firstAt) anomalies.add('missing_web_start');
     if (!website.lastAt || website.status === 'incomplete') anomalies.add('missing_web_stop');
     if (grossMinutes < defaultWorkdayPolicy.requiredMinutes) anomalies.add('insufficient_hours');
-    if (taskEntries.draftCount > 0) anomalies.add('unsubmitted_task_time');
   } else {
     if (biometric.status === 'missing_in') anomalies.add('missing_biometric_in');
     if (accessCard.status === 'missing_entry') anomalies.add('missing_access_entry');
@@ -303,14 +304,14 @@ export function calculateDailyReconciliation(
     end: session.stoppedAt ?? new Date(Math.min(input.now.getTime(), window.end.getTime())),
   }));
   if (
-    activeEntries.some(
+    input.timeEntries.some(
       (entry) =>
         !sessionWindows.some(
           (session) => entry.startedAt >= session.start && entry.endedAt <= session.end,
         ),
     )
   ) {
-    anomalies.add('task_outside_web_session');
+    anomalies.add('show_time_outside_web_session');
   }
   const knownPresenceMinutes = Math.max(
     biometric.workedMinutes,
@@ -318,10 +319,10 @@ export function calculateDailyReconciliation(
     website.workedMinutes,
   );
   if (
-    taskEntries.totalMinutes > 0 &&
-    taskEntries.totalMinutes > knownPresenceMinutes + SOURCE_MISMATCH_TOLERANCE_MINUTES
+    showEntries.totalMinutes > 0 &&
+    showEntries.totalMinutes > knownPresenceMinutes + SOURCE_MISMATCH_TOLERANCE_MINUTES
   ) {
-    anomalies.add('task_exceeds_presence');
+    anomalies.add('show_time_exceeds_presence');
   }
 
   let status: DailyAttendanceStatus = 'partial';
@@ -351,7 +352,7 @@ export function calculateDailyReconciliation(
       expectedEnd: window.expectedEnd.toISOString(),
       requiredMinutes: defaultWorkdayPolicy.requiredMinutes,
     },
-    sourceSummary: { biometric, accessCard, website, taskEntries },
+    sourceSummary: { biometric, accessCard, website, showEntries },
     calculated: {
       primarySource,
       attendanceStart,
@@ -398,7 +399,7 @@ export async function reconcileDailyTimecard(
         .lean()
         .exec(),
       TimeEntry.find({ employeeId, workDate })
-        .select({ startedAt: 1, endedAt: 1, durationMinutes: 1, status: 1 })
+        .select({ startedAt: 1, endedAt: 1, durationMinutes: 1, percentage: 1 })
         .lean()
         .exec(),
       RegularisationRequest.find({

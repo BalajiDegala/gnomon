@@ -1,338 +1,712 @@
-import type { RegularisationRequestDto } from '@gnomon/shared';
+import type { LeaveRequestDto, RegularisationRequestDto } from '@gnomon/shared';
 import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
   Chip,
   CircularProgress,
+  Divider,
+  Drawer,
+  IconButton,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
-import {
-  ArrowLeft,
-  Check,
-  CheckCircle2,
-  Clock3,
-  Fingerprint,
-  Inbox,
-  MonitorCheck,
-  ShieldCheck,
-  X,
-} from 'lucide-react';
-import { useState } from 'react';
+import { Check, ChevronRight, ShieldCheck, X } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 
+import {
+  DataTable,
+  type DataTableColumn,
+  type SortDirection,
+} from '../components/data-view/DataTable';
+import { FilterBar } from '../components/data-view/FilterBar';
+import { PageHeader } from '../components/data-view/PageHeader';
+import { PageTabs, type PageTab } from '../components/data-view/PageTabs';
+import { useLeaveApprovals } from '../lib/leaves';
 import { useRegularisationApprovals } from '../lib/regularisations';
 import { formatIndiaTime } from '../lib/timecard';
 import { formatMinutes } from '../lib/timesheets';
-import { LeaveApprovalSection } from './LeaveApprovalSection';
-import { TimesheetApprovalSection } from './TimesheetApprovalSection';
+import { parseEnumValue, parseShortSearch, useUrlQueryState } from '../lib/url-query-state';
+import { leaveTypeLabels } from './LeavePage';
 
-interface ApprovalQueuePageProps {
-  onBack: () => void;
+type ApprovalTab = 'regularisations' | 'leave';
+type ApprovalSortKey = 'employee' | 'date' | 'submitted' | 'days' | 'stage';
+type SelectedApproval =
+  | { kind: 'regularisations'; item: RegularisationRequestDto }
+  | { kind: 'leave'; item: LeaveRequestDto };
+
+const approvalTabs = ['regularisations', 'leave'] as const;
+const approvalSortKeys = ['employee', 'date', 'submitted', 'days', 'stage'] as const;
+const sortDirections = ['asc', 'desc'] as const;
+const pageSizes = [10, 25, 50, 100] as const;
+
+function parseApprovalTab(value: string): ApprovalTab | null {
+  return parseEnumValue(value, approvalTabs);
 }
 
-export function ApprovalQueuePage({ onBack }: ApprovalQueuePageProps) {
-  const approvals = useRegularisationApprovals();
-  const [comments, setComments] = useState<Record<string, string>>({});
+function parseApprovalSort(value: string): ApprovalSortKey | null {
+  return parseEnumValue(value, approvalSortKeys);
+}
 
-  const decide = async (requestId: string, decision: 'approved' | 'rejected') => {
+function parseSortDirection(value: string): SortDirection | null {
+  return parseEnumValue(value, sortDirections);
+}
+
+function parsePage(value: string): number | null {
+  const page = Number(value);
+  return Number.isInteger(page) && page >= 1 ? page : null;
+}
+
+function parsePageSize(value: string): number | null {
+  const pageSize = Number(value);
+  return pageSizes.includes(pageSize as (typeof pageSizes)[number]) ? pageSize : null;
+}
+
+function regularisationStage(request: RegularisationRequestDto): string {
+  return request.status === 'pending_manager' ? 'Manager review' : 'Final HR review';
+}
+
+function matchesSearch(search: string, values: readonly string[]): boolean {
+  const term = search.trim().toLowerCase();
+  return !term || values.some((value) => value.toLowerCase().includes(term));
+}
+
+export function ApprovalQueuePage() {
+  const regularisations = useRegularisationApprovals();
+  const leave = useLeaveApprovals();
+  const availableTabs = useMemo<ApprovalTab[]>(() => {
+    const tabs: ApprovalTab[] = [];
+    if (regularisations.canApprove) tabs.push('regularisations');
+    if (leave.canApprove) tabs.push('leave');
+    return tabs;
+  }, [leave.canApprove, regularisations.canApprove]);
+  const defaultTab = availableTabs[0] ?? 'regularisations';
+  const [tab, setTab] = useUrlQueryState<ApprovalTab>('tab', defaultTab, parseApprovalTab);
+  const [search, setSearch] = useUrlQueryState('q', '', parseShortSearch);
+  const [sortKey, setSortKey] = useUrlQueryState<ApprovalSortKey>(
+    'sort',
+    'submitted',
+    parseApprovalSort,
+  );
+  const [sortDirection, setSortDirection] = useUrlQueryState<SortDirection>(
+    'order',
+    'asc',
+    parseSortDirection,
+  );
+  const [pageNumber, setPageNumber] = useUrlQueryState('page', 1, parsePage);
+  const [rowsPerPage, setRowsPerPage] = useUrlQueryState('size', 25, parsePageSize);
+  const [selected, setSelected] = useState<SelectedApproval | null>(null);
+  const [decisionComment, setDecisionComment] = useState('');
+
+  useEffect(() => {
+    if (availableTabs.length && !availableTabs.includes(tab)) setTab(defaultTab);
+  }, [availableTabs, defaultTab, setTab, tab]);
+
+  const tabs = useMemo<ReadonlyArray<PageTab<ApprovalTab>>>(
+    () =>
+      availableTabs.map((value) => ({
+        value,
+        label: value === 'regularisations' ? 'Regularisation' : 'Leave',
+        count:
+          value === 'regularisations' ? regularisations.requests.length : leave.requests.length,
+      })),
+    [availableTabs, leave.requests.length, regularisations.requests.length],
+  );
+
+  const activeError = tab === 'regularisations' ? regularisations.error : leave.error;
+  const activeFilteredCount =
+    tab === 'regularisations'
+      ? regularisations.requests.filter((request) =>
+          matchesSearch(search, [
+            request.employeeDisplayName,
+            request.employeeCode,
+            request.reason,
+            request.source,
+          ]),
+        ).length
+      : leave.requests.filter((request) =>
+          matchesSearch(search, [
+            request.employeeDisplayName,
+            request.employeeCode,
+            request.reason,
+            leaveTypeLabels[request.leaveType],
+          ]),
+        ).length;
+  const totalCount = regularisations.requests.length + leave.requests.length;
+
+  const updateSort = (key: ApprovalSortKey) => {
+    if (key === sortKey) setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    else {
+      setSortKey(key);
+      setSortDirection('asc');
+    }
+    setPageNumber(1);
+  };
+
+  const selectApproval = (approval: SelectedApproval) => {
+    setSelected(approval);
+    setDecisionComment('');
+  };
+
+  const decide = async (decision: 'approved' | 'rejected') => {
+    if (!selected) return;
     try {
-      await approvals.decide(requestId, {
-        decision,
-        comment: comments[requestId]?.trim() ?? '',
-      });
-      setComments((current) => {
-        const next = { ...current };
-        delete next[requestId];
-        return next;
-      });
+      const input = { decision, comment: decisionComment.trim() };
+      if (selected.kind === 'regularisations') {
+        await regularisations.decide(selected.item.id, input);
+      } else await leave.decide(selected.item.id, input);
+      setSelected(null);
+      setDecisionComment('');
     } catch {
-      // The mutation error is rendered by the hook.
+      // The active mutation error is rendered in the review drawer.
     }
   };
 
   return (
-    <Stack spacing={3} sx={{ width: '100%', maxWidth: 1200, mx: 'auto' }}>
-      <Box>
-        <Button color="inherit" startIcon={<ArrowLeft size={16} />} onClick={onBack} sx={{ mb: 2 }}>
-          Back to overview
-        </Button>
-        <Typography
-          sx={{ color: 'primary.dark', fontSize: 11, fontWeight: 800, letterSpacing: 1.3 }}
-        >
-          MANAGER WORKSPACE
-        </Typography>
-        <Typography variant="h4" sx={{ mt: 0.5, fontWeight: 850, letterSpacing: '-0.035em' }}>
-          Approvals
-        </Typography>
-        <Typography sx={{ maxWidth: 780, color: 'text.secondary', fontSize: 13.5, mt: 0.7 }}>
-          Decide regularisation, leave, and submitted task-time requests inside your reporting,
-          show, or HR/Attendance scope. Self approval is always blocked.
-        </Typography>
-      </Box>
+    <Stack spacing={2.5} sx={{ width: '100%', maxWidth: 1440, mx: 'auto' }}>
+      <PageHeader
+        eyebrow="MANAGER WORKSPACE"
+        title="Approvals"
+        meta={`${totalCount} requests awaiting your decision`}
+      />
 
-      {!approvals.canApprove && (
-        <Alert severity="info">
-          Regularisation requests are hidden because this account does not have that approval
-          permission.
-        </Alert>
+      {activeError && !selected && <Alert severity="error">{activeError.message}</Alert>}
+      {!availableTabs.length && (
+        <Alert severity="info">Your account does not have an approval permission.</Alert>
       )}
-      {approvals.error && <Alert severity="error">{approvals.error.message}</Alert>}
 
-      {approvals.canApprove && (
+      {availableTabs.length > 0 && (
         <>
-          <Card
-            sx={{
-              border: 0,
-              color: '#fff',
-              background:
-                'radial-gradient(circle at 88% 15%, rgba(56,211,222,.2), transparent 38%), linear-gradient(135deg, #111c30, #0b1423)',
-            }}
-          >
-            <CardContent sx={{ p: { xs: 2.75, md: 3.5 } }}>
-              <Stack
-                direction={{ xs: 'column', sm: 'row' }}
-                sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' }, gap: 2 }}
-              >
-                <Stack direction="row" sx={{ alignItems: 'center', gap: 1.5 }}>
-                  <Box
-                    sx={{
-                      width: 42,
-                      height: 42,
-                      display: 'grid',
-                      placeItems: 'center',
-                      borderRadius: 2.25,
-                      bgcolor: 'rgba(56,211,222,.14)',
-                    }}
-                  >
-                    <ShieldCheck size={20} color="#45d4df" />
-                  </Box>
-                  <Box>
-                    <Typography sx={{ fontSize: 15.5, fontWeight: 820 }}>
-                      Regularisation queue
-                    </Typography>
-                    <Typography sx={{ color: 'rgba(255,255,255,.5)', fontSize: 11.5 }}>
-                      Reporting Manager → HR / Attendance final approval
-                    </Typography>
-                  </Box>
-                </Stack>
-                <Box sx={{ textAlign: { sm: 'right' } }}>
-                  <Typography sx={{ fontSize: 34, fontWeight: 850, lineHeight: 1 }}>
-                    {approvals.requests.length}
-                  </Typography>
-                  <Typography sx={{ color: 'rgba(255,255,255,.5)', fontSize: 10.5 }}>
-                    awaiting your decision
-                  </Typography>
-                </Box>
-              </Stack>
-            </CardContent>
-          </Card>
+          <Box>
+            <PageTabs
+              value={tab}
+              tabs={tabs}
+              onChange={(value) => {
+                setTab(value);
+                setSearch('');
+                setSortKey('submitted');
+                setSortDirection('asc');
+                setPageNumber(1);
+                setSelected(null);
+              }}
+              ariaLabel="Approval workflow"
+            />
+            <FilterBar
+              search={search}
+              onSearchChange={(value) => {
+                setSearch(value);
+                setPageNumber(1);
+              }}
+              searchLabel="Search approvals"
+              resultCount={activeFilteredCount}
+              resultLabel={activeFilteredCount === 1 ? 'request' : 'requests'}
+              hasActiveFilters={Boolean(search)}
+              onClear={() => {
+                setSearch('');
+                setPageNumber(1);
+              }}
+            />
+          </Box>
 
-          {approvals.isLoading ? (
-            <Box sx={{ py: 12, textAlign: 'center' }}>
-              <CircularProgress size={28} />
-            </Box>
-          ) : approvals.requests.length ? (
-            <Stack spacing={1.5}>
-              {approvals.requests.map((request) => (
-                <ApprovalCard
-                  key={request.id}
-                  request={request}
-                  comment={comments[request.id] ?? ''}
-                  isUpdating={approvals.isUpdating}
-                  onComment={(comment) =>
-                    setComments((current) => ({ ...current, [request.id]: comment }))
-                  }
-                  onApprove={() => void decide(request.id, 'approved')}
-                  onReject={() => void decide(request.id, 'rejected')}
-                />
-              ))}
-            </Stack>
+          {tab === 'regularisations' ? (
+            <RegularisationQueue
+              requests={regularisations.requests}
+              search={search}
+              sortKey={sortKey}
+              sortDirection={sortDirection}
+              page={pageNumber - 1}
+              rowsPerPage={rowsPerPage}
+              isLoading={regularisations.isLoading}
+              onSort={updateSort}
+              onPageChange={(page) => setPageNumber(page + 1)}
+              onRowsPerPageChange={(size) => {
+                setRowsPerPage(size);
+                setPageNumber(1);
+              }}
+              onSelect={(item) => selectApproval({ kind: 'regularisations', item })}
+            />
           ) : (
-            <Card sx={{ boxShadow: 'none' }}>
-              <CardContent
-                sx={{ minHeight: 360, display: 'grid', placeItems: 'center', textAlign: 'center' }}
-              >
-                <Box>
-                  <Inbox size={30} color="#8995a6" />
-                  <Typography sx={{ mt: 1, fontSize: 14, fontWeight: 800 }}>
-                    Queue is clear
-                  </Typography>
-                  <Typography sx={{ mt: 0.35, color: 'text.secondary', fontSize: 12 }}>
-                    New requests inside your authorization scope will appear here.
-                  </Typography>
-                </Box>
-              </CardContent>
-            </Card>
+            <LeaveQueue
+              requests={leave.requests}
+              search={search}
+              sortKey={sortKey}
+              sortDirection={sortDirection}
+              page={pageNumber - 1}
+              rowsPerPage={rowsPerPage}
+              isLoading={leave.isLoading}
+              onSort={updateSort}
+              onPageChange={(page) => setPageNumber(page + 1)}
+              onRowsPerPageChange={(size) => {
+                setRowsPerPage(size);
+                setPageNumber(1);
+              }}
+              onSelect={(item) => selectApproval({ kind: 'leave', item })}
+            />
           )}
         </>
       )}
 
-      <LeaveApprovalSection />
-      <TimesheetApprovalSection />
+      <ApprovalReviewDrawer
+        selected={selected}
+        comment={decisionComment}
+        isUpdating={regularisations.isUpdating || leave.isUpdating}
+        error={selected ? activeError?.message : undefined}
+        onCommentChange={setDecisionComment}
+        onClose={() => {
+          setSelected(null);
+          setDecisionComment('');
+        }}
+        onApprove={() => void decide('approved')}
+        onReject={() => void decide('rejected')}
+      />
     </Stack>
   );
 }
 
-function ApprovalCard({
-  request,
+interface QueueProps {
+  search: string;
+  sortKey: ApprovalSortKey;
+  sortDirection: SortDirection;
+  page: number;
+  rowsPerPage: number;
+  isLoading: boolean;
+  onSort: (key: ApprovalSortKey) => void;
+  onPageChange: (page: number) => void;
+  onRowsPerPageChange: (size: number) => void;
+}
+
+function RegularisationQueue({
+  requests,
+  search,
+  sortKey,
+  sortDirection,
+  page,
+  rowsPerPage,
+  isLoading,
+  onSort,
+  onPageChange,
+  onRowsPerPageChange,
+  onSelect,
+}: QueueProps & {
+  requests: RegularisationRequestDto[];
+  onSelect: (request: RegularisationRequestDto) => void;
+}) {
+  const rows = useMemo(() => {
+    const direction = sortDirection === 'asc' ? 1 : -1;
+    return requests
+      .filter((request) =>
+        matchesSearch(search, [
+          request.employeeDisplayName,
+          request.employeeCode,
+          request.reason,
+          request.source,
+        ]),
+      )
+      .slice()
+      .sort((left, right) => {
+        const comparison =
+          sortKey === 'employee'
+            ? left.employeeDisplayName.localeCompare(right.employeeDisplayName)
+            : sortKey === 'date'
+              ? left.workDate.localeCompare(right.workDate)
+              : sortKey === 'stage'
+                ? left.status.localeCompare(right.status)
+                : left.submittedAt.localeCompare(right.submittedAt);
+        return comparison * direction || left.id.localeCompare(right.id);
+      });
+  }, [requests, search, sortDirection, sortKey]);
+  const columns: ReadonlyArray<DataTableColumn<RegularisationRequestDto, ApprovalSortKey>> = [
+    {
+      id: 'employee',
+      label: 'Employee',
+      sortKey: 'employee',
+      minWidth: 210,
+      render: (request) => (
+        <EmployeeCell name={request.employeeDisplayName} code={request.employeeCode} />
+      ),
+    },
+    {
+      id: 'date',
+      label: 'Work date',
+      sortKey: 'date',
+      width: 120,
+      render: (request) => request.workDate,
+    },
+    {
+      id: 'source',
+      label: 'Source',
+      hideBelow: 'sm',
+      width: 140,
+      render: (request) => (request.source === 'biometric' ? 'Biometric' : 'Website'),
+    },
+    {
+      id: 'correction',
+      label: 'Corrected time',
+      hideBelow: 'md',
+      minWidth: 180,
+      render: (request) =>
+        `${formatIndiaTime(request.requestedStart)} – ${formatIndiaTime(request.requestedEnd)}`,
+    },
+    {
+      id: 'reason',
+      label: 'Reason',
+      hideBelow: 'md',
+      minWidth: 240,
+      render: (request) => (
+        <Typography noWrap sx={{ maxWidth: 320, fontSize: 12 }}>
+          {request.reason}
+        </Typography>
+      ),
+    },
+    {
+      id: 'stage',
+      label: 'Stage',
+      sortKey: 'stage',
+      width: 145,
+      render: (request) => (
+        <Chip
+          size="small"
+          variant="outlined"
+          color={request.status === 'pending_manager' ? 'warning' : 'info'}
+          label={regularisationStage(request)}
+        />
+      ),
+    },
+    detailsColumn(onSelect),
+  ];
+  return (
+    <DataTable
+      ariaLabel="Regularisation approvals"
+      rows={rows}
+      columns={columns}
+      getRowId={(request) => request.id}
+      sortKey={sortKey}
+      sortDirection={sortDirection}
+      onSort={onSort}
+      page={page}
+      rowsPerPage={rowsPerPage}
+      onPageChange={onPageChange}
+      onRowsPerPageChange={onRowsPerPageChange}
+      onRowClick={onSelect}
+      isLoading={isLoading}
+      emptyTitle="Queue is clear"
+      emptyMessage="New regularisation requests inside your scope will appear here."
+    />
+  );
+}
+
+function LeaveQueue({
+  requests,
+  search,
+  sortKey,
+  sortDirection,
+  page,
+  rowsPerPage,
+  isLoading,
+  onSort,
+  onPageChange,
+  onRowsPerPageChange,
+  onSelect,
+}: QueueProps & {
+  requests: LeaveRequestDto[];
+  onSelect: (request: LeaveRequestDto) => void;
+}) {
+  const rows = useMemo(() => {
+    const direction = sortDirection === 'asc' ? 1 : -1;
+    return requests
+      .filter((request) =>
+        matchesSearch(search, [
+          request.employeeDisplayName,
+          request.employeeCode,
+          request.reason,
+          leaveTypeLabels[request.leaveType],
+        ]),
+      )
+      .slice()
+      .sort((left, right) => {
+        const comparison =
+          sortKey === 'employee'
+            ? left.employeeDisplayName.localeCompare(right.employeeDisplayName)
+            : sortKey === 'date'
+              ? left.startDate.localeCompare(right.startDate)
+              : sortKey === 'days'
+                ? left.requestedDays - right.requestedDays
+                : left.submittedAt.localeCompare(right.submittedAt);
+        return comparison * direction || left.id.localeCompare(right.id);
+      });
+  }, [requests, search, sortDirection, sortKey]);
+  const columns: ReadonlyArray<DataTableColumn<LeaveRequestDto, ApprovalSortKey>> = [
+    {
+      id: 'employee',
+      label: 'Employee',
+      sortKey: 'employee',
+      minWidth: 210,
+      render: (request) => (
+        <EmployeeCell name={request.employeeDisplayName} code={request.employeeCode} />
+      ),
+    },
+    {
+      id: 'dates',
+      label: 'Dates',
+      sortKey: 'date',
+      minWidth: 175,
+      render: (request) =>
+        request.startDate === request.endDate
+          ? request.startDate
+          : `${request.startDate} – ${request.endDate}`,
+    },
+    {
+      id: 'type',
+      label: 'Type',
+      hideBelow: 'sm',
+      width: 130,
+      render: (request) => leaveTypeLabels[request.leaveType],
+    },
+    {
+      id: 'days',
+      label: 'Days',
+      sortKey: 'days',
+      align: 'right',
+      hideBelow: 'sm',
+      width: 90,
+      render: (request) => request.requestedDays,
+    },
+    {
+      id: 'reason',
+      label: 'Reason',
+      hideBelow: 'md',
+      minWidth: 260,
+      render: (request) => (
+        <Typography noWrap sx={{ maxWidth: 360, fontSize: 12 }}>
+          {request.reason}
+        </Typography>
+      ),
+    },
+    detailsColumn(onSelect),
+  ];
+  return (
+    <DataTable
+      ariaLabel="Leave approvals"
+      rows={rows}
+      columns={columns}
+      getRowId={(request) => request.id}
+      sortKey={sortKey}
+      sortDirection={sortDirection}
+      onSort={onSort}
+      page={page}
+      rowsPerPage={rowsPerPage}
+      onPageChange={onPageChange}
+      onRowsPerPageChange={onRowsPerPageChange}
+      onRowClick={onSelect}
+      isLoading={isLoading}
+      emptyTitle="No leave decisions waiting"
+      emptyMessage="New leave requests inside your reporting scope will appear here."
+    />
+  );
+}
+
+function detailsColumn<Row>(onSelect: (row: Row) => void): DataTableColumn<Row, ApprovalSortKey> {
+  return {
+    id: 'details',
+    label: 'Review',
+    align: 'right',
+    width: 72,
+    render: (row) => (
+      <Tooltip title="Review request">
+        <IconButton
+          size="small"
+          aria-label="Review request"
+          onClick={(event) => {
+            event.stopPropagation();
+            onSelect(row);
+          }}
+        >
+          <ChevronRight size={17} />
+        </IconButton>
+      </Tooltip>
+    ),
+  };
+}
+
+function EmployeeCell({ name, code }: { name: string; code: string }) {
+  return <PrimarySecondary primary={name} secondary={code} />;
+}
+
+function PrimarySecondary({ primary, secondary }: { primary: string; secondary: string }) {
+  return (
+    <Box sx={{ minWidth: 0 }}>
+      <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 750 }}>
+        {primary}
+      </Typography>
+      <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>{secondary}</Typography>
+    </Box>
+  );
+}
+
+function ApprovalReviewDrawer({
+  selected,
   comment,
   isUpdating,
-  onComment,
+  error,
+  onCommentChange,
+  onClose,
   onApprove,
   onReject,
 }: {
-  request: RegularisationRequestDto;
+  selected: SelectedApproval | null;
   comment: string;
   isUpdating: boolean;
-  onComment: (comment: string) => void;
+  error?: string;
+  onCommentChange: (value: string) => void;
+  onClose: () => void;
   onApprove: () => void;
   onReject: () => void;
 }) {
-  const SourceIcon = request.source === 'biometric' ? Fingerprint : MonitorCheck;
-  const source = request.source === 'biometric' ? 'Biometric' : 'Website timecard';
-  const opening = request.source === 'biometric' ? 'in' : 'start';
-  const closing = request.source === 'biometric' ? 'out' : 'stop';
-  const missing =
-    request.missingEvent === 'both'
-      ? `${opening} and ${closing}`
-      : request.missingEvent === 'opening'
-        ? opening
-        : closing;
-  const stage = request.status === 'pending_manager' ? 'Manager review' : 'Final HR review';
+  const title = selected
+    ? selected.kind === 'regularisations'
+      ? 'Regularisation approval'
+      : 'Leave approval'
+    : 'Approval review';
+  const employee = selected?.item.employeeDisplayName;
 
   return (
-    <Card sx={{ boxShadow: 'none' }}>
-      <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
-        <Stack
-          direction={{ xs: 'column', md: 'row' }}
-          sx={{ justifyContent: 'space-between', gap: 2.5 }}
-        >
-          <Box sx={{ minWidth: 0, flex: 1 }}>
-            <Stack direction="row" sx={{ gap: 1.25, alignItems: 'flex-start' }}>
-              <Box
-                sx={{
-                  width: 42,
-                  height: 42,
-                  display: 'grid',
-                  placeItems: 'center',
-                  flex: '0 0 auto',
-                  borderRadius: 2.25,
-                  bgcolor: request.source === 'biometric' ? '#f2efff' : '#e7f8fa',
-                  color: request.source === 'biometric' ? '#6d5bd0' : '#0d8b9b',
-                }}
-              >
-                <SourceIcon size={19} />
-              </Box>
-              <Box sx={{ minWidth: 0 }}>
-                <Stack direction="row" sx={{ alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
-                  <Typography sx={{ fontSize: 14, fontWeight: 820 }}>
-                    {request.employeeDisplayName}
-                  </Typography>
-                  <Chip size="small" label={request.employeeCode} variant="outlined" />
-                  <Chip
-                    size="small"
-                    color={request.status === 'pending_manager' ? 'warning' : 'info'}
-                    label={stage}
-                  />
-                </Stack>
-                <Typography sx={{ mt: 0.4, color: 'text.secondary', fontSize: 11.5 }}>
-                  {source} · missing {missing} · work date {request.workDate}
-                </Typography>
-              </Box>
-            </Stack>
-
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(0, 1fr))' },
-                gap: 1,
-                mt: 2,
-              }}
-            >
-              <Metric label="Corrected start" value={formatIndiaTime(request.requestedStart)} />
-              <Metric label="Corrected end" value={formatIndiaTime(request.requestedEnd)} />
-              <Metric label="Corrected duration" value={formatMinutes(request.requestedMinutes)} />
-            </Box>
-            <Box sx={{ mt: 1.5, p: 1.5, borderRadius: 2, bgcolor: '#f7f9fb' }}>
-              <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
-                Employee reason
-              </Typography>
-              <Typography sx={{ mt: 0.25, fontSize: 12 }}>{request.reason}</Typography>
-            </Box>
-
-            {request.decisions.length > 0 && (
-              <Stack spacing={0.6} sx={{ mt: 1.5 }}>
-                {request.decisions.map((decision) => (
-                  <Stack
-                    key={`${decision.step}-${decision.decidedAt}`}
-                    direction="row"
-                    sx={{ alignItems: 'center', gap: 0.75 }}
-                  >
-                    <CheckCircle2 size={14} color="#269363" />
-                    <Typography sx={{ color: 'text.secondary', fontSize: 11 }}>
-                      Step {decision.step} approved by {decision.actorDisplayName}
-                      {decision.comment ? ` · ${decision.comment}` : ''}
-                    </Typography>
-                  </Stack>
-                ))}
-              </Stack>
-            )}
+    <Drawer
+      anchor="right"
+      open={Boolean(selected)}
+      onClose={isUpdating ? undefined : onClose}
+      slotProps={{ paper: { sx: { width: { xs: '100%', sm: 540 }, maxWidth: '100vw' } } }}
+    >
+      <Stack sx={{ height: '100%' }}>
+        <Stack direction="row" sx={{ minHeight: 72, px: 2.5, alignItems: 'center', gap: 1.5 }}>
+          <ShieldCheck size={19} />
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography sx={{ fontSize: 17, fontWeight: 850 }}>{title}</Typography>
+            <Typography noWrap sx={{ color: 'text.secondary', fontSize: 11 }}>
+              {employee}
+            </Typography>
           </Box>
+          <Tooltip title="Close approval review">
+            <IconButton aria-label="Close approval review" onClick={onClose} disabled={isUpdating}>
+              <X size={19} />
+            </IconButton>
+          </Tooltip>
+        </Stack>
+        <Divider />
 
-          <Stack sx={{ width: { md: 330 }, flex: '0 0 auto' }} spacing={1.25}>
+        {selected && (
+          <Stack spacing={2.5} sx={{ flex: 1, minHeight: 0, overflowY: 'auto', p: 2.5 }}>
+            {error && <Alert severity="error">{error}</Alert>}
+            <ApprovalDetails selected={selected} />
+            <Divider />
             <TextField
               multiline
               minRows={3}
               label="Decision comment"
               placeholder="Optional for approval; required for rejection."
               value={comment}
-              onChange={(event) => onComment(event.target.value)}
+              onChange={(event) => onCommentChange(event.target.value)}
               slotProps={{ htmlInput: { maxLength: 1_000 } }}
             />
-            <Stack direction="row" spacing={1}>
-              <Button
-                fullWidth
-                color="error"
-                variant="outlined"
-                disabled={comment.trim().length < 3 || isUpdating}
-                startIcon={<X size={16} />}
-                onClick={onReject}
-              >
-                Reject
-              </Button>
-              <Button
-                fullWidth
-                color="success"
-                variant="contained"
-                disabled={isUpdating}
-                startIcon={isUpdating ? <CircularProgress size={15} /> : <Check size={16} />}
-                onClick={onApprove}
-              >
-                Approve
-              </Button>
-            </Stack>
-            <Stack direction="row" sx={{ alignItems: 'center', gap: 0.6 }}>
-              <Clock3 size={13} color="#8995a6" />
-              <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
-                Submitted {new Date(request.submittedAt).toLocaleDateString('en-IN')}
-              </Typography>
-            </Stack>
           </Stack>
+        )}
+
+        <Divider />
+        <Stack direction="row" spacing={1} sx={{ p: 2 }}>
+          <Button
+            fullWidth
+            color="error"
+            variant="outlined"
+            disabled={!selected || comment.trim().length < 3 || isUpdating}
+            startIcon={<X size={16} />}
+            onClick={onReject}
+          >
+            Reject
+          </Button>
+          <Button
+            fullWidth
+            color="success"
+            variant="contained"
+            disabled={!selected || isUpdating}
+            startIcon={isUpdating ? <CircularProgress size={15} /> : <Check size={16} />}
+            onClick={onApprove}
+          >
+            Approve
+          </Button>
         </Stack>
-      </CardContent>
-    </Card>
+      </Stack>
+    </Drawer>
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function ApprovalDetails({ selected }: { selected: SelectedApproval }) {
+  if (selected.kind === 'regularisations') {
+    const request = selected.item;
+    return (
+      <Stack spacing={2}>
+        <DetailGrid
+          values={[
+            ['Employee code', request.employeeCode],
+            ['Work date', request.workDate],
+            ['Source', request.source === 'biometric' ? 'Biometric' : 'Website timecard'],
+            ['Stage', regularisationStage(request)],
+            ['Corrected start', formatIndiaTime(request.requestedStart)],
+            ['Corrected end', formatIndiaTime(request.requestedEnd)],
+            ['Duration', formatMinutes(request.requestedMinutes)],
+            ['Missing event', request.missingEvent.replace('_', ' ')],
+          ]}
+        />
+        <Detail label="Employee reason" value={request.reason} />
+        {request.decisions.length > 0 && (
+          <Box>
+            <Typography sx={{ mb: 0.75, color: 'text.secondary', fontSize: 10.5 }}>
+              Previous decisions
+            </Typography>
+            {request.decisions.map((decision) => (
+              <Typography key={decision.decidedAt} sx={{ fontSize: 11.5 }}>
+                Step {decision.step} approved by {decision.actorDisplayName}
+                {decision.comment ? ` · ${decision.comment}` : ''}
+              </Typography>
+            ))}
+          </Box>
+        )}
+      </Stack>
+    );
+  }
+  const request = selected.item;
   return (
-    <Box sx={{ p: 1.25, borderRadius: 2, bgcolor: '#f7f9fb' }}>
+    <Stack spacing={2}>
+      <DetailGrid
+        values={[
+          ['Employee code', request.employeeCode],
+          ['Leave type', leaveTypeLabels[request.leaveType]],
+          ['Start date', request.startDate],
+          ['End date', request.endDate],
+          ['Day part', request.dayPart.replaceAll('_', ' ')],
+          ['Requested days', String(request.requestedDays)],
+        ]}
+      />
+      <Detail label="Private employee reason" value={request.reason} />
+    </Stack>
+  );
+}
+
+function DetailGrid({ values }: { values: Array<[string, string]> }) {
+  return (
+    <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 2 }}>
+      {values.map(([label, value]) => (
+        <Detail key={label} label={label} value={value} />
+      ))}
+    </Box>
+  );
+}
+
+function Detail({ label, value }: { label: string; value: string }) {
+  return (
+    <Box>
       <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>{label}</Typography>
-      <Typography sx={{ mt: 0.2, fontSize: 12.5, fontWeight: 800 }}>{value}</Typography>
+      <Typography sx={{ mt: 0.25, fontSize: 12.5, fontWeight: 700 }}>{value}</Typography>
     </Box>
   );
 }

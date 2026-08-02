@@ -44,9 +44,8 @@ export const ReconciliationAnomalySchema = z.enum([
   'missing_web_stop',
   'source_time_mismatch',
   'insufficient_hours',
-  'task_outside_web_session',
-  'task_exceeds_presence',
-  'unsubmitted_task_time',
+  'show_time_outside_web_session',
+  'show_time_exceeds_presence',
   'invalid_event_order',
 ]);
 export type ReconciliationAnomaly = z.infer<typeof ReconciliationAnomalySchema>;
@@ -79,12 +78,10 @@ export const DailyReconciliationDtoSchema = z.object({
       workedMinutes: z.number().int().nonnegative(),
       sessionCount: z.number().int().nonnegative(),
     }),
-    taskEntries: z.object({
+    showEntries: z.object({
       totalMinutes: z.number().int().nonnegative(),
       entryCount: z.number().int().nonnegative(),
-      draftCount: z.number().int().nonnegative(),
-      submittedCount: z.number().int().nonnegative(),
-      approvedCount: z.number().int().nonnegative(),
+      averageProgress: z.number().int().min(0).max(100),
     }),
   }),
   calculated: z.object({

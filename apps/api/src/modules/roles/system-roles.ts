@@ -24,9 +24,8 @@ export const systemRolePermissions: Record<RoleCode, PermissionCode[]> = {
     'attendance:team:read',
     'regularisation:approve',
     'leave:approve',
-    'timesheet:approve',
   ],
-  SHOW_MANAGER: ['employee:read', 'attendance:team:read', 'timesheet:approve', 'show:manage'],
+  SHOW_MANAGER: ['show:manage'],
   HR: [
     'employee:read',
     'employee:update',

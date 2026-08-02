@@ -9,8 +9,8 @@ describe('system role permissions', () => {
     expect(systemRolePermissions.EMPLOYEE).not.toContain('attendance:all:read');
   });
 
-  it('separates show timesheet approval from HR attendance access', () => {
-    expect(systemRolePermissions.SHOW_MANAGER).toContain('timesheet:approve');
+  it('limits show managers to show administration', () => {
+    expect(systemRolePermissions.SHOW_MANAGER).toEqual(['show:manage']);
     expect(systemRolePermissions.SHOW_MANAGER).not.toContain('attendance:all:read');
     expect(systemRolePermissions.HR).toContain('attendance:all:read');
   });

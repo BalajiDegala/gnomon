@@ -2,13 +2,12 @@
 
 Gnomon is the DIGITAL DOMAIN INDIA workforce management application described in
 [`docs/MVP_PLAN.md`](docs/MVP_PLAN.md). It is a TypeScript MERN monorepo for
-attendance reconciliation, website timecards, show/task timesheets, leave,
-regularisation, calendars, approval workflows, and scoped administration.
+attendance reconciliation, website timecards, show-level timesheets, leave,
+regularisation, calendars, request approvals, and scoped administration.
 
 ## Current implementation
 
-The Phase 1 foundation and Phase 2–5 attendance, task-time, correction, leave, and
-personal-calendar slices include:
+The completed workforce-management MVP includes:
 
 - Responsive React and Material UI application shell with a polished login page,
   permission-aware navigation, desktop sidebar, and mobile drawer.
@@ -22,16 +21,16 @@ personal-calendar slices include:
 - Company-scoped biometric and access-card CSV imports with file/row idempotency,
   immutable raw events, validation results, and import history.
 - Permission-to-scope authorization grants for protected company-wide actions.
-- Company- or show-scoped show administration with task creation and employee
-  assignment by employee code.
-- Employee task-time entries for assigned shows, including start/end intervals,
-  descriptions, billable flags, work-session linkage, overlap protection, daily
-  totals, draft deletion, and daily submission.
-- Scoped submitted-timesheet approval for exact shows, direct reports, and company
-  administration, with self-approval prevention, atomic decisions, mandatory
-  rejection reasons, and immutable actor history shown back to the employee.
+- Company- or show-scoped show administration with editable show identity and lifecycle
+  status. Every active show is available to every employee when recording time; employees
+  are never assigned to shows or tasks.
+- Direct-saved employee show-time entries with start/end intervals, a free-text work
+  comment, progress from 10% to 100% in ten-percent steps, work-session linkage,
+  overlap protection, editing, confirmed deletion, date navigation, and daily totals.
+  Historical entries remain readable and editable when their show closes. Timesheets have
+  no approval workflow.
 - Persisted daily reconciliation across biometric, access-card, website-session,
-  and task-time evidence with source precedence, open/closed workday handling,
+  and show-time evidence with source precedence, open/closed workday handling,
   nine-hour calculation, and discrepancy detection.
 - Responsive reconciliation dashboard showing source totals, primary evidence,
   provisional state, attendance result, and review anomalies.
@@ -54,10 +53,9 @@ personal-calendar slices include:
   to 270 minutes and retains the worked portion.
 - Responsive personal calendar combining reconciled attendance with pending and
   approved leave without exposing leave reasons.
-- Scoped Reporting Manager direct-report calendars and Show Manager assigned-artist
-  availability calendars with responsive month matrices and private-reason redaction.
-- Assignment-date enforcement that prevents show-scoped viewers from seeing attendance,
-  leave, or holiday signals outside an artist's show assignment window.
+- Scoped Reporting Manager direct-report and System Administrator company calendars
+  with responsive month matrices and private-reason redaction. Team Calendar has no
+  show filter.
 - Auditable company- and studio-location holiday administration with scope
   enforcement, archive/reactivate support, leave-range conflict protection, and
   automatic exclusion from leave days.
@@ -70,7 +68,15 @@ personal-calendar slices include:
 - Permission-aware Administration workspace that exposes attendance imports, studio
   locations, employee-location assignment, holiday policy, and/or leave balances
   according to each role grant.
-- Responsive Shows & tasks and Timesheets pages for desktop and mobile.
+- Scoped employee directory with employee creation, profile/status maintenance,
+  reporting-manager assignment, and immutable employee change events.
+- System Administrator access management for login provisioning, password and status
+  controls, scoped role assignment, session revocation, self-lockout protection, and
+  immutable security events.
+- Scoped attendance, leave, regularisation, and timesheet reports with summary metrics,
+  responsive tables, and per-domain CSV export.
+- Permission-aware Employee, Manager, HR & Admin, and Reporting navigation groups.
+- Responsive Shows and Timesheets pages for desktop and mobile.
 - Focused timecard detail view plus operational leave, calendar, approvals, show,
   timesheet, import, and regularisation pages.
 - Playwright coverage for authenticated desktop and mobile application flows.
@@ -79,12 +85,16 @@ personal-calendar slices include:
 - Development Docker Compose configuration.
 - Kubeadm/containerd-compatible Helm chart aligned with the local cluster.
 
-Project-level task grouping and manager reconciliation queues remain for the following
-slices.
+Payroll, mobile/geolocation attendance, project hierarchy, configurable shifts, and a
+general approval-policy designer are explicitly outside this MVP.
 
 The accepted attendance CSV contract is documented in
 [`docs/ATTENDANCE_CSV_FORMAT.md`](docs/ATTENDANCE_CSV_FORMAT.md).
-The show setup and employee task-time workflow is documented in
+The repeatable local demo dataset and persona logins are documented in
+[`docs/DEMO_DATA.md`](docs/DEMO_DATA.md).
+The prioritized basic workflow and usability work is tracked in
+[`docs/MVP_STABILIZATION_BACKLOG.md`](docs/MVP_STABILIZATION_BACKLOG.md).
+The show setup and direct-saved employee show-time workflow is documented in
 [`docs/TIMESHEET_WORKFLOW.md`](docs/TIMESHEET_WORKFLOW.md).
 The daily calculation and provisional policy are documented in
 [`docs/RECONCILIATION_POLICY.md`](docs/RECONCILIATION_POLICY.md).
@@ -94,20 +104,21 @@ The leave, approval, balance, calendar, and attendance interaction is documented
 [`docs/LEAVE_CALENDAR_WORKFLOW.md`](docs/LEAVE_CALENDAR_WORKFLOW.md).
 Location, holiday, and leave-balance administration is documented in
 [`docs/POLICY_ADMINISTRATION.md`](docs/POLICY_ADMINISTRATION.md).
-Manager and show availability calendars are documented in
+Manager team availability calendars are documented in
 [`docs/TEAM_CALENDAR_WORKFLOW.md`](docs/TEAM_CALENDAR_WORKFLOW.md).
 
 ## Release status
 
-| Item                     | Status                                      |
-| ------------------------ | ------------------------------------------- |
-| Source and Helm version  | `0.10.0`                                    |
-| Git branch               | `main`                                      |
-| Source release commit    | `26ad298`                                   |
-| Local Kubernetes release | `0.9.0`, Helm revision 11, deployed         |
-| Local `0.10.0` images    | Awaiting local build and containerd import  |
-| Container target         | kubeadm/containerd `k8s.io`, `linux/amd64`  |
-| Ingress                  | `http://gnomon.local` through NGINX Ingress |
+| Item                     | Status                                       |
+| ------------------------ | -------------------------------------------- |
+| Source and Helm version  | `0.11.0`                                     |
+| Git branch               | `main`                                       |
+| Source release state     | Local release candidate, validated           |
+| Docker Compose release   | `0.11.0`, running at `http://localhost:8080` |
+| Local Kubernetes release | `0.9.0`, Helm revision 11, deployed          |
+| Local `0.11.0` images    | Compose images built and healthy             |
+| Container target         | kubeadm/containerd `k8s.io`, `linux/amd64`   |
+| Ingress                  | `http://gnomon.local` through NGINX Ingress  |
 
 ## Prerequisites
 
@@ -150,7 +161,7 @@ clear conventional commit messages such as:
 
 ```text
 feat: add regularisation request workflow
-fix: prevent overlapping task time entries
+fix: prevent overlapping show time entries
 docs: document MongoDB restore procedure
 ```
 

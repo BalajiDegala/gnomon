@@ -2,39 +2,40 @@
 
 ## Document status
 
-- Status: Phase 3–6 task approval, attendance, regularisation, leave, location,
-  holiday, balance, personal/team/show-calendar, and scoped policy-administration
-  slices implemented
+- Status: MVP feature scope complete and locally validated for release `0.11.0`
 - Created: 2026-07-27
+- Last updated: 2026-08-02
 - Company: DIGITAL DOMAIN INDIA
 - Application scope: Single company
 - Technology direction: MERN, TypeScript, Docker, and Kubernetes
 - Working timezone: Asia/Kolkata
 
-This document is the working baseline for the attendance, timecard/timesheet,
-leave, regularisation, calendar, administration, and authorization system. It
-should be updated as the remaining business rules are confirmed.
+This document is the release baseline for the attendance, timecard/timesheet,
+leave, regularisation, calendar, administration, authorization, and reporting
+system. Payroll and mobile/geolocation capabilities are not required for this MVP.
 
 ## 1. Product goals
 
-The MVP will give employees one website where they can:
+The MVP gives employees one website where they can:
 
 - Start and stop their workday.
-- Record start/end task time against shows, projects, and tasks.
+- Select any active show and record start/end time with a work comment and progress
+  from 10% to 100% in ten-percent steps.
 - View their attendance and source discrepancies.
 - Request leave.
 - Request regularisation for missed biometric or website events.
 - View approval status and their work calendar.
 
-Managers, Show Managers, HR, and administrators will be able to:
+Managers, Show Managers, HR, and administrators can:
 
-- Review attendance, availability, and timesheets within their authorized scope.
-- Approve or reject requests according to configurable approval policies.
+- Review attendance and availability within their authorized scope.
+- Approve or reject requests according to versioned MVP approval rules.
 - Import biometric and access-card CSV files.
 - Investigate missing punches and mismatched source data.
-- Configure employees, shows, tasks, work schedules, leave, holidays, roles,
-  permissions, and approval policies.
-- Access a complete audit history.
+- Configure employees, reporting relationships, shows, locations,
+  holidays, leave balances, login accounts, and scoped system roles.
+- Run scoped attendance, leave, regularisation, and timesheet reports and export CSV.
+- Retain immutable attribution for approvals and sensitive employee/security changes.
 
 ## 2. MVP roles
 
@@ -59,7 +60,7 @@ The system will reconcile three independent sources:
    of using an API.
 3. Website work-session start/stop events entered by the employee.
 
-Task time entries provide additional supporting evidence but do not replace
+Show time entries provide additional supporting evidence but do not replace
 official attendance events.
 
 ```text
@@ -67,7 +68,7 @@ Biometric CSV/API ----+
 Access-card CSV/API --+--> Raw events --> Daily attendance reconciliation
 Website start/stop ---+                         |
                                                 +--> Status and anomalies
-Task time entries ------------------------------+--> Hours and discrepancies
+Show time entries ------------------------------+--> Hours and discrepancies
 Regularisation ---------------------------------+--> Final attendance
 ```
 
@@ -98,13 +99,13 @@ separates the concepts:
 
 - `attendance_events`: immutable source punches and corrective events.
 - `work_sessions`: employee website start/stop sessions.
-- `time_entries`: task-level start/end intervals.
+- `time_entries`: show-level start/end intervals with work comments and progress.
 - `daily_timecards`: reconciled daily attendance summary.
 - `regularisation_requests`: requested corrections and their approval history.
 - `leave_requests`: private leave requests, reserved working dates, and manager decision.
 - `leave_balances`: optional annual paid-leave entitlement and adjustment records.
 
-This separation prevents task edits or website activity from silently modifying
+This separation prevents show-time edits or website activity from silently modifying
 official biometric records.
 
 ## 6. Core data model
@@ -151,9 +152,10 @@ One record per employee and company work date.
       sessionCount: number,
       status: "running" | "complete" | "incomplete" | "none"
     },
-    taskEntries: {
+    showEntries: {
       totalMinutes: number,
-      entryCount: number
+      entryCount: number,
+      averageProgress: number
     }
   },
 
@@ -180,7 +182,8 @@ One record per employee and company work date.
       "missing_web_stop" |
       "source_time_mismatch" |
       "insufficient_hours" |
-      "overlapping_task_entries"
+      "show_time_outside_web_session" |
+      "show_time_exceeds_presence"
     ]
   },
 
@@ -312,34 +315,12 @@ Rules:
   employeeId: ObjectId,
   workDate: "2026-07-27",
   showId: ObjectId,
-  projectId: ObjectId | null,
-  taskId: ObjectId,
   workSessionId: ObjectId | null,
   startedAt: ISODate,
   endedAt: ISODate,
   durationMinutes: number,
-  description: string,
-  billable: boolean,
-  status: "draft" | "submitted" | "approved" | "rejected",
-  approval: {
-    policyId: ObjectId | null,
-    policyVersion: "TIMESHEET_V1",
-    currentStep: number,
-    assignedApproverIds: [ObjectId],
-    submittedAt: ISODate | null,
-    approvedBy: ObjectId | null,
-    approvedAt: ISODate | null,
-    rejectionReason: string | null,
-    decisions: [{
-      decision: "approved" | "rejected",
-      actorUserId: ObjectId,
-      actorEmployeeId: ObjectId,
-      actorDisplayName: string,
-      actorRole: "show_manager" | "reporting_manager" | "system_admin",
-      comment: string,
-      decidedAt: ISODate
-    }]
-  },
+  comment: string,
+  percentage: number,
   createdAt: ISODate,
   updatedAt: ISODate
 }
@@ -349,12 +330,18 @@ Rules:
 
 - Start and end are mandatory and end must follow start.
 - Entries for the same employee cannot overlap.
-- Task time outside website work sessions is flagged for review.
-- Task time exceeding presence time is flagged for review.
-- Employees may save drafts and submit all drafts for a work date.
-- Submitted entries are routed by exact show scope or actual direct-report scope.
-- Self approval is blocked, rejection requires a reason, and a status-guarded update
-  prevents concurrent double decisions.
+- Every active show is available to every employee; no show or task assignment exists.
+- Comment is mandatory and describes the task or work performed.
+- Progress must be 10%, 20%, through 100%.
+- Show time outside website work sessions is flagged for review.
+- Show time exceeding presence time is flagged for review.
+- Entries are saved directly and may be edited or deleted by their employee owner.
+- Deletion requires confirmation, and previous/next-day controls retain the selected date
+  in the page URL.
+- Show code, name, and lifecycle status are editable by an authorized Show Manager.
+- Inactive shows are unavailable to new entries, while their historical entries remain
+  readable and editable without changing the show.
+- Timesheets have no draft, submission, approval, rejection, or approver-routing state.
 
 ## 7. Reconciliation policy
 
@@ -364,7 +351,7 @@ Recommended evidence precedence:
 2. Biometric attendance.
 3. Access-card evidence.
 4. Website work-session start/stop.
-5. Task time as supporting evidence.
+5. Show time as supporting evidence.
 
 A lower-priority source may support a regularisation request but must not silently
 replace a missing higher-priority event. Source-time mismatch tolerances will be
@@ -389,7 +376,6 @@ regularisation:approve
 leave:create
 leave:approve
 timesheet:create
-timesheet:approve
 show:manage
 imports:create
 policy:manage
@@ -422,51 +408,16 @@ approval is disabled unless an explicit future policy allows it.
 
 ## 9. Recommended approval ownership
 
-| Request                         | Primary approver                            | HR responsibility              | Show Manager responsibility   |
-| ------------------------------- | ------------------------------------------- | ------------------------------ | ----------------------------- |
-| Leave                           | Reporting Manager                           | View, override, administration | View affected show absence    |
-| Missed biometric regularisation | Reporting Manager, then HR/Attendance Admin | Final approval or override     | View staffing impact          |
-| Website start/stop correction   | Reporting Manager, then HR/Attendance Admin | Final approval or override     | No approval                   |
-| Show task timesheet             | Show Manager                                | Reporting access               | Approve assigned-show entries |
-| Internal/non-show timesheet     | Reporting Manager                           | Reporting access               | No approval                   |
-| Employee profile change         | HR                                          | Maintain records               | No approval                   |
+| Request                         | Primary approver                            | HR responsibility              | Show Manager responsibility |
+| ------------------------------- | ------------------------------------------- | ------------------------------ | --------------------------- |
+| Leave                           | Reporting Manager                           | View, override, administration | View affected show absence  |
+| Missed biometric regularisation | Reporting Manager, then HR/Attendance Admin | Final approval or override     | View staffing impact        |
+| Website start/stop correction   | Reporting Manager, then HR/Attendance Admin | Final approval or override     | No approval                 |
+| Employee profile change         | HR                                          | Maintain records               | No approval                 |
 
-Release `0.8.0` records `TIMESHEET_V1` on every submitted entry. Moving this
-versioned behavior into administrator-configurable approval policies remains a
-later approval-engine slice.
-
-### Approval policy model
-
-```ts
-{
-  _id: ObjectId,
-  name: "Missed biometric regularisation",
-  requestType: "regularisation",
-  active: true,
-  conditions: {
-    departmentIds: [ObjectId],
-    locationIds: [ObjectId],
-    showIds: [ObjectId],
-    minimumDays: number | null
-  },
-  steps: [
-    {
-      order: 1,
-      approverSource: "reporting_manager",
-      requiredApprovals: 1
-    },
-    {
-      order: 2,
-      approverSource: "role",
-      roleCode: "HR_ATTENDANCE",
-      requiredApprovals: 1
-    }
-  ],
-  allowSelfApproval: false,
-  createdAt: ISODate,
-  updatedAt: ISODate
-}
-```
+Timesheets are direct employee records and do not enter an approval workflow.
+`REGULARISATION_V1` and `LEAVE_V1` remain the fixed MVP baselines. A general policy
+designer is outside this MVP.
 
 ## 10. Leave and calendar
 
@@ -490,8 +441,8 @@ later approval-engine slice.
 - Release `0.9.0` adds the studio location directory, effective-dated employee
   location assignment history, exact-location RBAC/ABAC, location holiday selection,
   and location-aware leave, calendar, and attendance reconciliation.
-- Release `0.10.0` adds Reporting Manager team calendars and Show Manager
-  assigned-artist availability calendars with privacy-safe signals.
+- Team Calendar resolves direct reports, or company workforce for System
+  Administration, and has no show selector or show-derived membership.
 - Leave reasons remain private unless the viewer has an explicit permission.
 
 See [`LEAVE_CALENDAR_WORKFLOW.md`](LEAVE_CALENDAR_WORKFLOW.md) for the implemented
@@ -501,25 +452,20 @@ contracts, APIs, approval scope, reconciliation behavior, and test procedure.
 
 ### HR administration
 
-- Employees
-- Departments and locations
-- Reporting-manager assignments
-- Work schedules
-- Holidays and workweek configuration
-- Leave types and balances
-- Attendance policies
-- Regularisation oversight
-- HR overrides
-- Reports and exports
+- Employee directory and employee creation
+- Employee profile, status, and reporting-manager maintenance
+- Studio locations and effective-dated employee location assignments
+- Company and location holidays
+- Annual leave entitlements and adjustments
+- Regularisation and leave approval oversight
+- Scoped reports and CSV exports
 
 ### Show administration
 
-- Shows and projects
-- Show-manager assignments
-- Employee-to-show assignments
-- Tasks
-- Submitted show timesheets
-- Show attendance and availability calendar
+- Shows
+- Scoped Show Manager role assignments
+- Active-show availability for employee timesheets
+- No employee-show assignment, task catalog, or timesheet approval queue
 
 ### Attendance administration
 
@@ -534,13 +480,11 @@ contracts, APIs, approval scope, reconciliation behavior, and test procedure.
 
 ### Security administration
 
-- Users
-- Roles
-- Permissions
-- Scoped role assignments
-- Approval policies
-- Audit logs
-- Login and session history
+- Login account provisioning and status control
+- Temporary password reset with session revocation
+- Seeded system roles and permission sets
+- Company, direct-report, show, location, and self-scoped role assignments
+- Immutable employee and security change events
 
 Navigation is permission-driven, and direct page URLs and API calls are also
 protected.
@@ -603,11 +547,11 @@ CPU does not expose the AVX instructions required by newer MongoDB releases.
 
 ### Phase 1: Foundation
 
-- Confirm business rules and source CSV formats.
+- Confirm the MVP business-rule and CSV contract baselines.
 - Create wireframes and navigation model.
 - Scaffold the monorepo and development environment.
 - Implement authentication, employee hierarchy, shows, RBAC, and ABAC.
-- Add CI quality checks.
+- Add repeatable type-check, test, build, and end-to-end commands.
 
 ### Phase 2: Attendance ingestion and website sessions
 
@@ -619,15 +563,15 @@ CPU does not expose the AVX instructions required by newer MongoDB releases.
 
 ### Phase 3: Time entries and reconciliation
 
-- Implemented in `0.3.0`: shows, tasks, and employee show assignments.
-- Implemented in `0.3.0`: non-overlapping task start/end entries, draft deletion,
-  daily totals, and daily submission.
+- Implemented in the current MVP: every employee may select any active show; there
+  are no employee-show or task assignments.
+- Implemented in the current MVP: direct-saved, non-overlapping show start/end entries
+  with a work comment, 10%-to-100% progress, editing, deletion, and daily totals.
 - Implemented in `0.4.0`: persisted daily timecard calculation, evidence
   precedence, source comparison, and employee-facing anomaly detection.
-- Implemented in `0.8.0`: scoped submitted-entry approval/rejection for Show
-  Managers, Reporting Managers, and System Administrators, including self-approval
-  prevention, optimistic decision locking, rejection reasons, and immutable history.
-- Next: project-level task grouping and manager reconciliation queues.
+- Timesheet submission and approval are intentionally absent from the current MVP.
+- Implemented in `0.11.0`: scoped attendance exception reporting and CSV export for
+  manager/HR reconciliation review.
 
 ### Phase 4: Regularisation and approval engine
 
@@ -636,7 +580,8 @@ CPU does not expose the AVX instructions required by newer MongoDB releases.
 - Implemented in `0.5.0`: Reporting Manager followed by HR/Attendance final approval.
 - Implemented in `0.5.0`: direct-report, company, department, and location approval
   scope, self-approval prevention, decision history, and daily-timecard finalisation.
-- Next: administrator-configurable approval policies and centralized audit-log reporting.
+- Confirmed in `0.11.0`: versioned fixed approval rules are the MVP baseline;
+  employee and security changes add immutable audit events.
 
 ### Phase 5: Leave and calendar
 
@@ -652,9 +597,8 @@ CPU does not expose the AVX instructions required by newer MongoDB releases.
 - Implemented in `0.9.0`: location directory, effective-dated employee assignment,
   exact-location authorization, location-specific holidays, and date-effective
   calendar/leave/reconciliation applicability.
-- Implemented in `0.10.0`: Reporting Manager direct-report calendars and Show Manager
-  assigned-artist availability calendars with leave-reason privacy and assignment-date
-  scope enforcement.
+- Implemented: Reporting Manager direct-report calendars and System Administrator
+  company calendars with leave-reason privacy and no show filter.
 
 ### Phase 6: Administration and reporting
 
@@ -662,17 +606,24 @@ CPU does not expose the AVX instructions required by newer MongoDB releases.
   imports, company holidays, and employee leave balances.
 - Implemented in `0.9.0`: capability-aware studio location cards, employee-location
   assignment, and company/location holiday selection.
-- Next: remaining HR, attendance-policy, security, and reporting pages.
-- Dashboards and CSV exports.
-- Scoped reports.
+- Implemented in `0.11.0`: scoped employee directory, employee creation and profile/
+  manager/status maintenance, with immutable change events.
+- Implemented in `0.11.0`: System Administrator account provisioning, password/status
+  controls, scoped role grants, self-lockout protection, and security audit events.
+- Implemented in `0.11.0`: attendance, leave, regularisation, and timesheet reporting
+  with role scope enforcement, summary metrics, responsive tables, and CSV exports.
+- Implemented in `0.11.0`: four-workspace information architecture for Employee,
+  Manager, HR & Admin, and Reporting.
 
 ### Phase 7: Deployment and hardening
 
-- Containers and Helm chart.
-- Kubeadm cluster deployment.
-- Backup/restore validation.
-- Security review and end-to-end tests.
-- Operations and user documentation.
+- Implemented: Docker images, Docker Compose stack, health checks, and Helm chart.
+- Implemented: kubeadm-compatible chart and documented local image import workflow.
+- Implemented: focused unit, API/service, and desktop/mobile end-to-end coverage.
+- Validated on 2026-08-01: rebuilt and smoke-tested the `0.11.0` local Docker
+  Compose stack on desktop and mobile Chromium.
+- Post-MVP production hardening: backup/restore drill, external security review,
+  production secrets, and high-availability database design.
 
 ## 15. Items outside the first MVP
 
@@ -685,32 +636,28 @@ CPU does not expose the AVX instructions required by newer MongoDB releases.
 - SSO
 - Slack or Microsoft Teams integration
 - Advanced analytics
+- General-purpose approval policy designer
+- Task catalog, task assignment, and employee-show assignment
+- Configurable shifts, breaks, workweeks, and mismatch tolerances
+- Central audit-log explorer and login-history analytics
+- Production high availability and disaster-recovery automation
 
-## 16. Open decisions
+## 16. MVP policy baselines
 
-The following rules must be confirmed before implementation is considered
-business-rule complete:
+- Required attendance is 540 gross minutes; break deduction is not calculated.
+- The logical workday runs from 07:00 to 07:00 in Asia/Kolkata.
+- Standard expected hours are 09:00 to 18:00, Monday to Friday.
+- Source endpoint differences greater than 15 minutes trigger a mismatch anomaly.
+- Regularisation requires Reporting Manager approval followed by HR/Attendance approval.
+- Leave requires one Reporting Manager decision.
+- Every employee can select any active show for a timesheet entry.
+- The work description is a mandatory free-text comment; no task entity is used.
+- Progress is selected in ten-percent steps from 10% through 100%.
+- Show entries are non-overlapping, saved directly, editable, and require no approval.
 
-1. Does the required nine hours include lunch and other breaks?
-2. Should the `0.5.0` attendance baseline continue to require both Reporting
-   Manager and HR/Attendance Admin approval, or should some corrections use one step?
-3. Is the approval split correct: Show Manager approves show timesheets, while
-   Reporting Manager approves leave and attendance?
-4. What mismatch tolerance should trigger a discrepancy between biometric,
-   access-card, and website times (for example, 15 minutes)?
-
-Confirmed implementation baselines: employees may record multiple
-non-overlapping task intervals per day, and entries are submitted by work date
-rather than as a weekly sheet. Release `0.4.0` uses 15 minutes as an explicitly
-provisional mismatch tolerance until item 4 is confirmed and moved into the
-attendance-policy administration page. Release `0.5.0` implements the two-step
-regularisation path in item 2 as the explicit MVP baseline without treating that
-policy choice as permanently fixed. Release `0.6.0` implements item 3's leave
-ownership baseline as a single Reporting Manager decision; HR leave oversight and
-override administration remain separate follow-up capabilities.
-
-An anonymized example of both the biometric CSV and access-card CSV is required
-before finalizing the import mappings.
+Production rollout still requires anonymized biometric and access-card samples to
+be checked against the documented CSV contract. This is source-system validation,
+not an unfinished application workflow.
 
 ## 17. MVP success criteria
 
@@ -718,15 +665,18 @@ The MVP is successful when:
 
 - An administrator can import biometric and access-card CSV data safely without
   creating duplicate events.
-- An employee can start/stop a work session and record task intervals.
+- An employee can start/stop a work session and record show intervals with a work
+  comment and progress percentage.
 - The application assigns cross-midnight events to the correct work date.
 - It calculates and displays the employee's nine-hour requirement.
 - It identifies missing and mismatched attendance evidence.
 - Employees can submit leave and regularisation requests.
 - Requests reach only the correct scoped approvers.
-- Show Managers can approve only their shows' submitted time entries.
 - Reporting Managers, HR, and administrators see only data allowed by their
   permissions and scope.
 - Every sensitive change and approval is auditable.
-- The complete system can be installed and recovered on the local Kubernetes
-  server using documented procedures.
+- A System Administrator can provision login accounts and maintain scoped roles
+  without using database scripts.
+- Managers and administrators can run scoped operational reports and export CSV.
+- The complete system can be built and started locally with Docker Compose and
+  returns healthy web and API readiness responses.
