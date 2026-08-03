@@ -22,7 +22,7 @@ import { type AppView, appViewPath, navigationGroups, type NavigationItem } from
 import { DashboardPage } from '../pages/DashboardPage';
 import { ModulePage } from '../pages/ModulePage';
 
-const drawerWidth = 264;
+const drawerWidth = 272;
 
 function canSeeNavigationItem(item: NavigationItem, permissions: string[]): boolean {
   if (!item.requiredPermissions) return true;
@@ -297,9 +297,9 @@ export function AppShell() {
           ml: { lg: `${drawerWidth}px` },
           width: { lg: `calc(100% - ${drawerWidth}px)` },
           borderBottom: '1px solid rgba(218,226,232,.86)',
-          bgcolor: 'rgba(250,252,253,.84)',
-          backdropFilter: 'blur(18px) saturate(1.4)',
-          boxShadow: '0 4px 18px rgba(20,32,51,.035)',
+          bgcolor: 'rgba(248,251,252,.88)',
+          backdropFilter: 'blur(20px) saturate(1.5)',
+          boxShadow: '0 6px 24px rgba(20,32,51,.045)',
         }}
       >
         <Toolbar sx={{ minHeight: { xs: 68, md: 76 }, px: { xs: 2, md: 3.5 } }}>
@@ -342,7 +342,13 @@ export function AppShell() {
                 display: { xs: 'none', md: 'flex' },
                 alignItems: 'center',
                 gap: 1,
-                pl: 0.5,
+                pl: 0.75,
+                pr: 1.1,
+                py: 0.65,
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 2.5,
+                bgcolor: 'rgba(255,255,255,.72)',
               }}
             >
               <Avatar
@@ -401,8 +407,10 @@ export function AppShell() {
           flexGrow: 1,
           minWidth: 0,
           pt: { xs: '92px', md: '104px' },
-          px: { xs: 2, sm: 3, xl: 4.5 },
-          pb: 6,
+          px: { xs: 1.5, sm: 3, xl: 4.5 },
+          pb: 7,
+          backgroundImage:
+            'linear-gradient(rgba(255,255,255,.16), rgba(255,255,255,.16)), radial-gradient(circle at 100% 0%, rgba(31,172,185,.06), transparent 25%)',
         }}
       >
         {activeView === 'overview' ? (

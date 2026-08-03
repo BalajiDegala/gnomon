@@ -15,7 +15,16 @@ interface PageTabsProps<T extends string> {
 
 export function PageTabs<T extends string>({ value, tabs, onChange, ariaLabel }: PageTabsProps<T>) {
   return (
-    <Box sx={{ borderBottom: '1px solid', borderColor: 'divider', bgcolor: '#fff' }}>
+    <Box
+      sx={{
+        px: { xs: 0.5, sm: 1 },
+        border: '1px solid',
+        borderColor: 'divider',
+        borderRadius: '16px 16px 0 0',
+        bgcolor: 'rgba(255,255,255,.94)',
+        boxShadow: '0 10px 26px rgba(20,32,51,.035)',
+      }}
+    >
       <Tabs
         value={value}
         onChange={(_event, nextValue: T) => onChange(nextValue)}
@@ -24,7 +33,11 @@ export function PageTabs<T extends string>({ value, tabs, onChange, ariaLabel }:
         aria-label={ariaLabel}
         sx={{
           minHeight: 48,
-          '& .MuiTabs-indicator': { height: 3, borderRadius: '3px 3px 0 0' },
+          '& .MuiTabs-indicator': {
+            height: 3,
+            borderRadius: '3px 3px 0 0',
+            background: 'linear-gradient(90deg, #10a5b3, #4fcbd5)',
+          },
         }}
       >
         {tabs.map((tab) => (
@@ -50,7 +63,7 @@ export function PageTabs<T extends string>({ value, tabs, onChange, ariaLabel }:
               fontSize: 12.5,
               fontWeight: 750,
               color: 'text.secondary',
-              '&.Mui-selected': { color: 'text.primary', fontWeight: 820 },
+              '&.Mui-selected': { color: 'primary.dark', fontWeight: 820 },
             }}
           />
         ))}

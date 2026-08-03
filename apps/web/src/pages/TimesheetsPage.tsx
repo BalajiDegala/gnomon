@@ -537,15 +537,7 @@ export function TimesheetsPage({ onManageShows, canManageShows }: TimesheetsPage
         sx={{
           display: 'grid',
           gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-          minHeight: 72,
-          px: { xs: 1.5, sm: 2 },
-          py: 1.25,
-          alignItems: 'center',
-          gap: 2,
-          borderTop: '1px solid',
-          borderBottom: '1px solid',
-          borderColor: 'divider',
-          bgcolor: '#fff',
+          gap: 1.5,
         }}
       >
         <SummaryValue label="Total" value={formatMinutes(timesheet.day?.totalMinutes ?? 0)} />
@@ -554,6 +546,7 @@ export function TimesheetsPage({ onManageShows, canManageShows }: TimesheetsPage
       </Box>
 
       <FilterBar
+        standalone
         resultCount={filteredEntries.length}
         resultLabel={filteredEntries.length === 1 ? 'entry' : 'entries'}
         hasActiveFilters={showFilter !== 'all'}
@@ -685,9 +678,24 @@ export function TimesheetsPage({ onManageShows, canManageShows }: TimesheetsPage
 
 function SummaryValue({ label, value }: { label: string; value: string }) {
   return (
-    <Box sx={{ minWidth: 0 }}>
-      <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>{label}</Typography>
-      <Typography sx={{ mt: 0.15, fontSize: 15, fontWeight: 850 }}>{value}</Typography>
+    <Box
+      sx={{
+        minWidth: 0,
+        p: { xs: 1.5, sm: 1.8 },
+        border: '1px solid',
+        borderColor: 'divider',
+        borderRadius: '18px',
+        bgcolor: '#fff',
+        backgroundImage: 'linear-gradient(135deg, rgba(18,148,161,.035), transparent 58%)',
+        boxShadow: '0 10px 26px rgba(20,32,51,.045)',
+      }}
+    >
+      <Typography sx={{ color: 'primary.dark', fontSize: 10.5, fontWeight: 750 }}>
+        {label}
+      </Typography>
+      <Typography sx={{ mt: 0.35, fontSize: { xs: 14, sm: 17 }, fontWeight: 850 }}>
+        {value}
+      </Typography>
     </Box>
   );
 }

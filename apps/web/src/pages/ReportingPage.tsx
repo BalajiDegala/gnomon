@@ -462,15 +462,7 @@ export function ReportingPage() {
                 xs: 'repeat(2, minmax(0, 1fr))',
                 sm: 'repeat(4, minmax(100px, 1fr))',
               },
-              minHeight: 68,
-              px: 2,
-              py: 1.25,
-              alignItems: 'center',
-              gap: { xs: 1.5, sm: 4 },
-              borderTop: '1px solid',
-              borderBottom: '1px solid',
-              borderColor: 'divider',
-              bgcolor: '#fff',
+              gap: 1.5,
             }}
           >
             <SummaryValue label="Employees" value={String(report.summary.scopedEmployees)} />
@@ -876,9 +868,24 @@ function ReportStatus({ status }: { status: string }) {
 
 function SummaryValue({ label: valueLabel, value }: { label: string; value: string }) {
   return (
-    <Box sx={{ minWidth: 105 }}>
-      <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>{valueLabel}</Typography>
-      <Typography sx={{ mt: 0.15, fontSize: 15, fontWeight: 850 }}>{value}</Typography>
+    <Box
+      sx={{
+        minWidth: 105,
+        p: { xs: 1.5, sm: 1.8 },
+        border: '1px solid',
+        borderColor: 'divider',
+        borderRadius: '18px',
+        bgcolor: '#fff',
+        backgroundImage: 'linear-gradient(135deg, rgba(18,148,161,.04), transparent 62%)',
+        boxShadow: '0 10px 26px rgba(20,32,51,.045)',
+      }}
+    >
+      <Typography sx={{ color: 'primary.dark', fontSize: 10.5, fontWeight: 750 }}>
+        {valueLabel}
+      </Typography>
+      <Typography sx={{ mt: 0.35, fontSize: { xs: 14, sm: 17 }, fontWeight: 850 }}>
+        {value}
+      </Typography>
     </Box>
   );
 }

@@ -12,6 +12,7 @@ import {
   Typography,
   type TableCellProps,
 } from '@mui/material';
+import { Inbox } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 export type SortDirection = 'asc' | 'desc';
@@ -79,9 +80,9 @@ export function DataTable<Row, SortKey extends string>({
         overflow: 'hidden',
         border: '1px solid',
         borderColor: 'divider',
-        borderRadius: 3,
+        borderRadius: '22px',
         bgcolor: '#fff',
-        boxShadow: '0 8px 26px rgba(20,32,51,.04)',
+        boxShadow: '0 16px 42px rgba(20,32,51,.065)',
       }}
     >
       <TableContainer sx={{ bgcolor: '#fff' }}>
@@ -97,12 +98,13 @@ export function DataTable<Row, SortKey extends string>({
                     ...responsiveCellSx(column.hideBelow),
                     width: column.width,
                     minWidth: column.minWidth,
-                    height: 44,
-                    bgcolor: '#f4f7f9',
+                    height: 48,
+                    bgcolor: '#f1f5f7',
                     color: 'text.secondary',
-                    fontSize: 10.5,
+                    fontSize: 10,
                     fontWeight: 850,
-                    letterSpacing: 0.25,
+                    letterSpacing: 0.55,
+                    textTransform: 'uppercase',
                     whiteSpace: 'nowrap',
                   }}
                 >
@@ -150,10 +152,13 @@ export function DataTable<Row, SortKey extends string>({
                       : undefined
                   }
                   sx={{
-                    height: 52,
+                    height: 56,
                     cursor: onRowClick ? 'pointer' : 'default',
-                    transition: 'background-color 150ms ease',
+                    transition: 'background-color 150ms ease, box-shadow 150ms ease',
                     '&:hover': { bgcolor: onRowClick ? '#f3fafb !important' : undefined },
+                    '&:hover td:first-of-type': onRowClick
+                      ? { boxShadow: 'inset 3px 0 0 #2bb4c0' }
+                      : undefined,
                     '&:last-child td': { borderBottom: 0 },
                   }}
                 >
@@ -175,9 +180,34 @@ export function DataTable<Row, SortKey extends string>({
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length}>
-                  <Box sx={{ minHeight: 220, display: 'grid', placeItems: 'center', px: 2 }}>
+                  <Box
+                    sx={{
+                      minHeight: 240,
+                      display: 'grid',
+                      placeItems: 'center',
+                      px: 2,
+                      background:
+                        'radial-gradient(circle at center, rgba(18,148,161,.045), transparent 36%)',
+                    }}
+                  >
                     <Box sx={{ textAlign: 'center' }}>
-                      <Typography sx={{ fontSize: 13.5, fontWeight: 800 }}>{emptyTitle}</Typography>
+                      <Box
+                        sx={{
+                          width: 46,
+                          height: 46,
+                          mx: 'auto',
+                          mb: 1.25,
+                          display: 'grid',
+                          placeItems: 'center',
+                          borderRadius: 2.5,
+                          bgcolor: '#eaf5f6',
+                          color: '#188d99',
+                          boxShadow: '0 8px 22px rgba(18,148,161,.08)',
+                        }}
+                      >
+                        <Inbox size={20} />
+                      </Box>
+                      <Typography sx={{ fontSize: 13.5, fontWeight: 820 }}>{emptyTitle}</Typography>
                       <Typography sx={{ mt: 0.4, color: 'text.secondary', fontSize: 11.5 }}>
                         {emptyMessage}
                       </Typography>
@@ -203,7 +233,12 @@ export function DataTable<Row, SortKey extends string>({
         onRowsPerPageChange={(event) => onRowsPerPageChange(Number(event.target.value))}
         rowsPerPageOptions={rowsPerPageOptions}
         labelRowsPerPage="Rows"
-        sx={{ bgcolor: '#f9fbfc', borderTop: '1px solid', borderColor: 'divider' }}
+        sx={{
+          minHeight: 56,
+          bgcolor: '#f7fafb',
+          borderTop: '1px solid',
+          borderColor: 'divider',
+        }}
       />
     </Box>
   );

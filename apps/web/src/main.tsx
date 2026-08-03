@@ -24,8 +24,8 @@ const theme = createTheme({
     success: { main: '#249e6b' },
     warning: { main: '#d9872f' },
     error: { main: '#d4515a' },
-    background: { default: '#f3f6f8', paper: '#ffffff' },
-    divider: '#dfe6eb',
+    background: { default: '#eef3f6', paper: '#ffffff' },
+    divider: '#d9e3e9',
     text: { primary: '#142033', secondary: '#647287' },
   },
   typography: {
@@ -34,16 +34,16 @@ const theme = createTheme({
     h5: { fontWeight: 800, letterSpacing: '-0.025em' },
     button: { textTransform: 'none', fontWeight: 750, letterSpacing: '-0.01em' },
   },
-  shape: { borderRadius: 14 },
+  shape: { borderRadius: 16 },
   components: {
     MuiCssBaseline: {
       styleOverrides: {
-        html: { backgroundColor: '#f3f6f8' },
+        html: { backgroundColor: '#eef3f6' },
         body: {
           minWidth: 320,
-          backgroundColor: '#f3f6f8',
+          backgroundColor: '#eef3f6',
           backgroundImage:
-            'radial-gradient(circle at 76% -10%, rgba(18,148,161,.07), transparent 30%), radial-gradient(circle at 104% 62%, rgba(93,99,216,.045), transparent 28%)',
+            'radial-gradient(circle at 74% -8%, rgba(18,148,161,.09), transparent 28%), radial-gradient(circle at 106% 58%, rgba(93,99,216,.055), transparent 28%), linear-gradient(rgba(255,255,255,.25), rgba(255,255,255,.25))',
           backgroundAttachment: 'fixed',
         },
         '*': { boxSizing: 'border-box' },
@@ -64,8 +64,8 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           border: '1px solid rgba(216,225,232,.95)',
-          borderRadius: 16,
-          boxShadow: '0 8px 28px rgba(20,32,51,.055)',
+          borderRadius: 18,
+          boxShadow: '0 12px 34px rgba(20,32,51,.065)',
         },
       },
     },
@@ -104,6 +104,14 @@ const theme = createTheme({
     },
     MuiTooltip: {
       styleOverrides: { tooltip: { borderRadius: 8, fontSize: 11, fontWeight: 650 } },
+    },
+    MuiDialog: {
+      styleOverrides: {
+        paper: { borderRadius: 22, boxShadow: '0 28px 90px rgba(10,21,37,.24)' },
+      },
+    },
+    MuiAlert: {
+      styleOverrides: { root: { borderRadius: 12 } },
     },
   },
 });

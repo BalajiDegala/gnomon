@@ -156,28 +156,71 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
 
   return (
     <Stack spacing={3.25} sx={{ width: '100%', maxWidth: 1440, mx: 'auto' }}>
-      <Stack
-        direction={{ xs: 'column', sm: 'row' }}
-        sx={{ justifyContent: 'space-between', alignItems: { sm: 'flex-end' }, gap: 1.5 }}
+      <Box
+        sx={{
+          position: 'relative',
+          overflow: 'hidden',
+          px: { xs: 2.5, sm: 3.25 },
+          py: { xs: 2.5, sm: 2.75 },
+          border: '1px solid rgba(214,225,232,.95)',
+          borderRadius: '22px',
+          background:
+            'radial-gradient(circle at 88% 0%, rgba(32,190,202,.12), transparent 27%), linear-gradient(135deg, rgba(255,255,255,.98), rgba(246,251,252,.94))',
+          boxShadow: '0 14px 36px rgba(20,32,51,.055)',
+          '&::after': {
+            content: '""',
+            position: 'absolute',
+            width: 150,
+            height: 150,
+            right: -80,
+            bottom: -105,
+            borderRadius: '50%',
+            border: '18px solid rgba(19,151,163,.045)',
+          },
+        }}
       >
-        <Box>
-          <Typography sx={{ color: 'text.secondary', fontSize: 12.5, fontWeight: 650, mb: 0.5 }}>
-            {today}
-          </Typography>
-          <Typography variant="h4" sx={{ fontWeight: 850, letterSpacing: '-0.035em' }}>
-            {getGreeting()}, {firstName}
-          </Typography>
-          <Typography sx={{ mt: 0.65, color: 'text.secondary', fontSize: 14 }}>
-            Here is your workday across attendance, time and approvals.
-          </Typography>
-        </Box>
-        <Chip
-          icon={<ShieldCheck size={15} />}
-          label={`${user?.permissions.length ?? 0} active permissions`}
-          variant="outlined"
-          sx={{ alignSelf: { xs: 'flex-start', sm: 'auto' }, bgcolor: '#fff' }}
-        />
-      </Stack>
+        <Stack
+          direction={{ xs: 'column', sm: 'row' }}
+          sx={{
+            position: 'relative',
+            zIndex: 1,
+            justifyContent: 'space-between',
+            alignItems: { sm: 'center' },
+            gap: 1.5,
+          }}
+        >
+          <Box>
+            <Typography
+              sx={{
+                color: 'primary.dark',
+                fontSize: 11,
+                fontWeight: 800,
+                mb: 0.65,
+                letterSpacing: 0.5,
+              }}
+            >
+              {today.toUpperCase()}
+            </Typography>
+            <Typography variant="h4" sx={{ fontWeight: 850, letterSpacing: '-0.04em' }}>
+              {getGreeting()}, {firstName}
+            </Typography>
+            <Typography sx={{ mt: 0.65, color: 'text.secondary', fontSize: 14 }}>
+              Here is your workday across attendance, time and approvals.
+            </Typography>
+          </Box>
+          <Chip
+            icon={<ShieldCheck size={15} />}
+            label={`${user?.permissions.length ?? 0} active permissions`}
+            variant="outlined"
+            sx={{
+              alignSelf: { xs: 'flex-start', sm: 'auto' },
+              height: 34,
+              bgcolor: 'rgba(255,255,255,.86)',
+              borderColor: 'rgba(18,148,161,.2)',
+            }}
+          />
+        </Stack>
+      </Box>
 
       {(!timecard.canRead || !timecard.canWrite) && (
         <Alert severity="warning">

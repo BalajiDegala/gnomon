@@ -567,28 +567,45 @@ function BalanceSummary({ balances }: { balances: ReturnType<typeof useMyLeaves>
       sx={{
         display: 'grid',
         gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, 1fr)' },
-        gap: { xs: 1.5, md: 3 },
-        px: 2,
-        py: 1.5,
-        borderTop: '1px solid',
-        borderBottom: '1px solid',
-        borderColor: 'divider',
-        bgcolor: '#fff',
+        gap: 1.5,
       }}
     >
       {balances.map((balance) => (
-        <Box key={balance.leaveType} sx={{ minWidth: 0 }}>
-          <Typography noWrap sx={{ color: 'text.secondary', fontSize: 10.5 }}>
+        <Box
+          key={balance.leaveType}
+          sx={{
+            position: 'relative',
+            minWidth: 0,
+            p: { xs: 1.5, sm: 1.8 },
+            overflow: 'hidden',
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: '18px',
+            bgcolor: '#fff',
+            boxShadow: '0 10px 26px rgba(20,32,51,.045)',
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              width: 54,
+              height: 54,
+              right: -25,
+              top: -24,
+              borderRadius: '50%',
+              bgcolor: 'rgba(18,148,161,.07)',
+            },
+          }}
+        >
+          <Typography noWrap sx={{ color: 'primary.dark', fontSize: 10.5, fontWeight: 750 }}>
             {leaveTypeLabels[balance.leaveType]}
           </Typography>
-          <Typography sx={{ mt: 0.2, fontSize: 15, fontWeight: 850 }}>
+          <Typography sx={{ mt: 0.45, fontSize: { xs: 14, sm: 16 }, fontWeight: 850 }}>
             {balance.balanceTracked
               ? balance.availableDays === null
                 ? 'Not set'
                 : `${balance.availableDays} available`
               : 'As approved'}
           </Typography>
-          <Typography sx={{ color: 'text.secondary', fontSize: 9.5 }}>
+          <Typography sx={{ mt: 0.2, color: 'text.secondary', fontSize: 9.5 }}>
             {balance.pendingDays} pending - {balance.approvedDays} approved
           </Typography>
         </Box>
