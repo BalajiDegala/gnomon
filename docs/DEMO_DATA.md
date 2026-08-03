@@ -12,7 +12,7 @@ npm run seed:demo
 
 The seed includes:
 
-- Nine employees across Mumbai and Hyderabad demo studios
+- Nine employees in the single Mumbai demo branch
 - Reporting Manager, Show Manager, HR, Attendance Administrator, and Employee roles
 - Project Orion, Nova Campaign, and Atlas Trailer shows
 - Ten past workdays of biometric, access-card, website-session, and timesheet data

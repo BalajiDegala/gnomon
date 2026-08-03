@@ -79,5 +79,11 @@ export function useSecurityAdministration() {
       assignRole.mutateAsync({ userId, input }),
     revokeRole: (userId: string, assignmentId: string) =>
       revokeRole.mutateAsync({ userId, assignmentId }),
+    clearError: () => {
+      provision.reset();
+      updateAccount.reset();
+      assignRole.reset();
+      revokeRole.reset();
+    },
   };
 }

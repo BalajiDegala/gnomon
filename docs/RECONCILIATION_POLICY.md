@@ -105,23 +105,20 @@ when the work date is current/past. See
 
 ## Configured holidays
 
-An applicable active holiday overrides ordinary calculated attendance with `holiday`,
+An active company holiday overrides ordinary calculated attendance with `holiday`,
 clears daily anomalies, and finalises the derived record with `holiday` as its source.
 The policy actor and update time are retained while biometric, access-card, website,
 and show-time summaries remain intact. Approved regularisation and approved leave retain
 precedence over holiday state.
 
-Company holidays apply to every employee. Studio holidays apply when the employee's
-effective-dated location assignment covers the holiday's work date. Current employee
-location is only a compatibility fallback when no assignment history exists, so a
-later transfer cannot rewrite the meaning of a historical calendar or daily timecard.
-Company and location holidays cannot both be active on the same date.
+Company holidays apply to every employee in the one-branch MVP. Legacy location holiday
+records remain stored for backward compatibility but are ignored by current leave,
+calendar, and reconciliation calculations.
 
 Creating or archiving a holiday is rejected if doing so would conflict with an active
 leave reservation/range. Current/past daily records already materialized for the date
 are recalculated after a policy change; future dates remain calendar policy until the
-work date arrives. A location change similarly recalculates today's materialized
-record and is blocked when active leave would gain or lose a future location holiday.
+work date arrives.
 
 ## Duration caveat
 

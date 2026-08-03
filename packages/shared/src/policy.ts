@@ -107,6 +107,14 @@ export const UpsertHolidayRequestSchema = z
   });
 export type UpsertHolidayRequest = z.infer<typeof UpsertHolidayRequestSchema>;
 
+export const CompanyHolidayRequestSchema = z
+  .object({
+    date: z.string().date(),
+    name: z.string().trim().min(2).max(120),
+  })
+  .strict();
+export type CompanyHolidayRequest = z.infer<typeof CompanyHolidayRequestSchema>;
+
 export const PolicyYearQuerySchema = z.object({
   year: z.coerce.number().int().min(2000).max(2200).optional(),
 });

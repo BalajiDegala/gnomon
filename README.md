@@ -37,7 +37,7 @@ The completed workforce-management MVP includes:
 - Employee missed-biometric and website start/stop regularisation requests with
   closed-workday validation, duplicate prevention, cancellation, and status history.
 - Two-step Reporting Manager then HR/Attendance approval, strict direct-report/
-  company/department/location scope enforcement, self-approval prevention, and
+  company/department scope enforcement, self-approval prevention, and
   immutable decision history.
 - Approved corrections finalise the daily timecard while preserving all imported
   biometric, access-card, and website evidence.
@@ -56,23 +56,20 @@ The completed workforce-management MVP includes:
 - Scoped Reporting Manager direct-report and System Administrator company calendars
   with responsive month matrices and private-reason redaction. Team Calendar has no
   show filter.
-- Auditable company- and studio-location holiday administration with scope
-  enforcement, archive/reactivate support, leave-range conflict protection, and
-  automatic exclusion from leave days.
-- Studio-location directory and effective-dated employee assignment history, with
-  company and exact-location RBAC/ABAC capabilities shown in the Administration UI.
-- Location-aware personal calendars, leave-day calculation, attendance
-  reconciliation, and policy changes that preserve historical assignment meaning.
+- One auditable company holiday calendar shared by every employee, with
+  archive/reactivate support, leave-range conflict protection, and automatic exclusion
+  from leave days.
+- One-branch MVP baseline: branch selection and employee-location assignment are not
+  exposed in Administration; legacy location records remain readable for compatibility.
 - HR-scoped employee leave-balance administration for annual entitlement, signed
   adjustment, usage, availability, and notes.
-- Permission-aware Administration workspace that exposes attendance imports, studio
-  locations, employee-location assignment, holiday policy, and/or leave balances
-  according to each role grant.
+- Permission-aware Administration workspace for attendance imports, company holidays,
+  employee leave balances, and access control.
 - Scoped employee directory with employee creation, profile/status maintenance,
   reporting-manager assignment, and immutable employee change events.
-- System Administrator access management for login provisioning, password and status
-  controls, scoped role assignment, session revocation, self-lockout protection, and
-  immutable security events.
+- Searchable, filterable, and paginated System Administrator access directory for login
+  provisioning, password/status controls, scoped role assignment, session revocation,
+  self-lockout protection, and immutable security events.
 - Scoped attendance, leave, regularisation, and timesheet reports with summary metrics,
   responsive tables, and per-domain CSV export.
 - Permission-aware Employee, Manager, HR & Admin, and Reporting navigation groups.
@@ -102,7 +99,7 @@ The attendance correction and approval workflow is documented in
 [`docs/REGULARISATION_WORKFLOW.md`](docs/REGULARISATION_WORKFLOW.md).
 The leave, approval, balance, calendar, and attendance interaction is documented in
 [`docs/LEAVE_CALENDAR_WORKFLOW.md`](docs/LEAVE_CALENDAR_WORKFLOW.md).
-Location, holiday, and leave-balance administration is documented in
+Company holiday and leave-balance administration is documented in
 [`docs/POLICY_ADMINISTRATION.md`](docs/POLICY_ADMINISTRATION.md).
 Manager team availability calendars are documented in
 [`docs/TEAM_CALENDAR_WORKFLOW.md`](docs/TEAM_CALENDAR_WORKFLOW.md).

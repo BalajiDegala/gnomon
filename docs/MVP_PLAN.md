@@ -32,8 +32,8 @@ Managers, Show Managers, HR, and administrators can:
 - Approve or reject requests according to versioned MVP approval rules.
 - Import biometric and access-card CSV files.
 - Investigate missing punches and mismatched source data.
-- Configure employees, reporting relationships, shows, locations,
-  holidays, leave balances, login accounts, and scoped system roles.
+- Configure employees, reporting relationships, shows, company holidays, leave
+  balances, login accounts, and scoped system roles.
 - Run scoped attendance, leave, regularisation, and timesheet reports and export CSV.
 - Retain immutable attribution for approvals and sensitive employee/security changes.
 
@@ -47,7 +47,7 @@ Managers, Show Managers, HR, and administrators can:
 - System Administrator
 
 A user may hold more than one role. A role grants capabilities, while attribute
-scope determines the employees, shows, departments, locations, or company data
+scope determines the employees, shows, departments, or company data
 on which those capabilities may be used.
 
 ## 3. Sources of attendance evidence
@@ -360,8 +360,8 @@ configured in the attendance policy.
 ## 8. RBAC and ABAC
 
 RBAC determines which operations a role can perform. ABAC scopes those
-operations to the applicable employee, direct reports, shows, departments,
-locations, or the entire company.
+operations to the applicable employee, direct reports, shows, departments, or the
+entire company.
 
 Example permission codes:
 
@@ -438,9 +438,9 @@ designer is outside this MVP.
   the personal calendar.
 - Release `0.7.0` adds HR-scoped annual entitlement/adjustment administration and
   company policy administration with active-leave conflict guards.
-- Release `0.9.0` adds the studio location directory, effective-dated employee
-  location assignment history, exact-location RBAC/ABAC, location holiday selection,
-  and location-aware leave, calendar, and attendance reconciliation.
+- Release `0.11.0` establishes the current one-branch baseline: one company holiday
+  calendar applies to every employee, and location selection/assignment is not exposed.
+  Earlier location records remain stored only for backward compatibility.
 - Team Calendar resolves direct reports, or company workforce for System
   Administration, and has no show selector or show-derived membership.
 - Leave reasons remain private unless the viewer has an explicit permission.
@@ -454,8 +454,7 @@ contracts, APIs, approval scope, reconciliation behavior, and test procedure.
 
 - Employee directory and employee creation
 - Employee profile, status, and reporting-manager maintenance
-- Studio locations and effective-dated employee location assignments
-- Company and location holidays
+- One company-wide holiday calendar
 - Annual leave entitlements and adjustments
 - Regularisation and leave approval oversight
 - Scoped reports and CSV exports
@@ -483,7 +482,8 @@ contracts, APIs, approval scope, reconciliation behavior, and test procedure.
 - Login account provisioning and status control
 - Temporary password reset with session revocation
 - Seeded system roles and permission sets
-- Company, direct-report, show, location, and self-scoped role assignments
+- Searchable, filterable, paginated employee access directory
+- Company, direct-report, show, and self-scoped role assignments
 - Immutable employee and security change events
 
 Navigation is permission-driven, and direct page URLs and API calls are also
@@ -594,9 +594,8 @@ CPU does not expose the AVX instructions required by newer MongoDB releases.
 - Implemented in `0.7.0`: company holiday administration, holiday-aware leave-day
   calculation, personal calendar markers, and holiday attendance finalisation.
 - Implemented in `0.7.0`: HR-scoped paid-leave entitlement and adjustment administration.
-- Implemented in `0.9.0`: location directory, effective-dated employee assignment,
-  exact-location authorization, location-specific holidays, and date-effective
-  calendar/leave/reconciliation applicability.
+- Superseded in `0.11.0`: the earlier multi-location workflow is retained only as
+  backward-compatible data; current holiday applicability is company-wide.
 - Implemented: Reporting Manager direct-report calendars and System Administrator
   company calendars with leave-reason privacy and no show filter.
 
@@ -604,12 +603,13 @@ CPU does not expose the AVX instructions required by newer MongoDB releases.
 
 - Implemented in `0.7.0`: permission-aware administration shell for attendance
   imports, company holidays, and employee leave balances.
-- Implemented in `0.9.0`: capability-aware studio location cards, employee-location
-  assignment, and company/location holiday selection.
+- Implemented in `0.11.0`: a single company holiday administration workflow with no
+  branch selector or employee-location assignment UI.
 - Implemented in `0.11.0`: scoped employee directory, employee creation and profile/
   manager/status maintenance, with immutable change events.
-- Implemented in `0.11.0`: System Administrator account provisioning, password/status
-  controls, scoped role grants, self-lockout protection, and security audit events.
+- Implemented in `0.11.0`: searchable and paginated System Administrator access
+  directory, account provisioning, password/status controls, scoped role grants,
+  self-lockout protection, and security audit events.
 - Implemented in `0.11.0`: attendance, leave, regularisation, and timesheet reporting
   with role scope enforcement, summary metrics, responsive tables, and CSV exports.
 - Implemented in `0.11.0`: four-workspace information architecture for Employee,
@@ -650,6 +650,8 @@ CPU does not expose the AVX instructions required by newer MongoDB releases.
 - Source endpoint differences greater than 15 minutes trigger a mismatch anomaly.
 - Regularisation requires Reporting Manager approval followed by HR/Attendance approval.
 - Leave requires one Reporting Manager decision.
+- One company holiday calendar applies to every employee; branch/location selection is
+  outside the current MVP.
 - Every employee can select any active show for a timesheet entry.
 - The work description is a mandatory free-text comment; no task entity is used.
 - Progress is selected in ten-percent steps from 10% through 100%.

@@ -1,11 +1,11 @@
 import {
+  CompanyHolidayRequestSchema,
   CreateLocationRequestSchema,
   EmployeeLeaveBalanceQuerySchema,
   EmployeeLocationQuerySchema,
   PolicyYearQuerySchema,
   UpdateEmployeeLocationRequestSchema,
   UpdateLeaveBalanceRequestSchema,
-  UpsertHolidayRequestSchema,
 } from '@gnomon/shared';
 import { Router } from 'express';
 import { z } from 'zod';
@@ -35,8 +35,14 @@ holidayAdministrationRouter.get('/', async (request, response) => {
 });
 
 holidayAdministrationRouter.put('/', async (request, response) => {
-  const input = UpsertHolidayRequestSchema.parse(request.body);
-  response.json({ holiday: await upsertHoliday(request.authUser!, input) });
+  const input = CompanyHolidayRequestSchema.parse(request.body);
+  response.json({
+    holiday: await upsertHoliday(request.authUser!, {
+      ...input,
+      scopeType: 'company',
+      locationId: null,
+    }),
+  });
 });
 
 holidayAdministrationRouter.post('/:holidayId/archive', async (request, response) => {

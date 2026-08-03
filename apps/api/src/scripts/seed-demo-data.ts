@@ -51,7 +51,7 @@ const employeeDefinitions = [
     lastName: 'Iyer',
     email: 'demo.hr@example.com',
     managerCode: null,
-    locationCode: 'DEMO-HYD',
+    locationCode: 'DEMO-MUM',
     specialistRole: 'HR',
   },
   {
@@ -60,7 +60,7 @@ const employeeDefinitions = [
     lastName: 'Shah',
     email: 'demo.attendance@example.com',
     managerCode: null,
-    locationCode: 'DEMO-HYD',
+    locationCode: 'DEMO-MUM',
     specialistRole: 'ATTENDANCE_ADMIN',
   },
   {
@@ -87,7 +87,7 @@ const employeeDefinitions = [
     lastName: 'Menon',
     email: 'demo.isha@example.com',
     managerCode: 'DEMO1001',
-    locationCode: 'DEMO-HYD',
+    locationCode: 'DEMO-MUM',
     specialistRole: null,
   },
   {
@@ -96,7 +96,7 @@ const employeeDefinitions = [
     lastName: 'Patel',
     email: 'demo.dev@example.com',
     managerCode: 'DEMO1001',
-    locationCode: 'DEMO-HYD',
+    locationCode: 'DEMO-MUM',
     specialistRole: null,
   },
   {
@@ -172,10 +172,7 @@ async function seedDemoData(): Promise<void> {
   if (!employeeRole) throw new Error('The Employee role could not be seeded');
 
   const locations = new Map<string, HydratedDocument<LocationDocument>>();
-  for (const definition of [
-    { code: 'DEMO-MUM', name: 'Mumbai Demo Studio' },
-    { code: 'DEMO-HYD', name: 'Hyderabad Demo Studio' },
-  ]) {
+  for (const definition of [{ code: 'DEMO-MUM', name: 'Mumbai Demo Studio' }]) {
     const location = await Location.findOneAndUpdate(
       { code: definition.code },
       {
@@ -190,6 +187,7 @@ async function seedDemoData(): Promise<void> {
     ).exec();
     locations.set(definition.code, location);
   }
+  await Location.updateMany({ code: 'DEMO-HYD' }, { $set: { status: 'inactive' } }).exec();
 
   const employees = new Map<string, HydratedDocument<EmployeeDocument>>();
   for (const definition of employeeDefinitions) {

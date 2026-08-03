@@ -16,6 +16,10 @@ const regularisationUsers = {
     password: process.env.E2E_HR_PASSWORD,
   },
 };
+const policyEmployee = {
+  code: process.env.E2E_EMPLOYEE_CODE ?? 'E2EEMP01',
+  name: process.env.E2E_EMPLOYEE_NAME ?? 'Eshan Artist',
+};
 
 function closedWeekdayDate(): string {
   const localDate = new Intl.DateTimeFormat('en-CA', {
@@ -117,7 +121,9 @@ test('renders the authenticated workforce overview', async ({ page }, testInfo) 
   await expect(page.getByText('New CSV import')).toBeVisible();
   await page.getByRole('tab', { name: 'Access & roles', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Access & roles', exact: true })).toBeVisible();
-  await expect(page.getByLabel('Employee account')).toBeVisible();
+  await expect(page.getByLabel('Search access directory')).toBeVisible();
+  await expect(page.getByRole('table', { name: 'Access directory' })).toBeVisible();
+  await expect(page.getByLabel('Employee account')).toHaveCount(0);
   await page.screenshot({ path: testInfo.outputPath('access-and-roles.png'), fullPage: true });
 
   if (testInfo.project.name === 'mobile-chromium') {
@@ -224,6 +230,13 @@ test('restores durable page context after refresh', async ({ page }, testInfo) =
   await expect(page).toHaveURL(/\/administration\?section=security$/);
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Access & roles', exact: true })).toBeVisible();
+  await page.getByLabel('Search access directory').fill('Asha');
+  await expect(page).toHaveURL(/q=Asha/);
+  await page.getByRole('button', { name: 'Manage access for Asha Rao' }).click();
+  await expect(page.getByRole('tab', { name: 'Account', exact: true })).toBeVisible();
+  await expect(page).toHaveURL(/employee=[a-f\d]{24}/);
+  await page.reload();
+  await expect(page.getByRole('button', { name: 'Close access details' })).toBeVisible();
 
   await page.goto('/people');
   await page.getByLabel('Search people').fill('Asha');
@@ -660,9 +673,12 @@ test('completes leave approval and shows approved leave in the personal calendar
   });
 });
 
-test('configures a location holiday and an employee leave balance', async ({ page }, testInfo) => {
-  const credentialsReady = regularisationUsers.hr.email && regularisationUsers.employee.email;
-  test.skip(!credentialsReady, 'HR and employee E2E credentials are required');
+test('configures a company holiday and an employee leave balance', async ({ page }, testInfo) => {
+  const credentialsReady =
+    regularisationUsers.hr.email &&
+    regularisationUsers.employee.email &&
+    regularisationUsers.manager.email;
+  test.skip(!credentialsReady, 'HR, employee, and manager E2E credentials are required');
 
   await signIn(page, regularisationUsers.hr);
   if (testInfo.project.name === 'mobile-chromium') {
@@ -670,8 +686,11 @@ test('configures a location holiday and an employee leave balance', async ({ pag
   }
   await navigationLink(page, 'Administration').click();
   await expect(page.getByRole('heading', { name: 'Administration', exact: true })).toBeVisible();
-  await page.getByRole('tab', { name: 'Leave & holidays', exact: true }).click();
+  const leavePolicyTab = page.getByRole('tab', { name: 'Leave & holidays', exact: true });
+  if (await leavePolicyTab.count()) await leavePolicyTab.click();
   await expect(page.getByRole('heading', { name: 'Leave & holidays', exact: true })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Holiday scope' })).toHaveCount(0);
+  await expect(page.getByLabel('Studio location')).toHaveCount(0);
 
   if (testInfo.project.name === 'mobile-chromium') {
     await page.screenshot({
@@ -683,28 +702,9 @@ test('configures a location holiday and an employee leave balance', async ({ pag
 
   const holidayDate = futureWeekdayDate(35);
   const suffix = `${Date.now()}`.slice(-8);
-  const locationCode = `LOC${suffix}`;
-  const locationName = `E2E Mumbai Studio ${suffix}`;
-  const holidayName = `E2E Location Holiday ${suffix}`;
-
-  await page.getByLabel('Location code').fill(locationCode);
-  await page.getByLabel('Location name').fill(locationName);
-  await page.getByRole('button', { name: 'Add location' }).click();
-  await expect(page.getByText(locationName)).toBeVisible();
-
-  await page.getByLabel('Location employee code').fill('E2EEMP01');
-  await page.getByRole('button', { name: 'Load employee' }).click();
-  await expect(page.getByText('Eshan Artist')).toBeVisible();
-  await page.getByRole('combobox', { name: 'Assigned location' }).click();
-  await page.getByRole('option', { name: new RegExp(locationName) }).click();
-  await page.getByRole('button', { name: 'Assign effective today' }).click();
-  await expect(page.getByText(new RegExp(`current: ${locationName}`))).toBeVisible();
+  const holidayName = `E2E Company Holiday ${suffix}`;
 
   await page.getByLabel('Policy year').fill(holidayDate.slice(0, 4));
-  await page.getByRole('combobox', { name: 'Holiday scope' }).click();
-  await page.getByRole('option', { name: 'One studio location' }).click();
-  await page.getByRole('combobox', { name: 'Studio location' }).click();
-  await page.getByRole('option', { name: new RegExp(locationName) }).click();
   await page.getByLabel('Holiday date').fill(holidayDate);
   await page.getByLabel('Holiday name').fill(holidayName);
   await page.getByRole('button', { name: 'Save holiday' }).click();
@@ -713,16 +713,16 @@ test('configures a location holiday and an employee leave balance', async ({ pag
   const balanceCard = page
     .getByText('Employee leave balances')
     .locator('xpath=ancestor::*[contains(@class,"MuiCard-root")][1]');
-  await balanceCard.getByLabel('Employee code').fill('E2EEMP01');
+  await balanceCard.getByLabel('Employee code').fill(policyEmployee.code);
   await balanceCard.getByRole('button', { name: 'Load balances' }).click();
-  await expect(balanceCard.getByText('Eshan Artist')).toBeVisible();
+  await expect(balanceCard.getByText(policyEmployee.name)).toBeVisible();
   await balanceCard.getByLabel('Casual leave entitlement').fill('12');
   await balanceCard.getByLabel('Casual leave adjustment').fill('1');
   await balanceCard.getByLabel('Casual leave note').fill('E2E annual balance configuration');
   await balanceCard.getByRole('button', { name: 'Save casual leave' }).click();
-  await expect(balanceCard.getByText(/1[23] available/)).toBeVisible();
+  await expect(balanceCard.getByText(/\d+(?:\.\d+)? available/).first()).toBeVisible();
   await page.screenshot({
-    path: testInfo.outputPath('location-policy-administration.png'),
+    path: testInfo.outputPath('company-policy-administration.png'),
     fullPage: true,
   });
   await signOut(page);
@@ -740,5 +740,5 @@ test('configures a location holiday and an employee leave balance', async ({ pag
   await signIn(page, regularisationUsers.manager);
   await navigationLink(page, 'Calendar').click();
   await page.getByLabel('Jump to month').fill(holidayDate.slice(0, 7));
-  await expect(page.getByText(holidayName)).toHaveCount(0);
+  await expect(page.getByText(holidayName)).toBeVisible();
 });

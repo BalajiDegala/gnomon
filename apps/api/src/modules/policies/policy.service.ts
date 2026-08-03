@@ -95,32 +95,15 @@ export function canManageEmployeeBalance(user: AuthUser, employee: EmployeeDocum
 
 export async function listAdminHolidays(user: AuthUser, year: number): Promise<HolidayDto[]> {
   await ensureIndexes();
-  const filters = user.grants.flatMap((grant) => {
-    if (!grant.permissions.includes('policy:manage')) return [];
-    if (grant.scope.type === 'company') return [{}];
-    if (grant.scope.type === 'location') {
-      return grant.scope.ids.map((id) => ({ scopeType: 'location', locationId: id }));
-    }
-    return [];
-  });
-  if (filters.length === 0) return [];
-  const query = filters.some((filter) => Object.keys(filter).length === 0)
-    ? { date: { $gte: `${year}-01-01`, $lte: `${year}-12-31` } }
-    : { date: { $gte: `${year}-01-01`, $lte: `${year}-12-31` }, $or: filters };
-  const holidays = await Holiday.find(query).sort({ date: 1, name: 1 }).lean().exec();
-  const locations = await Location.find({
-    _id: { $in: holidays.flatMap((holiday) => (holiday.locationId ? [holiday.locationId] : [])) },
+  if (!hasCompanyGrant(user, 'policy:manage')) return [];
+  const holidays = await Holiday.find({
+    scopeType: 'company',
+    date: { $gte: `${year}-01-01`, $lte: `${year}-12-31` },
   })
-    .select({ code: 1, name: 1 })
+    .sort({ date: 1, name: 1 })
     .lean()
     .exec();
-  const locationById = new Map(locations.map((location) => [String(location._id), location]));
-  return holidays.map((holiday) =>
-    toHolidayDto(
-      holiday,
-      holiday.locationId ? locationById.get(String(holiday.locationId)) : undefined,
-    ),
-  );
+  return holidays.map((holiday) => toHolidayDto(holiday));
 }
 
 async function assertNoReservedLeaveConflict(input: UpsertHolidayRequest): Promise<void> {
@@ -228,6 +211,9 @@ export async function archiveHoliday(
 ): Promise<HolidayDto> {
   const holiday = await Holiday.findById(holidayId).exec();
   if (!holiday) throw new HttpError(404, 'Holiday not found', 'HOLIDAY_NOT_FOUND');
+  if (holiday.scopeType !== 'company') {
+    throw new HttpError(404, 'Holiday not found', 'HOLIDAY_NOT_FOUND');
+  }
   if (!canManageHoliday(user, holiday)) {
     throw new HttpError(403, 'This holiday is outside your policy scope', 'SCOPE_FORBIDDEN');
   }

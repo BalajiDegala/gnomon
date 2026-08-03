@@ -3,7 +3,7 @@ import { Types } from 'mongoose';
 
 import { HttpError } from '../../middleware/errors.js';
 import { Employee } from '../employees/employee.model.js';
-import { EmployeeLocationAssignment, Location } from '../employees/location.model.js';
+import { EmployeeLocationAssignment } from '../employees/location.model.js';
 import { Holiday, type HolidayDocument } from './holiday.model.js';
 
 export interface ApplicableHoliday extends HolidayDto {
@@ -11,18 +11,15 @@ export interface ApplicableHoliday extends HolidayDto {
   updatedAtDate: Date;
 }
 
-function toHolidayDto(
-  holiday: HolidayDocument,
-  location?: { code: string; name: string },
-): HolidayDto {
+function toHolidayDto(holiday: HolidayDocument): HolidayDto {
   return {
     id: String(holiday._id),
     date: holiday.date,
     name: holiday.name,
     scopeType: holiday.scopeType,
     locationId: holiday.locationId ? String(holiday.locationId) : null,
-    locationCode: location?.code ?? null,
-    locationName: location?.name ?? null,
+    locationCode: null,
+    locationName: null,
     status: holiday.status,
     createdAt: holiday.createdAt.toISOString(),
     updatedAt: holiday.updatedAt.toISOString(),
@@ -34,64 +31,19 @@ export async function listApplicableHolidays(
   startDate: string,
   endDate: string,
 ): Promise<HolidayDto[]> {
-  const [employee, assignments, assignmentHistory] = await Promise.all([
-    Employee.findById(employeeId).select({ locationId: 1 }).lean().exec(),
-    EmployeeLocationAssignment.find({
-      employeeId,
-      effectiveFrom: { $lte: endDate },
-      $or: [{ effectiveUntil: null }, { effectiveUntil: { $gte: startDate } }],
-    })
-      .sort({ effectiveFrom: 1 })
-      .lean()
-      .exec(),
-    EmployeeLocationAssignment.exists({ employeeId }),
-  ]);
+  const employee = await Employee.exists({ _id: employeeId });
   if (!employee) throw new HttpError(404, 'Employee profile not found', 'EMPLOYEE_NOT_FOUND');
-
-  const legacyLocationId = assignmentHistory === null ? employee.locationId : null;
-  const locationIds = [
-    ...(legacyLocationId ? [legacyLocationId] : []),
-    ...assignments.flatMap((assignment) => (assignment.locationId ? [assignment.locationId] : [])),
-  ];
-  const scopes: Array<Record<string, unknown>> = [{ scopeType: 'company', locationId: null }];
-  if (locationIds.length > 0) {
-    scopes.push({ scopeType: 'location', locationId: { $in: locationIds } });
-  }
 
   const holidays = await Holiday.find({
     status: 'active',
+    scopeType: 'company',
+    locationId: null,
     date: { $gte: startDate, $lte: endDate },
-    $or: scopes,
   })
-    .sort({ date: 1, scopeType: 1, name: 1 })
+    .sort({ date: 1, name: 1 })
     .lean()
     .exec();
-  const applicable = holidays.filter((holiday) => {
-    if (holiday.scopeType === 'company') return true;
-    if (!holiday.locationId) return false;
-    if (assignments.length === 0) return Boolean(legacyLocationId?.equals(holiday.locationId));
-    return assignments.some(
-      (assignment) =>
-        assignment.locationId?.equals(holiday.locationId) &&
-        assignment.effectiveFrom <= holiday.date &&
-        (assignment.effectiveUntil === null || assignment.effectiveUntil >= holiday.date),
-    );
-  });
-  const applicableLocationIds = applicable.flatMap((holiday) =>
-    holiday.locationId ? [holiday.locationId] : [],
-  );
-  const locations = await Location.find({ _id: { $in: applicableLocationIds } })
-    .select({ code: 1, name: 1 })
-    .lean()
-    .exec();
-  const locationById = new Map(locations.map((location) => [String(location._id), location]));
-
-  return applicable.map((holiday) =>
-    toHolidayDto(
-      holiday,
-      holiday.locationId ? locationById.get(String(holiday.locationId)) : undefined,
-    ),
-  );
+  return holidays.map(toHolidayDto);
 }
 
 export async function findApplicableHoliday(

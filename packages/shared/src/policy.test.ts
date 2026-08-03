@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  CompanyHolidayRequestSchema,
   CreateLocationRequestSchema,
   UpdateEmployeeLocationRequestSchema,
   UpdateLeaveBalanceRequestSchema,
@@ -12,6 +13,19 @@ describe('holiday and leave policy contracts', () => {
     expect(
       UpsertHolidayRequestSchema.parse({ date: '2026-08-15', name: 'Independence Day' }),
     ).toMatchObject({ scopeType: 'company', locationId: null });
+  });
+
+  it('keeps the active holiday API company-wide', () => {
+    expect(
+      CompanyHolidayRequestSchema.parse({ date: '2026-10-02', name: 'Gandhi Jayanti' }),
+    ).toEqual({ date: '2026-10-02', name: 'Gandhi Jayanti' });
+    expect(
+      CompanyHolidayRequestSchema.safeParse({
+        date: '2026-10-02',
+        name: 'Local holiday',
+        scopeType: 'location',
+      }).success,
+    ).toBe(false);
   });
 
   it('requires location scope and identifier to agree', () => {

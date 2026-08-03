@@ -1,4 +1,5 @@
 import type {
+  CompanyHolidayRequest,
   CreateLocationRequest,
   EmployeeLeaveBalanceAdministrationDto,
   EmployeeLocationAdministrationDto,
@@ -6,7 +7,6 @@ import type {
   LocationDirectoryDto,
   UpdateEmployeeLocationRequest,
   UpdateLeaveBalanceRequest,
-  UpsertHolidayRequest,
 } from '@gnomon/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -135,12 +135,6 @@ export function useHolidayAdministration(year: number) {
   const queryClient = useQueryClient();
   const canManage =
     user?.grants.some(
-      (grant) =>
-        grant.permissions.includes('policy:manage') &&
-        (grant.scope.type === 'company' || grant.scope.type === 'location'),
-    ) ?? false;
-  const canManageCompany =
-    user?.grants.some(
       (grant) => grant.permissions.includes('policy:manage') && grant.scope.type === 'company',
     ) ?? false;
   const query = useQuery({
@@ -149,7 +143,7 @@ export function useHolidayAdministration(year: number) {
     enabled: canManage,
   });
   const upsert = useMutation({
-    mutationFn: (input: UpsertHolidayRequest) =>
+    mutationFn: (input: CompanyHolidayRequest) =>
       request<HolidayResponse>('/api/v1/administration/holidays', {
         method: 'PUT',
         body: JSON.stringify(input),
@@ -166,12 +160,11 @@ export function useHolidayAdministration(year: number) {
 
   return {
     canManage,
-    canManageCompany,
     holidays: query.data?.holidays ?? [],
     isLoading: query.isLoading,
     isUpdating: upsert.isPending || archive.isPending,
     error: query.error ?? upsert.error ?? archive.error,
-    upsert: (input: UpsertHolidayRequest) => upsert.mutateAsync(input),
+    upsert: (input: CompanyHolidayRequest) => upsert.mutateAsync(input),
     archive: (holidayId: string) => archive.mutateAsync(holidayId),
   };
 }

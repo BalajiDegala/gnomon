@@ -23,14 +23,14 @@ approval comments, timesheet comments, and raw attendance events.
 
 ## Availability States
 
-| State         | Meaning                                                  |
-| ------------- | -------------------------------------------------------- |
-| `available`   | Working capacity or reconciled presence                  |
-| `partial`     | Approved half-day leave or partial attendance            |
-| `unavailable` | Approved full-day leave or explicit absence              |
-| `pending`     | Pending leave or attendance regularisation               |
-| `no_record`   | A past working day has no reconciled evidence            |
-| `non_working` | Weekend, company holiday, or applicable location holiday |
+| State         | Meaning                                       |
+| ------------- | --------------------------------------------- |
+| `available`   | Working capacity or reconciled presence       |
+| `partial`     | Approved half-day leave or partial attendance |
+| `unavailable` | Approved full-day leave or explicit absence   |
+| `pending`     | Pending leave or attendance regularisation    |
+| `no_record`   | A past working day has no reconciled evidence |
+| `non_working` | Weekend or company holiday                    |
 
 Current and future working days without leave represent planning capacity. Past missing
 evidence remains `no_record` rather than being silently treated as absence.

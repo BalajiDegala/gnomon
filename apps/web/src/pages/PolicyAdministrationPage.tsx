@@ -1,5 +1,4 @@
 import type {
-  HolidayScopeType,
   LeaveBalanceAdministrationDto,
   LeaveType,
   UpdateLeaveBalanceRequest,
@@ -12,10 +11,6 @@ import {
   CardContent,
   Chip,
   CircularProgress,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
   Stack,
   TextField,
   Typography,
@@ -23,12 +18,7 @@ import {
 import { CalendarDays, Check, Gauge, Search, Settings2, Trash2 } from 'lucide-react';
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 
-import {
-  useEmployeeLeaveBalanceAdministration,
-  useHolidayAdministration,
-  useLocationAdministration,
-} from '../lib/policies';
-import { LocationAdministrationSection } from './LocationAdministrationSection';
+import { useEmployeeLeaveBalanceAdministration, useHolidayAdministration } from '../lib/policies';
 import { leaveTypeLabels } from './LeavePage';
 
 function defaultHolidayDate(): string {
@@ -40,37 +30,12 @@ function defaultHolidayDate(): string {
 export function PolicyAdministrationPage() {
   const [year, setYear] = useState(() => Number(defaultHolidayDate().slice(0, 4)));
   const holidays = useHolidayAdministration(year);
-  const locations = useLocationAdministration();
   const [holidayDate, setHolidayDate] = useState(defaultHolidayDate);
   const [holidayName, setHolidayName] = useState('');
-  const [holidayScopeType, setHolidayScopeType] = useState<HolidayScopeType>('company');
-  const [holidayLocationId, setHolidayLocationId] = useState('');
   const [employeeCode, setEmployeeCode] = useState('');
   const [searchedEmployeeCode, setSearchedEmployeeCode] = useState('');
   const balances = useEmployeeLeaveBalanceAdministration(searchedEmployeeCode, year);
-  const canUsePage = holidays.canManage || balances.canManage || locations.canRead;
-  const policyLocations = useMemo(
-    () =>
-      locations.locations.filter(
-        (location) => location.status === 'active' && location.canManagePolicy,
-      ),
-    [locations.locations],
-  );
-
-  useEffect(() => {
-    if (
-      !holidays.canManageCompany &&
-      holidayScopeType === 'company' &&
-      policyLocations.length > 0
-    ) {
-      setHolidayScopeType('location');
-      return;
-    }
-    if (holidayScopeType !== 'location') return;
-    if (!policyLocations.some((location) => location.id === holidayLocationId)) {
-      setHolidayLocationId(policyLocations[0]?.id ?? '');
-    }
-  }, [holidayLocationId, holidayScopeType, holidays.canManageCompany, policyLocations]);
+  const canUsePage = holidays.canManage || balances.canManage;
 
   const saveHoliday = async (event: FormEvent) => {
     event.preventDefault();
@@ -78,8 +43,6 @@ export function PolicyAdministrationPage() {
       await holidays.upsert({
         date: holidayDate,
         name: holidayName,
-        scopeType: holidayScopeType,
-        locationId: holidayScopeType === 'location' ? holidayLocationId : null,
       });
       setHolidayName('');
     } catch {
@@ -99,16 +62,13 @@ export function PolicyAdministrationPage() {
           Leave & holidays
         </Typography>
         <Typography sx={{ maxWidth: 780, color: 'text.secondary', fontSize: 13.5, mt: 0.7 }}>
-          Configure company or studio-location holidays, effective-dated employee locations, and
-          annual entitlements without rewriting historical attendance evidence.
+          Configure one company holiday calendar and annual employee leave entitlements.
         </Typography>
       </Box>
 
       {!canUsePage && <Alert severity="warning">No leave-policy administration permission.</Alert>}
       {holidays.error && <Alert severity="error">{holidays.error.message}</Alert>}
       {balances.error && <Alert severity="error">{balances.error.message}</Alert>}
-
-      <LocationAdministrationSection directory={locations} />
 
       <TextField
         type="number"
@@ -142,46 +102,11 @@ export function PolicyAdministrationPage() {
                 <Box>
                   <Typography sx={{ fontSize: 15, fontWeight: 800 }}>Holiday policy</Typography>
                   <Typography sx={{ color: 'text.secondary', fontSize: 11 }}>
-                    Company-wide or one assigned studio location
+                    Company-wide for every employee
                   </Typography>
                 </Box>
               </Stack>
               <Stack spacing={2}>
-                <FormControl fullWidth>
-                  <InputLabel id="holiday-scope-label">Holiday scope</InputLabel>
-                  <Select
-                    labelId="holiday-scope-label"
-                    label="Holiday scope"
-                    value={holidayScopeType}
-                    onChange={(event) =>
-                      setHolidayScopeType(event.target.value as HolidayScopeType)
-                    }
-                  >
-                    <MenuItem value="company" disabled={!holidays.canManageCompany}>
-                      Company-wide
-                    </MenuItem>
-                    <MenuItem value="location" disabled={policyLocations.length === 0}>
-                      One studio location
-                    </MenuItem>
-                  </Select>
-                </FormControl>
-                {holidayScopeType === 'location' && (
-                  <FormControl fullWidth>
-                    <InputLabel id="holiday-location-label">Studio location</InputLabel>
-                    <Select
-                      labelId="holiday-location-label"
-                      label="Studio location"
-                      value={holidayLocationId}
-                      onChange={(event) => setHolidayLocationId(event.target.value)}
-                    >
-                      {policyLocations.map((location) => (
-                        <MenuItem key={location.id} value={location.id}>
-                          {location.code} · {location.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                )}
                 <TextField
                   type="date"
                   label="Holiday date"
@@ -204,12 +129,7 @@ export function PolicyAdministrationPage() {
                 <Button
                   type="submit"
                   variant="contained"
-                  disabled={
-                    holidayName.trim().length < 2 ||
-                    (holidayScopeType === 'company' && !holidays.canManageCompany) ||
-                    (holidayScopeType === 'location' && !holidayLocationId) ||
-                    holidays.isUpdating
-                  }
+                  disabled={holidayName.trim().length < 2 || holidays.isUpdating}
                   startIcon={
                     holidays.isUpdating ? <CircularProgress size={15} /> : <Check size={16} />
                   }
@@ -337,13 +257,15 @@ function HolidayList({
   updating: boolean;
   onArchive: (holidayId: string) => void;
 }) {
-  const active = holidays.filter((holiday) => holiday.status === 'active');
+  const active = holidays.filter(
+    (holiday) => holiday.status === 'active' && holiday.scopeType === 'company',
+  );
   return (
     <Card sx={{ boxShadow: 'none' }}>
       <CardContent sx={{ p: 3 }}>
         <Typography sx={{ fontSize: 15, fontWeight: 800 }}>Holiday calendar</Typography>
         <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
-          Active company and location dates for the selected year
+          Active company dates for the selected year
         </Typography>
         {loading ? (
           <Box sx={{ py: 8, textAlign: 'center' }}>
@@ -387,9 +309,7 @@ function HolidayList({
                     {holiday.name}
                   </Typography>
                   <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
-                    {holiday.scopeType === 'company'
-                      ? 'Company-wide'
-                      : `${holiday.locationCode ?? 'Location'} · ${holiday.locationName ?? 'Unknown location'}`}
+                    Company-wide
                   </Typography>
                 </Box>
                 <Button
@@ -406,7 +326,7 @@ function HolidayList({
           </Stack>
         ) : (
           <Typography sx={{ py: 7, textAlign: 'center', color: 'text.secondary', fontSize: 12 }}>
-            No holidays configured for this year and policy scope.
+            No company holidays configured for this year.
           </Typography>
         )}
       </CardContent>

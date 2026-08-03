@@ -1,6 +1,6 @@
 # Leave and Personal Calendar Workflow
 
-This document describes the Gnomon `0.9.0` leave-management and personal-calendar
+This document describes the Gnomon `0.11.0` leave-management and personal-calendar
 MVP for DIGITAL DOMAIN INDIA. It is the implemented baseline, not a final payroll
 or statutory leave policy.
 
@@ -25,7 +25,7 @@ available for another request; pending and approved dates remain reserved.
 - Full-day duration: one day per weekday in the range
 - Half-day duration: 0.5 day and exactly one weekday
 - Cross-year ranges: rejected so one request maps to one annual balance period
-- Holidays: applicable active company/location holidays are excluded
+- Holidays: active company holidays are excluded for every employee
 
 Paid balances are stored separately for casual, sick, and earned leave by employee
 and year. Each record has entitlement days, signed adjustment days, and an optional
@@ -35,12 +35,12 @@ not invent a default entitlement. Unpaid leave is tracked by request totals with
 an entitlement ceiling. Release `0.7.0` lets scoped HR administrators configure
 entitlement, signed adjustment, and a note by employee/year.
 
-Company and studio-location holidays are managed separately by Attendance/System
-Administration. Location applicability is resolved from the employee's
-effective-dated assignment on each holiday date. New leave requests exclude only
-applicable holiday dates. Adding/archiving a holiday or changing an employee's
-location is blocked when it would make an active leave reservation/range gain or lose
-a holiday, so stored days and balances never change silently.
+Attendance/System Administration manages one company holiday calendar because the
+current MVP has one branch and all employees share the same dates. New leave requests
+exclude those dates automatically. Adding or archiving a company holiday is blocked
+when an active leave reservation/range would gain or lose that date, so stored days
+and balances never change silently. Legacy location records are retained only for
+backward data compatibility and are not exposed by the current workflow.
 
 ## Persistence invariants
 
@@ -105,12 +105,6 @@ GET  /api/v1/calendar?month=YYYY-MM
 GET  /api/v1/administration/holidays?year=YYYY
 PUT  /api/v1/administration/holidays
 POST /api/v1/administration/holidays/:holidayId/archive
-
-GET  /api/v1/administration/locations
-POST /api/v1/administration/locations
-
-GET /api/v1/administration/employee-locations?employeeCode=CODE
-PUT /api/v1/administration/employee-locations/:employeeCode
 
 GET  /api/v1/administration/leave-balances?employeeCode=CODE&year=YYYY
 PUT  /api/v1/administration/leave-balances/:employeeCode
