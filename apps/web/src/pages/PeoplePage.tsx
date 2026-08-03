@@ -25,7 +25,7 @@ import {
   Typography,
 } from '@mui/material';
 import { Pencil, Plus, UserRoundCog } from 'lucide-react';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 
 import {
   DataTable,
@@ -35,8 +35,11 @@ import {
 import { FilterBar } from '../components/data-view/FilterBar';
 import { PageHeader } from '../components/data-view/PageHeader';
 import { PageTabs, type PageTab } from '../components/data-view/PageTabs';
+import { useAuth } from '../lib/auth';
+import { readFormDraft, useSessionFormDraft } from '../lib/form-drafts';
 import { useEmployeeDirectory } from '../lib/people';
 import { parseEnumValue, parseShortSearch, useUrlQueryState } from '../lib/url-query-state';
+import { confirmDiscardChanges, useUnsavedChanges } from '../lib/unsaved-changes';
 
 interface EmployeeFormState {
   employeeCode: string;
@@ -60,6 +63,54 @@ const emptyForm: EmployeeFormState = {
   timezone: 'Asia/Kolkata',
   status: 'active',
 };
+
+interface EmployeeFormDraft {
+  mode: 'create' | 'edit';
+  employeeId?: string;
+  form: EmployeeFormState;
+}
+
+function isEmployeeFormState(value: unknown): value is EmployeeFormState {
+  if (!value || typeof value !== 'object') return false;
+  const form = value as Partial<EmployeeFormState>;
+  return (
+    typeof form.employeeCode === 'string' &&
+    typeof form.firstName === 'string' &&
+    typeof form.lastName === 'string' &&
+    typeof form.email === 'string' &&
+    typeof form.reportingManagerId === 'string' &&
+    typeof form.timezone === 'string' &&
+    ['active', 'inactive'].includes(form.status ?? '')
+  );
+}
+
+function isEmployeeFormDraft(value: unknown): value is EmployeeFormDraft {
+  if (!value || typeof value !== 'object') return false;
+  const draft = value as Partial<EmployeeFormDraft>;
+  return (
+    (draft.mode === 'create' || draft.mode === 'edit') &&
+    (draft.employeeId === undefined || typeof draft.employeeId === 'string') &&
+    isEmployeeFormState(draft.form)
+  );
+}
+
+function formForEmployee(employee: EmployeeDirectoryItemDto): EmployeeFormState {
+  return {
+    employeeCode: employee.employeeCode,
+    firstName: employee.firstName,
+    lastName: employee.lastName,
+    email: employee.email,
+    reportingManagerId: employee.reportingManager?.id ?? '',
+    timezone: employee.timezone,
+    status: employee.status,
+  };
+}
+
+function formsMatch(left: EmployeeFormState, right: EmployeeFormState): boolean {
+  return (Object.keys(left) as Array<keyof EmployeeFormState>).every(
+    (field) => left[field] === right[field],
+  );
+}
 const employeeStatusFilters = ['all', 'active', 'inactive'] as const;
 const peopleSortKeys = [
   'employee',
@@ -136,7 +187,11 @@ function compareEmployees(
 }
 
 export function PeoplePage() {
+  const { user } = useAuth();
   const directory = useEmployeeDirectory();
+  const draftKey = `${user?.employeeId ?? 'anonymous'}:employee-form`;
+  const recoveredDraft = useMemo(() => readFormDraft(draftKey, isEmployeeFormDraft), [draftKey]);
+  const recoveredApplied = useRef(recoveredDraft?.mode !== 'edit');
   const [search, setSearch] = useUrlQueryState('q', '', parseShortSearch);
   const [status, setStatus] = useUrlQueryState<EmployeeStatusFilter>(
     'status',
@@ -165,10 +220,36 @@ export function PeoplePage() {
   );
   const [pageNumber, setPageNumber] = useUrlQueryState('page', 1, parsePage);
   const [rowsPerPage, setRowsPerPage] = useUrlQueryState('size', 25, parsePageSize);
-  const [createOpen, setCreateOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(recoveredDraft?.mode === 'create');
   const [editing, setEditing] = useState<EmployeeDirectoryItemDto | null>(null);
-  const [form, setForm] = useState<EmployeeFormState>(emptyForm);
+  const [form, setForm] = useState<EmployeeFormState>(recoveredDraft?.form ?? emptyForm);
   const [success, setSuccess] = useState('');
+  const formDirty = createOpen
+    ? !formsMatch(form, emptyForm)
+    : editing
+      ? !formsMatch(form, formForEmployee(editing))
+      : false;
+  const draft = useMemo<EmployeeFormDraft>(
+    () => ({ mode: editing ? 'edit' : 'create', employeeId: editing?.id, form }),
+    [editing, form],
+  );
+  const clearDraft = useSessionFormDraft(draftKey, draft, formDirty);
+  useUnsavedChanges(formDirty);
+
+  useEffect(() => {
+    if (recoveredApplied.current || !recoveredDraft || directory.isLoading) return;
+    recoveredApplied.current = true;
+    const employee = directory.employees.find(
+      (candidate) => candidate.id === recoveredDraft.employeeId,
+    );
+    if (employee) {
+      setForm(recoveredDraft.form);
+      setEditing(employee);
+    } else {
+      clearDraft();
+      setForm(emptyForm);
+    }
+  }, [clearDraft, directory.employees, directory.isLoading, recoveredDraft]);
 
   const managers = useMemo(
     () =>
@@ -261,17 +342,17 @@ export function PeoplePage() {
     setCreateOpen(true);
   };
   const openEdit = (employee: EmployeeDirectoryItemDto) => {
-    setForm({
-      employeeCode: employee.employeeCode,
-      firstName: employee.firstName,
-      lastName: employee.lastName,
-      email: employee.email,
-      reportingManagerId: employee.reportingManager?.id ?? '',
-      timezone: employee.timezone,
-      status: employee.status,
-    });
+    setForm(formForEmployee(employee));
     setSuccess('');
     setEditing(employee);
+  };
+
+  const closeEmployeeForm = () => {
+    if (formDirty && !confirmDiscardChanges()) return;
+    clearDraft();
+    setCreateOpen(false);
+    setEditing(null);
+    setForm(emptyForm);
   };
 
   const submitCreate = async (event: FormEvent) => {
@@ -286,7 +367,9 @@ export function PeoplePage() {
     };
     try {
       await directory.create(input);
+      clearDraft();
       setCreateOpen(false);
+      setForm(emptyForm);
       setSuccess(`${form.employeeCode.toUpperCase()} was added to the employee directory.`);
     } catch {
       // Mutation errors are displayed above the directory.
@@ -305,7 +388,9 @@ export function PeoplePage() {
         reportingManagerId: form.reportingManagerId || null,
         status: form.status,
       });
+      clearDraft();
       setEditing(null);
+      setForm(emptyForm);
       setSuccess(`${editing.employeeCode} was updated.`);
     } catch {
       // Mutation errors are displayed above the directory.
@@ -517,7 +602,7 @@ export function PeoplePage() {
         isUpdating={directory.isUpdating}
         showEmployeeCode
         onChange={setForm}
-        onClose={() => setCreateOpen(false)}
+        onClose={closeEmployeeForm}
         onSubmit={submitCreate}
       />
       <EmployeeDialog
@@ -528,7 +613,7 @@ export function PeoplePage() {
         isUpdating={directory.isUpdating}
         showStatus
         onChange={setForm}
-        onClose={() => setEditing(null)}
+        onClose={closeEmployeeForm}
         onSubmit={submitEdit}
       />
     </Stack>

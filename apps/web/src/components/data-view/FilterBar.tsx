@@ -33,7 +33,7 @@ export function FilterBar({
         gap: 1.25,
         borderBottom: '1px solid',
         borderColor: 'divider',
-        bgcolor: '#fff',
+        bgcolor: '#f9fbfc',
       }}
     >
       {search !== undefined && onSearchChange && searchLabel && (
@@ -62,7 +62,18 @@ export function FilterBar({
           Clear filters
         </Button>
       )}
-      <Typography sx={{ color: 'text.secondary', fontSize: 11.5, whiteSpace: 'nowrap' }}>
+      <Typography
+        sx={{
+          px: 1,
+          py: 0.5,
+          borderRadius: 1.5,
+          bgcolor: '#eef3f6',
+          color: 'text.secondary',
+          fontSize: 11.5,
+          fontWeight: 700,
+          whiteSpace: 'nowrap',
+        }}
+      >
         {resultCount} {resultLabel}
       </Typography>
     </Stack>

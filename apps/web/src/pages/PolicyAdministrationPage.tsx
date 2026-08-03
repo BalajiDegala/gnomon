@@ -16,9 +16,12 @@ import {
   Typography,
 } from '@mui/material';
 import { CalendarDays, Check, Gauge, Search, Settings2, Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 
+import { useAuth } from '../lib/auth';
+import { readFormDraft, useSessionFormDraft } from '../lib/form-drafts';
 import { useEmployeeLeaveBalanceAdministration, useHolidayAdministration } from '../lib/policies';
+import { useUnsavedChanges } from '../lib/unsaved-changes';
 import { leaveTypeLabels } from './LeavePage';
 
 function defaultHolidayDate(): string {
@@ -27,15 +30,58 @@ function defaultHolidayDate(): string {
   return date.toISOString().slice(0, 10);
 }
 
+interface HolidayFormDraft {
+  date: string;
+  name: string;
+}
+
+function isHolidayFormDraft(value: unknown): value is HolidayFormDraft {
+  if (!value || typeof value !== 'object') return false;
+  const draft = value as Partial<HolidayFormDraft>;
+  return typeof draft.date === 'string' && typeof draft.name === 'string';
+}
+
+interface BalanceFormDraft {
+  entitledDays: number;
+  adjustedDays: number;
+  note: string;
+}
+
+function isBalanceFormDraft(value: unknown): value is BalanceFormDraft {
+  if (!value || typeof value !== 'object') return false;
+  const draft = value as Partial<BalanceFormDraft>;
+  return (
+    typeof draft.entitledDays === 'number' &&
+    typeof draft.adjustedDays === 'number' &&
+    typeof draft.note === 'string'
+  );
+}
+
 export function PolicyAdministrationPage() {
-  const [year, setYear] = useState(() => Number(defaultHolidayDate().slice(0, 4)));
+  const { user } = useAuth();
+  const initialHolidayDate = useMemo(defaultHolidayDate, []);
+  const holidayDraftKey = `${user?.employeeId ?? 'anonymous'}:company-holiday`;
+  const recoveredHoliday = useMemo(
+    () => readFormDraft(holidayDraftKey, isHolidayFormDraft),
+    [holidayDraftKey],
+  );
+  const [year, setYear] = useState(() =>
+    Number((recoveredHoliday?.date ?? initialHolidayDate).slice(0, 4)),
+  );
   const holidays = useHolidayAdministration(year);
-  const [holidayDate, setHolidayDate] = useState(defaultHolidayDate);
-  const [holidayName, setHolidayName] = useState('');
+  const [holidayDate, setHolidayDate] = useState(recoveredHoliday?.date ?? initialHolidayDate);
+  const [holidayName, setHolidayName] = useState(recoveredHoliday?.name ?? '');
   const [employeeCode, setEmployeeCode] = useState('');
   const [searchedEmployeeCode, setSearchedEmployeeCode] = useState('');
   const balances = useEmployeeLeaveBalanceAdministration(searchedEmployeeCode, year);
   const canUsePage = holidays.canManage || balances.canManage;
+  const holidayDirty = holidayDate !== initialHolidayDate || Boolean(holidayName);
+  const holidayDraft = useMemo(
+    () => ({ date: holidayDate, name: holidayName }),
+    [holidayDate, holidayName],
+  );
+  const clearHolidayDraft = useSessionFormDraft(holidayDraftKey, holidayDraft, holidayDirty);
+  useUnsavedChanges(holidayDirty);
 
   const saveHoliday = async (event: FormEvent) => {
     event.preventDefault();
@@ -44,6 +90,8 @@ export function PolicyAdministrationPage() {
         date: holidayDate,
         name: holidayName,
       });
+      clearHolidayDraft();
+      setHolidayDate(initialHolidayDate);
       setHolidayName('');
     } catch {
       // The mutation error is rendered by the hook.
@@ -212,6 +260,7 @@ export function PolicyAdministrationPage() {
                     <BalanceEditor
                       key={balance.leaveType}
                       balance={balance}
+                      draftKey={`${user?.employeeId ?? 'anonymous'}:${balances.employee!.employeeId}:${year}:${balance.leaveType}:leave-balance`}
                       disabled={balances.isUpdating}
                       onSave={(input) => balances.update(input)}
                     />
@@ -336,23 +385,67 @@ function HolidayList({
 
 function BalanceEditor({
   balance,
+  draftKey,
   disabled,
   onSave,
 }: {
   balance: LeaveBalanceAdministrationDto;
+  draftKey: string;
   disabled: boolean;
   onSave: (input: UpdateLeaveBalanceRequest) => Promise<unknown>;
 }) {
-  const [entitledDays, setEntitledDays] = useState(balance.entitledDays);
-  const [adjustedDays, setAdjustedDays] = useState(balance.adjustedDays);
-  const [note, setNote] = useState(balance.note);
+  const recoveredDraft = useMemo(() => readFormDraft(draftKey, isBalanceFormDraft), [draftKey]);
+  const preserveRecovered = useRef(Boolean(recoveredDraft));
+  const [entitledDays, setEntitledDays] = useState(
+    recoveredDraft?.entitledDays ?? balance.entitledDays,
+  );
+  const [adjustedDays, setAdjustedDays] = useState(
+    recoveredDraft?.adjustedDays ?? balance.adjustedDays,
+  );
+  const [note, setNote] = useState(recoveredDraft?.note ?? balance.note);
+  const [savedValues, setSavedValues] = useState<BalanceFormDraft>({
+    entitledDays: balance.entitledDays,
+    adjustedDays: balance.adjustedDays,
+    note: balance.note,
+  });
   const label = useMemo(() => leaveTypeLabels[balance.leaveType as LeaveType], [balance.leaveType]);
+  const isDirty =
+    entitledDays !== savedValues.entitledDays ||
+    adjustedDays !== savedValues.adjustedDays ||
+    note !== savedValues.note;
+  const draft = useMemo(
+    () => ({ entitledDays, adjustedDays, note }),
+    [adjustedDays, entitledDays, note],
+  );
+  const clearDraft = useSessionFormDraft(draftKey, draft, isDirty);
+  useUnsavedChanges(isDirty);
 
   useEffect(() => {
+    if (preserveRecovered.current) {
+      preserveRecovered.current = false;
+      return;
+    }
     setEntitledDays(balance.entitledDays);
     setAdjustedDays(balance.adjustedDays);
     setNote(balance.note);
+    setSavedValues({
+      entitledDays: balance.entitledDays,
+      adjustedDays: balance.adjustedDays,
+      note: balance.note,
+    });
   }, [balance]);
+
+  const save = async () => {
+    await onSave({
+      leaveType: balance.leaveType,
+      year: balance.year,
+      entitledDays,
+      adjustedDays,
+      note,
+    });
+    setSavedValues({ entitledDays, adjustedDays, note });
+    clearDraft();
+  };
 
   return (
     <Box sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2.5 }}>
@@ -402,15 +495,7 @@ function BalanceEditor({
           disabled={
             disabled || entitledDays + adjustedDays < balance.pendingDays + balance.approvedDays
           }
-          onClick={() =>
-            void onSave({
-              leaveType: balance.leaveType,
-              year: balance.year,
-              entitledDays,
-              adjustedDays,
-              note,
-            }).catch(() => undefined)
-          }
+          onClick={() => void save().catch(() => undefined)}
         >
           Save {label.toLowerCase()}
         </Button>

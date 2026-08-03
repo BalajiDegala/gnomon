@@ -4,6 +4,7 @@ import { useEffect, useMemo } from 'react';
 import { PageHeader } from '../components/data-view/PageHeader';
 import { PageTabs, type PageTab } from '../components/data-view/PageTabs';
 import { useAuth } from '../lib/auth';
+import { confirmDiscardChanges } from '../lib/unsaved-changes';
 import { parseEnumValue, useUrlQueryState } from '../lib/url-query-state';
 import { AttendanceImportsPage } from './AttendanceImportsPage';
 import { PolicyAdministrationPage } from './PolicyAdministrationPage';
@@ -66,7 +67,9 @@ export function AdministrationPage() {
         <PageTabs
           value={section}
           tabs={tabs}
-          onChange={setSection}
+          onChange={(nextSection) => {
+            if (nextSection === section || confirmDiscardChanges()) setSection(nextSection);
+          }}
           ariaLabel="Administration sections"
         />
       )}

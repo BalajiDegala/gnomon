@@ -72,7 +72,7 @@ async function signIn(
 ) {
   await page.goto('/');
   await page.getByLabel('Work email').fill(user.email!);
-  await page.getByLabel('Password').fill(user.password!);
+  await page.locator('input[autocomplete="current-password"]').fill(user.password!);
   await page.getByRole('button', { name: 'Sign in to Gnomon' }).click();
   await expect(
     page.getByRole('heading', { name: /Good (morning|afternoon|evening),/ }),
@@ -95,7 +95,7 @@ test('renders the authenticated workforce overview', async ({ page }, testInfo) 
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('login.png'), fullPage: true });
   await page.getByLabel('Work email').fill(email!);
-  await page.getByLabel('Password').fill(password!);
+  await page.locator('input[autocomplete="current-password"]').fill(password!);
   await page.getByRole('button', { name: 'Sign in to Gnomon' }).click();
 
   await expect(
@@ -186,7 +186,7 @@ test('opens a direct page route through sign-in', async ({ page }, testInfo) => 
   await page.goto('/timesheets');
   await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
   await page.getByLabel('Work email').fill(email!);
-  await page.getByLabel('Password').fill(password!);
+  await page.locator('input[autocomplete="current-password"]').fill(password!);
   await page.getByRole('button', { name: 'Sign in to Gnomon' }).click();
 
   await expect(page.getByRole('heading', { name: 'Timesheets' })).toBeVisible();
@@ -260,6 +260,39 @@ test('restores durable page context after refresh', async ({ page }, testInfo) =
   );
 });
 
+test('protects and restores an unfinished timesheet draft', async ({ page }, testInfo) => {
+  const employee = regularisationUsers.employee;
+  test.skip(!employee.email || !employee.password, 'Employee E2E credentials are required');
+  test.skip(testInfo.project.name !== 'desktop-chromium', 'Covered once on desktop');
+
+  await signIn(page, employee);
+  await navigationLink(page, 'Timesheets').click();
+  await page.getByRole('button', { name: 'Add entry' }).click();
+  await page.getByLabel('Work comment').fill('Recovered comp review draft');
+
+  page.once('dialog', async (dialog) => {
+    expect(dialog.message()).toContain('unsaved changes');
+    await dialog.dismiss();
+  });
+  await page.goBack();
+  await expect(page.getByRole('heading', { name: 'Add show time' })).toBeVisible();
+  await expect(page.getByLabel('Work comment')).toHaveValue('Recovered comp review draft');
+
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.goBack();
+  await expect(
+    page.getByRole('heading', { name: /Good (morning|afternoon|evening),/ }),
+  ).toBeVisible();
+
+  await navigationLink(page, 'Timesheets').click();
+  await expect(page.getByRole('heading', { name: 'Add show time' })).toBeVisible();
+  await expect(page.getByLabel('Work comment')).toHaveValue('Recovered comp review draft');
+
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('heading', { name: 'Add show time' })).toHaveCount(0);
+});
+
 test('restores the team calendar month after refresh', async ({ page }, testInfo) => {
   const manager = regularisationUsers.manager;
   test.skip(!manager.email || !manager.password, 'Manager E2E credentials are required');
@@ -280,7 +313,7 @@ test('imports a biometric CSV idempotently', async ({ page }, testInfo) => {
 
   await page.goto('/');
   await page.getByLabel('Work email').fill(email!);
-  await page.getByLabel('Password').fill(password!);
+  await page.locator('input[autocomplete="current-password"]').fill(password!);
   await page.getByRole('button', { name: 'Sign in to Gnomon' }).click();
   await navigationLink(page, 'Administration').click();
   await expect(page.getByRole('heading', { name: 'Attendance imports' })).toBeVisible();
@@ -319,7 +352,7 @@ test('manages a show lifecycle while preserving historical show time', async ({
 
   await page.goto('/');
   await page.getByLabel('Work email').fill(email!);
-  await page.getByLabel('Password').fill(password!);
+  await page.locator('input[autocomplete="current-password"]').fill(password!);
   await page.getByRole('button', { name: 'Sign in to Gnomon' }).click();
   await navigationLink(page, 'Shows').click();
 
@@ -455,7 +488,7 @@ test('saves and edits timesheets without an approval workflow', async ({ page },
 
   await page.goto('/');
   await page.getByLabel('Work email').fill(email!);
-  await page.getByLabel('Password').fill(password!);
+  await page.locator('input[autocomplete="current-password"]').fill(password!);
   await page.getByRole('button', { name: 'Sign in to Gnomon' }).click();
   await navigationLink(page, 'Shows').click();
   await page.getByRole('button', { name: 'Add show' }).click();

@@ -30,7 +30,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 
 import {
   DataTable,
@@ -39,6 +39,8 @@ import {
 } from '../components/data-view/DataTable';
 import { FilterBar } from '../components/data-view/FilterBar';
 import { PageHeader } from '../components/data-view/PageHeader';
+import { useAuth } from '../lib/auth';
+import { readFormDraft, useSessionFormDraft } from '../lib/form-drafts';
 import { formatIndiaTime } from '../lib/timecard';
 import {
   currentIndiaWorkDate,
@@ -47,6 +49,7 @@ import {
   useTimesheetDay,
 } from '../lib/timesheets';
 import { parseEnumValue, parseIsoDate, useUrlQueryState } from '../lib/url-query-state';
+import { confirmDiscardChanges, useUnsavedChanges } from '../lib/unsaved-changes';
 
 interface TimesheetsPageProps {
   onManageShows: () => void;
@@ -59,6 +62,28 @@ const timesheetSortKeys = ['start', 'show', 'duration', 'percentage'] as const;
 const sortDirections = ['asc', 'desc'] as const;
 const pageSizes = [10, 25, 50, 100] as const;
 const progressOptions = Array.from({ length: 10 }, (_, index) => (index + 1) * 10);
+
+interface TimesheetFormDraft {
+  workDate: string;
+  showId: string;
+  startedAt: string;
+  endedAt: string;
+  comment: string;
+  percentage: string;
+}
+
+function isTimesheetFormDraft(value: unknown): value is TimesheetFormDraft {
+  if (!value || typeof value !== 'object') return false;
+  const draft = value as Partial<TimesheetFormDraft>;
+  return (
+    typeof draft.workDate === 'string' &&
+    typeof draft.showId === 'string' &&
+    typeof draft.startedAt === 'string' &&
+    typeof draft.endedAt === 'string' &&
+    typeof draft.comment === 'string' &&
+    typeof draft.percentage === 'string'
+  );
+}
 
 function parseTimesheetSort(value: string): TimesheetSortKey | null {
   return parseEnumValue(value, timesheetSortKeys);
@@ -141,8 +166,15 @@ function validateEntryForm(input: {
 }
 
 export function TimesheetsPage({ onManageShows, canManageShows }: TimesheetsPageProps) {
+  const { user } = useAuth();
   const defaultWorkDate = useMemo(currentIndiaWorkDate, []);
-  const [workDate, setWorkDate] = useUrlQueryState('date', defaultWorkDate, parseIsoDate);
+  const draftKey = `${user?.employeeId ?? 'anonymous'}:timesheet-entry`;
+  const recoveredDraft = useMemo(() => readFormDraft(draftKey, isTimesheetFormDraft), [draftKey]);
+  const [workDate, setWorkDate] = useUrlQueryState(
+    'date',
+    recoveredDraft?.workDate ?? defaultWorkDate,
+    parseIsoDate,
+  );
   const [showFilter, setShowFilter] = useUrlQueryState('show', 'all', parseShowFilter);
   const [sortKey, setSortKey] = useUrlQueryState<TimesheetSortKey>(
     'sort',
@@ -157,15 +189,16 @@ export function TimesheetsPage({ onManageShows, canManageShows }: TimesheetsPage
   const [pageNumber, setPageNumber] = useUrlQueryState('page', 1, parsePage);
   const [rowsPerPage, setRowsPerPage] = useUrlQueryState('size', 25, parsePageSize);
   const timesheet = useTimesheetDay(workDate);
-  const [formOpen, setFormOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(Boolean(recoveredDraft));
   const [editingEntry, setEditingEntry] = useState<TimeEntryDto | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<TimeEntryDto | null>(null);
   const [deleteEntry, setDeleteEntry] = useState<TimeEntryDto | null>(null);
-  const [showId, setShowId] = useState('');
-  const [startedAt, setStartedAt] = useState(`${workDate}T09:00`);
-  const [endedAt, setEndedAt] = useState(`${workDate}T10:00`);
-  const [comment, setComment] = useState('');
-  const [percentage, setPercentage] = useState('100');
+  const [showId, setShowId] = useState(recoveredDraft?.showId ?? '');
+  const [startedAt, setStartedAt] = useState(recoveredDraft?.startedAt ?? `${workDate}T09:00`);
+  const [endedAt, setEndedAt] = useState(recoveredDraft?.endedAt ?? `${workDate}T10:00`);
+  const [comment, setComment] = useState(recoveredDraft?.comment ?? '');
+  const [percentage, setPercentage] = useState(recoveredDraft?.percentage ?? '100');
+  const recoveredOnMount = useRef(Boolean(recoveredDraft && recoveredDraft.workDate === workDate));
   const percentageValue = Number(percentage);
   const entries = timesheet.day?.entries ?? [];
   const entryOptions = useMemo(() => {
@@ -204,8 +237,41 @@ export function TimesheetsPage({ onManageShows, canManageShows }: TimesheetsPage
         percentage: percentageValue,
       })
     : null;
+  const formDirty = Boolean(
+    formOpen &&
+    (editingEntry
+      ? showId !== editingEntry.showId ||
+        startedAt !== isoToIndiaLocalInput(editingEntry.startedAt) ||
+        endedAt !== isoToIndiaLocalInput(editingEntry.endedAt) ||
+        comment !== editingEntry.comment ||
+        percentage !== String(editingEntry.percentage)
+      : startedAt !== `${workDate}T09:00` ||
+        endedAt !== `${workDate}T10:00` ||
+        Boolean(comment) ||
+        percentage !== '100'),
+  );
+  const draft = useMemo(
+    () => ({ workDate, showId, startedAt, endedAt, comment, percentage }),
+    [comment, endedAt, percentage, showId, startedAt, workDate],
+  );
+  const clearDraft = useSessionFormDraft(draftKey, draft, formDirty && !editingEntry);
+  useUnsavedChanges(formDirty);
+
+  const closeForm = () => {
+    if (formDirty && !confirmDiscardChanges()) return;
+    clearDraft();
+    setFormOpen(false);
+    setEditingEntry(null);
+    setComment('');
+    setPercentage('100');
+    timesheet.clearError();
+  };
 
   useEffect(() => {
+    if (recoveredOnMount.current) {
+      recoveredOnMount.current = false;
+      return;
+    }
     setFormOpen(false);
     setEditingEntry(null);
     setSelectedEntry(null);
@@ -281,6 +347,7 @@ export function TimesheetsPage({ onManageShows, canManageShows }: TimesheetsPage
     try {
       if (editingEntry) await timesheet.update(editingEntry.id, input);
       else await timesheet.create(input);
+      clearDraft();
       setFormOpen(false);
       setEditingEntry(null);
     } catch {
@@ -560,11 +627,7 @@ export function TimesheetsPage({ onManageShows, canManageShows }: TimesheetsPage
         onCommentChange={setComment}
         onPercentageChange={setPercentage}
         onManageShows={onManageShows}
-        onClose={() => {
-          setFormOpen(false);
-          setEditingEntry(null);
-          timesheet.clearError();
-        }}
+        onClose={closeForm}
         onSubmit={submitEntry}
       />
 

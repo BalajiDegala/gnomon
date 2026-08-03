@@ -27,7 +27,7 @@ import {
   Typography,
 } from '@mui/material';
 import { CalendarClock, ChevronRight, Plus, Send, Trash2, X } from 'lucide-react';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 
 import {
   DataTable,
@@ -37,6 +37,8 @@ import {
 import { FilterBar } from '../components/data-view/FilterBar';
 import { PageHeader } from '../components/data-view/PageHeader';
 import { PageTabs, type PageTab } from '../components/data-view/PageTabs';
+import { useAuth } from '../lib/auth';
+import { readFormDraft, useSessionFormDraft } from '../lib/form-drafts';
 import { useMyRegularisations } from '../lib/regularisations';
 import { formatIndiaTime } from '../lib/timecard';
 import { currentIndiaWorkDate, formatMinutes, indiaLocalInputToIso } from '../lib/timesheets';
@@ -46,6 +48,7 @@ import {
   parseShortSearch,
   useUrlQueryState,
 } from '../lib/url-query-state';
+import { confirmDiscardChanges, useUnsavedChanges } from '../lib/unsaved-changes';
 
 type RegularisationTab = 'all' | RegularisationStatus;
 type SourceFilter = 'all' | RegularisationSource;
@@ -63,6 +66,28 @@ const sourceFilters = ['all', 'biometric', 'website'] as const;
 const sortKeys = ['date', 'source', 'duration', 'status', 'submitted'] as const;
 const sortDirections = ['asc', 'desc'] as const;
 const pageSizes = [10, 25, 50, 100] as const;
+
+interface RegularisationFormDraft {
+  workDate: string;
+  source: RegularisationSource;
+  missingEvent: MissingEvent;
+  requestedStart: string;
+  requestedEnd: string;
+  reason: string;
+}
+
+function isRegularisationFormDraft(value: unknown): value is RegularisationFormDraft {
+  if (!value || typeof value !== 'object') return false;
+  const draft = value as Partial<RegularisationFormDraft>;
+  return (
+    typeof draft.workDate === 'string' &&
+    ['biometric', 'website'].includes(draft.source ?? '') &&
+    ['opening', 'closing', 'both'].includes(draft.missingEvent ?? '') &&
+    typeof draft.requestedStart === 'string' &&
+    typeof draft.requestedEnd === 'string' &&
+    typeof draft.reason === 'string'
+  );
+}
 
 function previousWorkingDate(): string {
   const current = new Date(`${currentIndiaWorkDate()}T00:00:00.000Z`);
@@ -147,9 +172,19 @@ function compareRequests(
 }
 
 export function RegularisationPage() {
+  const { user } = useAuth();
   const regularisations = useMyRegularisations();
   const defaultWorkDate = useMemo(previousWorkingDate, []);
-  const [workDate, setWorkDate] = useUrlQueryState('date', defaultWorkDate, parseIsoDate);
+  const draftKey = `${user?.employeeId ?? 'anonymous'}:regularisation-request`;
+  const recoveredDraft = useMemo(
+    () => readFormDraft(draftKey, isRegularisationFormDraft),
+    [draftKey],
+  );
+  const [workDate, setWorkDate] = useUrlQueryState(
+    'date',
+    recoveredDraft?.workDate ?? defaultWorkDate,
+    parseIsoDate,
+  );
   const [tab, setTab] = useUrlQueryState<RegularisationTab>('tab', 'all', parseTab);
   const [search, setSearch] = useUrlQueryState('q', '', parseShortSearch);
   const [sourceFilter, setSourceFilter] = useUrlQueryState<SourceFilter>(
@@ -170,16 +205,53 @@ export function RegularisationPage() {
   const [pageNumber, setPageNumber] = useUrlQueryState('page', 1, parsePage);
   const [rowsPerPage, setRowsPerPage] = useUrlQueryState('size', 25, parsePageSize);
   const [selectedRequestId, setSelectedRequestId] = useUrlQueryState('request', '', parseRequestId);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [source, setSource] = useState<RegularisationSource>('biometric');
-  const [missingEvent, setMissingEvent] = useState<MissingEvent>('closing');
-  const [requestedStart, setRequestedStart] = useState(`${workDate}T09:00`);
-  const [requestedEnd, setRequestedEnd] = useState(`${workDate}T18:00`);
-  const [reason, setReason] = useState('');
+  const [createOpen, setCreateOpen] = useState(Boolean(recoveredDraft));
+  const [source, setSource] = useState<RegularisationSource>(recoveredDraft?.source ?? 'biometric');
+  const [missingEvent, setMissingEvent] = useState<MissingEvent>(
+    recoveredDraft?.missingEvent ?? 'closing',
+  );
+  const [requestedStart, setRequestedStart] = useState(
+    recoveredDraft?.requestedStart ?? `${workDate}T09:00`,
+  );
+  const [requestedEnd, setRequestedEnd] = useState(
+    recoveredDraft?.requestedEnd ?? `${workDate}T18:00`,
+  );
+  const [reason, setReason] = useState(recoveredDraft?.reason ?? '');
+  const recoveredOnMount = useRef(Boolean(recoveredDraft && recoveredDraft.workDate === workDate));
   const selectedRequest =
     regularisations.requests.find((request) => request.id === selectedRequestId) ?? null;
+  const formDirty =
+    createOpen &&
+    (workDate !== defaultWorkDate ||
+      source !== 'biometric' ||
+      missingEvent !== 'closing' ||
+      requestedStart !== `${workDate}T09:00` ||
+      requestedEnd !== `${workDate}T18:00` ||
+      Boolean(reason));
+  const draft = useMemo(
+    () => ({ workDate, source, missingEvent, requestedStart, requestedEnd, reason }),
+    [missingEvent, reason, requestedEnd, requestedStart, source, workDate],
+  );
+  const clearDraft = useSessionFormDraft(draftKey, draft, formDirty);
+  useUnsavedChanges(formDirty);
+
+  const closeCreate = () => {
+    if (formDirty && !confirmDiscardChanges()) return;
+    clearDraft();
+    setSource('biometric');
+    setMissingEvent('closing');
+    setReason('');
+    setWorkDate(defaultWorkDate);
+    setRequestedStart(`${defaultWorkDate}T09:00`);
+    setRequestedEnd(`${defaultWorkDate}T18:00`);
+    setCreateOpen(false);
+  };
 
   useEffect(() => {
+    if (recoveredOnMount.current) {
+      recoveredOnMount.current = false;
+      return;
+    }
     setRequestedStart(`${workDate}T09:00`);
     setRequestedEnd(`${workDate}T18:00`);
   }, [workDate]);
@@ -277,6 +349,7 @@ export function RegularisationPage() {
         requestedEnd: indiaLocalInputToIso(requestedEnd),
         reason,
       });
+      clearDraft();
       setReason('');
       setCreateOpen(false);
       setTab('all');
@@ -511,7 +584,7 @@ export function RegularisationPage() {
         onRequestedStartChange={setRequestedStart}
         onRequestedEndChange={setRequestedEnd}
         onReasonChange={setReason}
-        onClose={() => setCreateOpen(false)}
+        onClose={closeCreate}
         onSubmit={submit}
       />
 

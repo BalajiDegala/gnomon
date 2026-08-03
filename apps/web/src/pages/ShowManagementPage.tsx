@@ -32,8 +32,11 @@ import {
 import { FilterBar } from '../components/data-view/FilterBar';
 import { PageHeader } from '../components/data-view/PageHeader';
 import { PageTabs, type PageTab } from '../components/data-view/PageTabs';
+import { useAuth } from '../lib/auth';
+import { readFormDraft, useSessionFormDraft } from '../lib/form-drafts';
 import { useShowAdministration } from '../lib/shows';
 import { parseEnumValue, parseShortSearch, useUrlQueryState } from '../lib/url-query-state';
+import { confirmDiscardChanges, useUnsavedChanges } from '../lib/unsaved-changes';
 
 type ShowTab = 'all' | ShowStatus;
 type ShowSortKey = 'name' | 'code' | 'status';
@@ -42,6 +45,26 @@ const showTabs = ['all', 'active', 'on_hold', 'completed', 'archived'] as const;
 const showSortKeys = ['name', 'code', 'status'] as const;
 const sortDirections = ['asc', 'desc'] as const;
 const pageSizes = [10, 25, 50, 100] as const;
+
+interface ShowFormDraft {
+  mode: 'create' | 'edit';
+  showId?: string;
+  code: string;
+  name: string;
+  status: ShowStatus;
+}
+
+function isShowFormDraft(value: unknown): value is ShowFormDraft {
+  if (!value || typeof value !== 'object') return false;
+  const draft = value as Partial<ShowFormDraft>;
+  return (
+    (draft.mode === 'create' || draft.mode === 'edit') &&
+    (draft.showId === undefined || typeof draft.showId === 'string') &&
+    typeof draft.code === 'string' &&
+    typeof draft.name === 'string' &&
+    ['active', 'on_hold', 'completed', 'archived'].includes(draft.status ?? '')
+  );
+}
 
 function parseShowTab(value: string): ShowTab | null {
   return parseEnumValue(value, showTabs);
@@ -83,7 +106,10 @@ function statusColor(status: ShowStatus): 'success' | 'warning' | 'info' | 'defa
 }
 
 export function ShowManagementPage() {
+  const { user } = useAuth();
   const administration = useShowAdministration();
+  const draftKey = `${user?.employeeId ?? 'anonymous'}:show-form`;
+  const recoveredDraft = useMemo(() => readFormDraft(draftKey, isShowFormDraft), [draftKey]);
   const [tab, setTab] = useUrlQueryState<ShowTab>('tab', 'all', parseShowTab);
   const [search, setSearch] = useUrlQueryState('q', '', parseShortSearch);
   const [sortKey, setSortKey] = useUrlQueryState<ShowSortKey>('sort', 'name', parseShowSort);
@@ -94,13 +120,39 @@ export function ShowManagementPage() {
   );
   const [pageNumber, setPageNumber] = useUrlQueryState('page', 1, parsePage);
   const [rowsPerPage, setRowsPerPage] = useUrlQueryState('size', 25, parsePageSize);
-  const [selectedShowId, setSelectedShowId] = useUrlQueryState('show', '', parseShowId);
-  const [formMode, setFormMode] = useState<'create' | 'edit' | null>(null);
-  const [showCode, setShowCode] = useState('');
-  const [showName, setShowName] = useState('');
-  const [showStatus, setShowStatus] = useState<ShowStatus>('active');
+  const [selectedShowId, setSelectedShowId] = useUrlQueryState(
+    'show',
+    recoveredDraft?.showId ?? '',
+    parseShowId,
+  );
+  const [formMode, setFormMode] = useState<'create' | 'edit' | null>(recoveredDraft?.mode ?? null);
+  const [showCode, setShowCode] = useState(recoveredDraft?.code ?? '');
+  const [showName, setShowName] = useState(recoveredDraft?.name ?? '');
+  const [showStatus, setShowStatus] = useState<ShowStatus>(recoveredDraft?.status ?? 'active');
   const selectedShow = administration.shows.find((show) => show.id === selectedShowId);
   const formOpen = formMode !== null;
+  const formDirty = Boolean(
+    formOpen &&
+    (formMode === 'edit'
+      ? selectedShow
+        ? showCode !== selectedShow.code ||
+          showName !== selectedShow.name ||
+          showStatus !== selectedShow.status
+        : Boolean(recoveredDraft)
+      : Boolean(showCode) || Boolean(showName) || showStatus !== 'active'),
+  );
+  const draft = useMemo<ShowFormDraft>(
+    () => ({
+      mode: formMode === 'edit' ? 'edit' : 'create',
+      showId: formMode === 'edit' ? selectedShowId : undefined,
+      code: showCode,
+      name: showName,
+      status: showStatus,
+    }),
+    [formMode, selectedShowId, showCode, showName, showStatus],
+  );
+  const clearDraft = useSessionFormDraft(draftKey, draft, formDirty);
+  useUnsavedChanges(formDirty);
 
   useEffect(() => {
     if (!administration.isLoading && selectedShowId && !selectedShow) setSelectedShowId('');
@@ -157,7 +209,12 @@ export function ShowManagementPage() {
   };
 
   const closeForm = () => {
+    if (formDirty && !confirmDiscardChanges()) return;
+    clearDraft();
     setFormMode(null);
+    setShowCode('');
+    setShowName('');
+    setShowStatus('active');
     administration.clearError();
   };
 
@@ -172,6 +229,7 @@ export function ShowManagementPage() {
               status: showStatus,
             })
           : await administration.createShow({ code: showCode, name: showName });
+      clearDraft();
       setShowCode('');
       setShowName('');
       setFormMode(null);

@@ -75,7 +75,14 @@ export function DataTable<Row, SortKey extends string>({
 
   return (
     <Box
-      sx={{ overflow: 'hidden', border: '1px solid', borderColor: 'divider', borderRadius: 1.5 }}
+      sx={{
+        overflow: 'hidden',
+        border: '1px solid',
+        borderColor: 'divider',
+        borderRadius: 3,
+        bgcolor: '#fff',
+        boxShadow: '0 8px 26px rgba(20,32,51,.04)',
+      }}
     >
       <TableContainer sx={{ bgcolor: '#fff' }}>
         <Table stickyHeader size="small" aria-label={ariaLabel}>
@@ -91,10 +98,11 @@ export function DataTable<Row, SortKey extends string>({
                     width: column.width,
                     minWidth: column.minWidth,
                     height: 44,
-                    bgcolor: '#f7f9fb',
+                    bgcolor: '#f4f7f9',
                     color: 'text.secondary',
-                    fontSize: 11,
-                    fontWeight: 800,
+                    fontSize: 10.5,
+                    fontWeight: 850,
+                    letterSpacing: 0.25,
                     whiteSpace: 'nowrap',
                   }}
                 >
@@ -144,6 +152,8 @@ export function DataTable<Row, SortKey extends string>({
                   sx={{
                     height: 52,
                     cursor: onRowClick ? 'pointer' : 'default',
+                    transition: 'background-color 150ms ease',
+                    '&:hover': { bgcolor: onRowClick ? '#f3fafb !important' : undefined },
                     '&:last-child td': { borderBottom: 0 },
                   }}
                 >
@@ -193,7 +203,7 @@ export function DataTable<Row, SortKey extends string>({
         onRowsPerPageChange={(event) => onRowsPerPageChange(Number(event.target.value))}
         rowsPerPageOptions={rowsPerPageOptions}
         labelRowsPerPage="Rows"
-        sx={{ bgcolor: '#fff', borderTop: '1px solid', borderColor: 'divider' }}
+        sx={{ bgcolor: '#f9fbfc', borderTop: '1px solid', borderColor: 'divider' }}
       />
     </Box>
   );

@@ -372,7 +372,17 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
           {sourceSignals.map((signal) => {
             const Icon = signal.icon;
             return (
-              <Card key={signal.label} sx={{ boxShadow: 'none' }}>
+              <Card
+                key={signal.label}
+                sx={{
+                  boxShadow: 'none',
+                  transition: 'transform 160ms ease, box-shadow 160ms ease',
+                  '&:hover': {
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 14px 30px rgba(21,39,58,.07)',
+                  },
+                }}
+              >
                 <CardContent sx={{ p: 2.5 }}>
                   <Stack direction="row" sx={{ alignItems: 'center', gap: 1.75 }}>
                     <Box
@@ -539,6 +549,12 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
                       border: '1px solid',
                       borderColor: 'divider',
                       bgcolor: '#fff',
+                      transition: 'transform 150ms ease, border-color 150ms ease',
+                      '&:hover': {
+                        transform: 'translateX(2px)',
+                        borderColor: 'rgba(18,148,161,.34)',
+                        bgcolor: '#f8fcfc',
+                      },
                     }}
                   >
                     <Icon size={17} />

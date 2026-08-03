@@ -5,11 +5,22 @@ import {
   Card,
   CardContent,
   Chip,
+  IconButton,
+  InputAdornment,
   Stack,
   TextField,
   Typography,
 } from '@mui/material';
-import { Clock3, Fingerprint, ShieldCheck, Sparkles } from 'lucide-react';
+import {
+  Activity,
+  ArrowRight,
+  Clock3,
+  Eye,
+  EyeOff,
+  Fingerprint,
+  ShieldCheck,
+  Sparkles,
+} from 'lucide-react';
 import { type FormEvent, useEffect, useState } from 'react';
 
 import { useAuth } from '../lib/auth';
@@ -32,12 +43,19 @@ const platformSignals = [
   },
 ];
 
+const workspaceSnapshot = [
+  { value: '3', label: 'attendance signals' },
+  { value: '1', label: 'reconciled workday' },
+  { value: '24/7', label: 'audited activity' },
+];
+
 export function LoginPage() {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     document.title = 'Sign in | Gnomon';
@@ -76,10 +94,24 @@ export function LoginPage() {
           p: { lg: 6, xl: 8 },
           color: '#fff',
           background:
-            'radial-gradient(circle at 16% 10%, rgba(42,206,218,.2), transparent 30%), radial-gradient(circle at 84% 86%, rgba(77,90,196,.16), transparent 32%), #0b1220',
+            'radial-gradient(circle at 16% 10%, rgba(42,206,218,.2), transparent 30%), radial-gradient(circle at 84% 86%, rgba(77,90,196,.18), transparent 32%), linear-gradient(145deg, #0a1724 0%, #0b1220 62%, #11162d 100%)',
+          '&::after': {
+            content: '""',
+            position: 'absolute',
+            inset: 0,
+            opacity: 0.22,
+            backgroundImage:
+              'linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px)',
+            backgroundSize: '44px 44px',
+            maskImage: 'linear-gradient(to bottom, transparent, #000 22%, #000 80%, transparent)',
+            pointerEvents: 'none',
+          },
         }}
       >
-        <Stack direction="row" sx={{ alignItems: 'center', gap: 1.5 }}>
+        <Stack
+          direction="row"
+          sx={{ position: 'relative', zIndex: 1, alignItems: 'center', gap: 1.5 }}
+        >
           <Box
             sx={{
               width: 42,
@@ -103,7 +135,7 @@ export function LoginPage() {
           </Box>
         </Stack>
 
-        <Box sx={{ maxWidth: 670, py: 8 }}>
+        <Box sx={{ position: 'relative', zIndex: 1, maxWidth: 680, py: 5 }}>
           <Chip
             label="WORKFORCE OPERATIONS"
             size="small"
@@ -141,7 +173,38 @@ export function LoginPage() {
             works.
           </Typography>
 
-          <Stack spacing={2.1} sx={{ mt: 5 }}>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+              mt: 4,
+              overflow: 'hidden',
+              border: '1px solid rgba(255,255,255,.08)',
+              borderRadius: 3,
+              bgcolor: 'rgba(255,255,255,.035)',
+              backdropFilter: 'blur(10px)',
+              boxShadow: '0 18px 48px rgba(0,0,0,.12)',
+            }}
+          >
+            {workspaceSnapshot.map((item, index) => (
+              <Box
+                key={item.label}
+                sx={{
+                  p: 2,
+                  borderLeft: index ? '1px solid rgba(255,255,255,.075)' : 0,
+                }}
+              >
+                <Typography sx={{ color: '#72e0e7', fontSize: 20, fontWeight: 840 }}>
+                  {item.value}
+                </Typography>
+                <Typography sx={{ mt: 0.25, color: 'rgba(255,255,255,.43)', fontSize: 10.5 }}>
+                  {item.label}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+
+          <Stack spacing={2.1} sx={{ mt: 4 }}>
             {platformSignals.map((signal) => {
               const Icon = signal.icon;
               return (
@@ -173,9 +236,15 @@ export function LoginPage() {
           </Stack>
         </Box>
 
-        <Typography sx={{ color: 'rgba(255,255,255,.28)', fontSize: 10.5 }}>
-          Internal workforce system · Asia/Kolkata
-        </Typography>
+        <Stack
+          direction="row"
+          sx={{ position: 'relative', zIndex: 1, alignItems: 'center', gap: 0.75 }}
+        >
+          <Activity size={13} color="#52d6df" />
+          <Typography sx={{ color: 'rgba(255,255,255,.32)', fontSize: 10.5 }}>
+            Internal workforce system · Asia/Kolkata
+          </Typography>
+        </Stack>
       </Box>
 
       <Box
@@ -185,10 +254,10 @@ export function LoginPage() {
           placeItems: 'center',
           px: { xs: 2, sm: 5, lg: 7 },
           py: 5,
-          bgcolor: { xs: '#0b1220', lg: '#f5f7fa' },
+          bgcolor: { xs: '#0b1220', lg: '#f3f6f8' },
           background: {
             xs: 'radial-gradient(circle at 15% 10%, rgba(35,199,213,.18), transparent 34%), #0b1220',
-            lg: '#f5f7fa',
+            lg: 'radial-gradient(circle at 80% 20%, rgba(18,148,161,.08), transparent 28%), radial-gradient(circle at 20% 84%, rgba(93,99,216,.055), transparent 30%), #f3f6f8',
           },
         }}
       >
@@ -197,7 +266,15 @@ export function LoginPage() {
             width: '100%',
             maxWidth: 460,
             borderRadius: 4,
-            boxShadow: { xs: '0 24px 80px rgba(0,0,0,.36)', lg: '0 24px 70px rgba(23,32,51,.1)' },
+            overflow: 'hidden',
+            border: '1px solid rgba(215,224,231,.86)',
+            boxShadow: { xs: '0 24px 80px rgba(0,0,0,.36)', lg: '0 28px 80px rgba(23,32,51,.12)' },
+            '&::before': {
+              content: '""',
+              display: 'block',
+              height: 4,
+              background: 'linear-gradient(90deg, #22b8c5, #5961d8)',
+            },
           }}
         >
           <CardContent sx={{ p: { xs: 3.25, sm: 5 } }}>
@@ -259,11 +336,26 @@ export function LoginPage() {
                   />
                   <TextField
                     label="Password"
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     autoComplete="current-password"
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
-                    slotProps={{ htmlInput: { minLength: 8 } }}
+                    slotProps={{
+                      htmlInput: { minLength: 8 },
+                      input: {
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <IconButton
+                              aria-label={showPassword ? 'Hide password' : 'Show password'}
+                              edge="end"
+                              onClick={() => setShowPassword((visible) => !visible)}
+                            >
+                              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </IconButton>
+                          </InputAdornment>
+                        ),
+                      },
+                    }}
                     required
                     fullWidth
                   />
@@ -271,8 +363,9 @@ export function LoginPage() {
                     type="submit"
                     variant="contained"
                     size="large"
+                    endIcon={<ArrowRight size={17} />}
                     disabled={submitting}
-                    sx={{ py: 1.45, mt: 0.5 }}
+                    sx={{ py: 1.45, mt: 0.5, fontSize: 14 }}
                   >
                     {submitting ? 'Signing in…' : 'Sign in to Gnomon'}
                   </Button>

@@ -15,10 +15,26 @@ export function PageHeader({ eyebrow, title, meta, action }: PageHeaderProps) {
       sx={{ justifyContent: 'space-between', alignItems: { sm: 'flex-end' }, gap: 2 }}
     >
       <Box sx={{ minWidth: 0 }}>
-        <Typography sx={{ color: 'primary.dark', fontSize: 11, fontWeight: 800, letterSpacing: 0 }}>
+        <Typography
+          component="span"
+          sx={{
+            display: 'inline-flex',
+            px: 1,
+            py: 0.4,
+            borderRadius: 1.5,
+            color: 'primary.dark',
+            bgcolor: 'primary.light',
+            fontSize: 10,
+            fontWeight: 850,
+            letterSpacing: 0.8,
+          }}
+        >
           {eyebrow}
         </Typography>
-        <Typography variant="h4" sx={{ mt: 0.5, fontSize: 30, fontWeight: 850, letterSpacing: 0 }}>
+        <Typography
+          variant="h4"
+          sx={{ mt: 0.8, fontSize: { xs: 28, sm: 32 }, fontWeight: 850, letterSpacing: '-0.035em' }}
+        >
           {title}
         </Typography>
         {meta && (

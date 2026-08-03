@@ -32,7 +32,10 @@ import {
 import { FilterBar } from '../components/data-view/FilterBar';
 import { PageHeader } from '../components/data-view/PageHeader';
 import { PageTabs, type PageTab } from '../components/data-view/PageTabs';
+import { useAuth } from '../lib/auth';
+import { readFormDraft, useSessionFormDraft } from '../lib/form-drafts';
 import { useMyLeaves } from '../lib/leaves';
+import { confirmDiscardChanges, useUnsavedChanges } from '../lib/unsaved-changes';
 import { parseEnumValue, parseShortSearch, useUrlQueryState } from '../lib/url-query-state';
 
 export const leaveTypeLabels: Record<LeaveType, string> = {
@@ -49,6 +52,26 @@ const leaveTabs = ['all', 'pending_manager', 'approved', 'rejected', 'cancelled'
 const leaveSortKeys = ['date', 'type', 'days', 'status', 'submitted'] as const;
 const sortDirections = ['asc', 'desc'] as const;
 const pageSizes = [10, 25, 50, 100] as const;
+
+interface LeaveFormDraft {
+  startDate: string;
+  endDate: string;
+  leaveType: LeaveType;
+  dayPart: LeaveDayPart;
+  reason: string;
+}
+
+function isLeaveFormDraft(value: unknown): value is LeaveFormDraft {
+  if (!value || typeof value !== 'object') return false;
+  const draft = value as Partial<LeaveFormDraft>;
+  return (
+    typeof draft.startDate === 'string' &&
+    typeof draft.endDate === 'string' &&
+    ['casual', 'sick', 'earned', 'unpaid'].includes(draft.leaveType ?? '') &&
+    ['full_day', 'first_half', 'second_half'].includes(draft.dayPart ?? '') &&
+    typeof draft.reason === 'string'
+  );
+}
 
 function nextWorkingDate(): string {
   const indiaDate = new Intl.DateTimeFormat('en-CA', {
@@ -149,7 +172,10 @@ function compareRequests(left: LeaveRequestDto, right: LeaveRequestDto, key: Lea
 }
 
 export function LeavePage() {
+  const { user } = useAuth();
   const defaultDate = useMemo(nextWorkingDate, []);
+  const draftKey = `${user?.employeeId ?? 'anonymous'}:leave-request`;
+  const recoveredDraft = useMemo(() => readFormDraft(draftKey, isLeaveFormDraft), [draftKey]);
   const currentYear = Number(defaultDate.slice(0, 4));
   const [year, setYear] = useUrlQueryState('year', currentYear, parseYear);
   const [tab, setTab] = useUrlQueryState<LeaveTab>('tab', 'all', parseLeaveTab);
@@ -164,12 +190,12 @@ export function LeavePage() {
   const [rowsPerPage, setRowsPerPage] = useUrlQueryState('size', 25, parsePageSize);
   const [selectedRequestId, setSelectedRequestId] = useUrlQueryState('request', '', parseRequestId);
   const leaves = useMyLeaves(year);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [startDate, setStartDate] = useState(defaultDate);
-  const [endDate, setEndDate] = useState(defaultDate);
-  const [leaveType, setLeaveType] = useState<LeaveType>('casual');
-  const [dayPart, setDayPart] = useState<LeaveDayPart>('full_day');
-  const [reason, setReason] = useState('');
+  const [createOpen, setCreateOpen] = useState(Boolean(recoveredDraft));
+  const [startDate, setStartDate] = useState(recoveredDraft?.startDate ?? defaultDate);
+  const [endDate, setEndDate] = useState(recoveredDraft?.endDate ?? defaultDate);
+  const [leaveType, setLeaveType] = useState<LeaveType>(recoveredDraft?.leaveType ?? 'casual');
+  const [dayPart, setDayPart] = useState<LeaveDayPart>(recoveredDraft?.dayPart ?? 'full_day');
+  const [reason, setReason] = useState(recoveredDraft?.reason ?? '');
   const holidayDates = useMemo(
     () => new Set(leaves.holidays.map((holiday) => holiday.date)),
     [leaves.holidays],
@@ -178,6 +204,30 @@ export function LeavePage() {
   const selectedBalance = leaves.balances.find((balance) => balance.leaveType === leaveType);
   const selectedRequest =
     leaves.requests.find((request) => request.id === selectedRequestId) ?? null;
+  const formDirty =
+    createOpen &&
+    (startDate !== defaultDate ||
+      endDate !== defaultDate ||
+      leaveType !== 'casual' ||
+      dayPart !== 'full_day' ||
+      Boolean(reason));
+  const draft = useMemo(
+    () => ({ startDate, endDate, leaveType, dayPart, reason }),
+    [dayPart, endDate, leaveType, reason, startDate],
+  );
+  const clearDraft = useSessionFormDraft(draftKey, draft, formDirty);
+  useUnsavedChanges(formDirty);
+
+  const closeCreate = () => {
+    if (formDirty && !confirmDiscardChanges()) return;
+    clearDraft();
+    setStartDate(defaultDate);
+    setEndDate(defaultDate);
+    setLeaveType('casual');
+    setDayPart('full_day');
+    setReason('');
+    setCreateOpen(false);
+  };
 
   useEffect(() => {
     if (endDate < startDate || endDate.slice(0, 4) !== startDate.slice(0, 4)) {
@@ -267,6 +317,7 @@ export function LeavePage() {
     try {
       const result = await leaves.create({ leaveType, startDate, endDate, dayPart, reason });
       const requestYear = Number(startDate.slice(0, 4));
+      clearDraft();
       setReason('');
       setCreateOpen(false);
       setYear(requestYear);
@@ -494,7 +545,7 @@ export function LeavePage() {
         onEndDateChange={setEndDate}
         onDayPartChange={setDayPart}
         onReasonChange={setReason}
-        onClose={() => setCreateOpen(false)}
+        onClose={closeCreate}
         onSubmit={submit}
       />
 
