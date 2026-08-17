@@ -152,7 +152,8 @@ kubectl get application gnomon -n argocd -w
 Expected Jenkins stages are:
 
 1. Configure the GitLab trigger.
-2. Install locked Node.js dependencies with Node 22.
+2. Install locked Node.js dependencies with Node 22. The ephemeral agent uses
+   `ndots: 1` and bounded npm retries because this lab has no internal npm mirror.
 3. Run formatting, TypeScript checks, tests, and Helm lint validation.
 4. Build the production workspaces.
 5. Run the pinned SonarQube scanner and require an `OK` quality gate.

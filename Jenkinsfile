@@ -8,6 +8,10 @@ apiVersion: v1
 kind: Pod
 spec:
   serviceAccountName: jenkins
+  dnsConfig:
+    options:
+      - name: ndots
+        value: "1"
   hostAliases:
     - ip: "10.191.0.240"
       hostnames:
@@ -119,7 +123,7 @@ spec:
     stage('Install dependencies') {
       steps {
         container('node') {
-          sh 'npm ci'
+          sh 'npm ci --fetch-retries=5 --fetch-retry-factor=2 --fetch-retry-mintimeout=20000 --fetch-retry-maxtimeout=120000'
         }
       }
     }
