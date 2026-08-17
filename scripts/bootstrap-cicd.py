@@ -33,14 +33,20 @@ RUNTIME_SECRET = "gnomon-runtime"
 def run(
     command: list[str], *, input_text: str | None = None, check: bool = True
 ) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        command,
-        input=input_text,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        check=check,
-    )
+    try:
+        return subprocess.run(
+            command,
+            input=input_text,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=check,
+        )
+    except subprocess.CalledProcessError as error:
+        detail = error.stderr.strip() if error.stderr else "no stderr output"
+        raise RuntimeError(
+            f"{' '.join(command)} failed with exit status {error.returncode}: {detail}"
+        ) from error
 
 
 def read_env(path: Path) -> dict[str, str]:
@@ -894,7 +900,16 @@ def main() -> int:
                 "deploy/cicd/lab.env",
                 "deploy/cicd/storage.yaml",
                 "deploy/cicd/Dockerfile.admin-seed",
+                "deploy/helm/gnomon/Chart.yaml",
+                "deploy/helm/gnomon/values.yaml",
+                "deploy/helm/gnomon/templates/_helpers.tpl",
                 "deploy/helm/gnomon/templates/admin-seed-job.yaml",
+                "deploy/helm/gnomon/templates/api.yaml",
+                "deploy/helm/gnomon/templates/ingress.yaml",
+                "deploy/helm/gnomon/templates/mongodb.yaml",
+                "deploy/helm/gnomon/templates/secret.yaml",
+                "deploy/helm/gnomon/templates/web-nginx-config.yaml",
+                "deploy/helm/gnomon/templates/web.yaml",
                 "scripts/bootstrap-cicd.py",
                 "scripts/check-cicd.py",
                 "docs/CI_CD_DEPLOYMENT.md",

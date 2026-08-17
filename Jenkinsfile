@@ -43,6 +43,17 @@ spec:
         limits:
           cpu: "1"
           memory: 2Gi
+    - name: helm
+      image: docker.io/alpine/helm:3.17.3
+      command: ["cat"]
+      tty: true
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: "1"
+          memory: 512Mi
     - name: kaniko-api
       image: gcr.io/kaniko-project/executor:v1.23.2-debug
       command: ["/busybox/cat"]
@@ -133,6 +144,13 @@ spec:
           steps {
             container('node') {
               sh 'npm test'
+            }
+          }
+        }
+        stage('Helm chart') {
+          steps {
+            container('helm') {
+              sh 'helm lint deploy/helm/gnomon --set-string secrets.existingSecret=gnomon-runtime --set adminSeed.enabled=true'
             }
           }
         }

@@ -17,6 +17,13 @@ web:
       cpu: 250m
       memory: 256Mi
 
+adminSeed:
+  enabled: false
+  image:
+    repository: gnomon-admin-seed
+    tag: '0.11.0'
+    pullPolicy: IfNotPresent
+
 api:
   replicaCount: 1
   image:
@@ -51,6 +58,10 @@ ingress:
   enabled: true
   className: nginx
   host: gnomon.local
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 10m
+    nginx.ingress.kubernetes.io/proxy-read-timeout: '300'
+    nginx.ingress.kubernetes.io/proxy-send-timeout: '300'
   tls: []
 
 # Pass these with a private values file or --set-string. Never commit real values.
@@ -60,3 +71,6 @@ secrets:
   refreshTokenSecret: ''
   mongodbRootPassword: ''
   mongodbUri: ''
+  adminEmail: ''
+  adminPassword: ''
+  adminEmployeeCode: DDI0001

@@ -23,7 +23,7 @@ spec:
       containers:
         - name: seed
           image: "{{ .Values.adminSeed.image.repository }}:{{ .Values.adminSeed.image.tag }}"
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: {{ .Values.adminSeed.image.pullPolicy }}
           env:
             - name: MONGODB_URI
               valueFrom:

@@ -47,12 +47,18 @@ create the corresponding record.
 | `deploy/cicd/Dockerfile.admin-seed`         | One-time administrator seed image                          |
 | `deploy/gitops/gnomon-project.yaml`         | Argo CD project boundary                                   |
 | `deploy/gitops/gnomon-application.yaml.tpl` | Revision-pinned Argo CD application                        |
-| `deploy/helm/gnomon/`                       | Application Helm chart                                     |
+| `deploy/helm/gnomon/`                       | Application Helm chart, values, and templates              |
 | `scripts/bootstrap-cicd.py`                 | Idempotent initial setup/recovery automation               |
 | `scripts/check-cicd.py`                     | Read-only end-to-end verification                          |
 
 Do not commit credentials to any of these files. `deploy/cicd/lab.env` is deliberately
 non-secret.
+
+The shared cluster platform is maintained in `/dd/git/kubee`. Before onboarding
+Gnomon, use its demo pipeline and prerequisite guides in
+`docs/13-demo-cicd-pipeline.md` and `docs/14-gnomon-cicd-onboarding.md`. This
+repository owns the Gnomon delivery files; `/dd/git/kubee` owns the shared GitLab,
+Jenkins, Harbor, SonarQube, Argo CD, ingress, and node setup.
 
 ## Storage design
 
@@ -91,6 +97,10 @@ Validate the helper without changing the cluster:
 
 ```bash
 python3 -m py_compile scripts/bootstrap-cicd.py scripts/check-cicd.py
+helm lint deploy/helm/gnomon
+helm lint deploy/helm/gnomon \
+  --set-string secrets.existingSecret=gnomon-runtime \
+  --set adminSeed.enabled=true
 ```
 
 Run the complete bootstrap from this package:
@@ -118,8 +128,9 @@ The bootstrap performs these operations in order:
 6. Creates scoped GitLab project access tokens for Jenkins, Argo CD, and GitOps.
 7. Stores those credentials in Jenkins/Argo CD and creates or updates Jenkins job
    `gnomon`.
-8. Publishes only the package-owned delivery files listed above to GitLab `main` in a
-   single commit. It does not publish unrelated local modified/untracked files.
+8. Publishes only the package-owned delivery files listed above, including the full
+   Helm chart, to GitLab `main` in a single commit. It does not publish unrelated local
+   modified/untracked files.
 9. Creates or updates the protected GitLab push webhook.
 10. Revokes superseded Gnomon bootstrap tokens and the temporary administrator token.
 11. Queues the first Jenkins build.
@@ -142,7 +153,7 @@ Expected Jenkins stages are:
 
 1. Configure the GitLab trigger.
 2. Install locked Node.js dependencies with Node 22.
-3. Run formatting, TypeScript checks, and tests.
+3. Run formatting, TypeScript checks, tests, and Helm lint validation.
 4. Build the production workspaces.
 5. Run the pinned SonarQube scanner and require an `OK` quality gate.
 6. Build and push `gnomon-api`, `gnomon-web`, and `gnomon-admin-seed`, all tagged with
@@ -211,6 +222,7 @@ npm run format:check
 npm run typecheck
 npm test
 npm run build
+helm lint deploy/helm/gnomon
 git diff --check
 ```
 
@@ -227,6 +239,46 @@ git push origin main
 A push to `main` triggers Jenkins automatically. A failed validation or SonarQube gate
 stops before image publication. A failed image build stops before GitOps changes. Only
 a fully successful pipeline advances Argo CD.
+
+## Manual Helm fallback
+
+Use the CI/CD bootstrap and GitOps path for normal deployments. A direct Helm install
+is only a recovery path when the shared delivery services are unavailable. It needs a
+private values file containing the runtime and administrator fields:
+
+```yaml
+secrets:
+  accessTokenSecret: <random-value-at-least-32-characters>
+  refreshTokenSecret: <different-random-value-at-least-32-characters>
+  mongodbRootPassword: <random-value>
+  mongodbUri: mongodb://gnomonadmin:<password>@gnomon-gnomon-mongodb:27017/gnomon?authSource=admin
+  adminEmail: admin@example.com
+  adminPassword: <long-initial-password>
+  adminEmployeeCode: DDI0001
+
+adminSeed:
+  enabled: true
+```
+
+Render and validate it without applying first:
+
+```bash
+helm lint deploy/helm/gnomon -f private-values.yaml
+helm template gnomon deploy/helm/gnomon -f private-values.yaml >/tmp/gnomon-rendered.yaml
+```
+
+For a direct install, create the namespace and retained MongoDB PV first, then run:
+
+```bash
+kubectl create namespace gnomon --dry-run=client -o yaml | kubectl apply -f -
+helm upgrade --install gnomon deploy/helm/gnomon \
+  --namespace gnomon \
+  --set imagePullSecrets[0].name=harbor-gnomon-registry \
+  -f private-values.yaml
+```
+
+Do not use a direct Helm install while Argo CD manages the same release. It creates
+competing ownership and Argo CD will reconcile over it.
 
 ## Synchronization and rollback
 

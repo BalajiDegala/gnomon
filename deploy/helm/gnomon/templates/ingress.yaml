@@ -5,6 +5,10 @@ metadata:
   name: {{ include "gnomon.fullname" . }}
   labels:
     {{- include "gnomon.labels" . | nindent 4 }}
+  {{- with .Values.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   {{- with .Values.ingress.tls }}
