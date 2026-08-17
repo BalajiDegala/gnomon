@@ -42,11 +42,11 @@ spec:
       tty: true
       resources:
         requests:
-          cpu: 250m
-          memory: 512Mi
+          cpu: 500m
+          memory: 1Gi
         limits:
           cpu: "1"
-          memory: 2Gi
+          memory: 4Gi
     - name: helm
       image: docker.io/alpine/helm:3.17.3
       command: ["cat"]
@@ -200,7 +200,7 @@ const fs = require('node:fs');
 const properties = Object.fromEntries(
   fs.readFileSync('.scannerwork/report-task.txt', 'utf8')
     .trim()
-    .split(/\r?\n/)
+    .split(/\\r?\\n/)
     .map((line) => line.split(/=(.*)/s).slice(0, 2)),
 );
 const authorization = `Basic ${Buffer.from(`${process.env.SONAR_TOKEN}:`).toString('base64')}`;
