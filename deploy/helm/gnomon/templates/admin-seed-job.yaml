@@ -25,6 +25,16 @@ spec:
           image: "{{ .Values.adminSeed.image.repository }}:{{ .Values.adminSeed.image.tag }}"
           imagePullPolicy: {{ .Values.adminSeed.image.pullPolicy }}
           env:
+            - name: ACCESS_TOKEN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gnomon.secretName" . }}
+                  key: ACCESS_TOKEN_SECRET
+            - name: REFRESH_TOKEN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gnomon.secretName" . }}
+                  key: REFRESH_TOKEN_SECRET
             - name: MONGODB_URI
               valueFrom:
                 secretKeyRef:
