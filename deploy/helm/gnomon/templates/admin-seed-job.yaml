@@ -1,0 +1,48 @@
+{{- if .Values.adminSeed.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "gnomon.fullname" . }}-admin-seed-{{ .Values.adminSeed.image.tag | trunc 12 }}
+  labels:
+    {{- include "gnomon.labels" . | nindent 4 }}
+    app.kubernetes.io/component: admin-seed
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "gnomon.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: admin-seed
+    spec:
+      restartPolicy: Never
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: seed
+          image: "{{ .Values.adminSeed.image.repository }}:{{ .Values.adminSeed.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MONGODB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gnomon.secretName" . }}
+                  key: MONGODB_URI
+            - name: ADMIN_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gnomon.secretName" . }}
+                  key: ADMIN_EMAIL
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gnomon.secretName" . }}
+                  key: ADMIN_PASSWORD
+            - name: ADMIN_EMPLOYEE_CODE
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gnomon.secretName" . }}
+                  key: ADMIN_EMPLOYEE_CODE
+{{- end }}

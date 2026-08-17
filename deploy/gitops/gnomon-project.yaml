@@ -1,0 +1,15 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: gnomon
+  namespace: argocd
+spec:
+  description: Gnomon application deployment
+  sourceRepos:
+    - http://gitlab.d2-india.com/univrz/gnomon.git
+  destinations:
+    - namespace: gnomon
+      server: https://kubernetes.default.svc
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
