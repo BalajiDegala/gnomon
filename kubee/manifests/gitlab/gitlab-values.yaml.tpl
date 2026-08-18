@@ -1,0 +1,123 @@
+global:
+  edition: ce
+  hosts:
+    domain: ${INGRESS_DOMAIN}
+    externalIP: ${INGRESS_LB_IP}
+    https: false
+    gitlab:
+      name: ${GITLAB_HOST}
+      https: false
+  ingress:
+    enabled: true
+    class: nginx
+    configureCertmanager: false
+    tls:
+      enabled: false
+  gatewayApi:
+    enabled: false
+    configureCertmanager: false
+  appConfig:
+    object_store:
+      enabled: true
+      proxy_download: true
+      connection:
+        secret: gitlab-object-storage
+        key: connection
+    artifacts:
+      bucket: gitlab-artifacts
+    lfs:
+      bucket: gitlab-lfs
+    uploads:
+      bucket: gitlab-uploads
+    packages:
+      bucket: gitlab-packages
+    externalDiffs:
+      enabled: true
+      bucket: gitlab-external-diffs
+    terraformState:
+      enabled: true
+      bucket: gitlab-terraform-state
+    ciSecureFiles:
+      enabled: true
+      bucket: gitlab-ci-secure-files
+    dependencyProxy:
+      enabled: true
+      bucket: gitlab-dependency-proxy
+    agentPlanContent:
+      enabled: true
+      bucket: gitlab-agent-plan-content
+    backups:
+      bucket: gitlab-backups
+      tmpBucket: gitlab-tmp
+  minio:
+    enabled: false
+  registry:
+    enabled: false
+  psql:
+    host: gitlab-postgresql.gitlab.svc.cluster.local
+    port: 5432
+    database: gitlabhq_production
+    username: gitlab
+    password:
+      secret: gitlab-postgres
+      key: psql-password
+  redis:
+    host: gitlab-redis.gitlab.svc.cluster.local
+    port: 6379
+    auth:
+      enabled: true
+      secret: gitlab-redis
+      key: redis-password
+
+installCertmanager: false
+
+certmanager-issuer:
+  email: ${CERT_MANAGER_EMAIL}
+
+nginx-ingress:
+  enabled: false
+
+certmanager:
+  install: false
+
+prometheus:
+  install: false
+
+gitlab-runner:
+  install: false
+
+registry:
+  enabled: false
+
+gitlab:
+  webservice:
+    minReplicas: 1
+    maxReplicas: 1
+    ingress:
+      tls:
+        enabled: false
+  sidekiq:
+    minReplicas: 1
+    maxReplicas: 1
+  gitlab-shell:
+    minReplicas: 1
+    maxReplicas: 1
+  gitaly:
+    persistence:
+      size: 50Gi
+  toolbox:
+    backups:
+      objectStorage:
+        backend: s3
+        config:
+          secret: gitlab-backup-storage
+          key: config
+
+postgresql:
+  install: false
+
+redis:
+  install: false
+
+minio:
+  enabled: false

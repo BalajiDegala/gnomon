@@ -1,0 +1,151 @@
+pipeline {
+  agent {
+    kubernetes {
+      defaultContainer 'git'
+      retries 2
+      yaml '''
+apiVersion: v1
+kind: Pod
+spec:
+  serviceAccountName: jenkins
+  hostAliases:
+    - ip: "10.191.0.240"
+      hostnames:
+        - harbor.d2-india.com
+  containers:
+    - name: git
+      image: docker.io/alpine/git:2.49.1
+      command: ["cat"]
+      tty: true
+    - name: kaniko
+      image: gcr.io/kaniko-project/executor:v1.23.2-debug
+      command: ["/busybox/cat"]
+      tty: true
+      volumeMounts:
+        - name: harbor-auth
+          mountPath: /kaniko/.docker
+          readOnly: true
+  volumes:
+    - name: harbor-auth
+      secret:
+        secretName: harbor-cicd-registry
+        items:
+          - key: .dockerconfigjson
+            path: config.json
+'''
+    }
+  }
+
+  options {
+    disableConcurrentBuilds()
+    buildDiscarder(logRotator(numToKeepStr: '20'))
+  }
+
+  environment {
+    IMAGE = 'harbor.d2-india.com/apps/cicd-demo'
+    GITOPS_URL = 'http://gitlab-webservice-default.gitlab.svc.cluster.local:8181/root/platform-gitops.git'
+  }
+
+  stages {
+    stage('Configure webhook trigger') {
+      steps {
+        withCredentials([string(credentialsId: 'gitlab-cicd-webhook', variable: 'WEBHOOK_TOKEN')]) {
+          script {
+            properties([
+              disableConcurrentBuilds(),
+              buildDiscarder(logRotator(numToKeepStr: '20')),
+              pipelineTriggers([
+                gitlab(
+                  triggerOnPush: true,
+                  branchFilterType: 'NameBasedFilter',
+                  includeBranchesSpec: 'main',
+                  secretToken: WEBHOOK_TOKEN
+                )
+              ])
+            ])
+          }
+        }
+      }
+    }
+
+    stage('Test') {
+      steps {
+        sh 'sh tests/smoke.sh'
+      }
+    }
+
+    stage('Build and push immutable image') {
+      steps {
+        container('kaniko') {
+          sh '''
+            set -eu
+            /kaniko/executor \
+              --context "$WORKSPACE" \
+              --dockerfile "$WORKSPACE/Dockerfile" \
+              --destination "$IMAGE:$GIT_COMMIT" \
+              --insecure \
+              --skip-tls-verify
+          '''
+        }
+      }
+    }
+
+    stage('Update GitOps') {
+      steps {
+        withCredentials([
+          usernamePassword(
+            credentialsId: 'gitlab-gitops-write',
+            usernameVariable: 'GITOPS_USER',
+            passwordVariable: 'GITOPS_TOKEN'
+          )
+        ]) {
+          sh '''
+            set -eu
+            set +x
+            askpass="$(mktemp)"
+            cleanup() {
+              rm -f "$askpass"
+            }
+            trap cleanup EXIT
+            cat >"$askpass" <<'EOF'
+#!/bin/sh
+case "$1" in
+  *Username*) printf '%s' "$GITOPS_USER" ;;
+  *Password*) printf '%s' "$GITOPS_TOKEN" ;;
+esac
+EOF
+            chmod 700 "$askpass"
+            export GIT_ASKPASS="$askpass"
+            export GIT_TERMINAL_PROMPT=0
+
+            rm -rf gitops-work
+            git clone "$GITOPS_URL" gitops-work
+            mkdir -p \
+              gitops-work/clusters/lab/apps \
+              gitops-work/apps/cicd-demo
+
+            cp deploy/argocd-application.yaml \
+              gitops-work/clusters/lab/apps/cicd-demo.yaml
+            sed "s|__IMAGE__|$IMAGE:$GIT_COMMIT|g" \
+              deploy/deployment.yaml.tpl \
+              > gitops-work/apps/cicd-demo/deployment.yaml
+            cp deploy/service.yaml deploy/ingress.yaml \
+              gitops-work/apps/cicd-demo/
+
+            git -C gitops-work config user.name "Jenkins CI"
+            git -C gitops-work config user.email "jenkins@d2-india.com"
+            git -C gitops-work add clusters/lab/apps apps/cicd-demo
+            if git -C gitops-work diff --cached --quiet; then
+              echo "GitOps already references this image."
+            else
+              git -C gitops-work commit \
+                -m "Deploy cicd-demo image $GIT_COMMIT"
+              git -C gitops-work push origin HEAD:main
+            fi
+          '''
+        }
+      }
+    }
+  }
+
+}
