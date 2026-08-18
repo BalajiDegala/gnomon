@@ -1,4 +1,4 @@
-# Gnomon
+# Gnomon 1.0
 
 Gnomon is the DIGITAL DOMAIN INDIA workforce management application described in
 [`docs/MVP_PLAN.md`](docs/MVP_PLAN.md). It is a TypeScript MERN monorepo for
