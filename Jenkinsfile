@@ -147,7 +147,7 @@ spec:
         stage('Tests') {
           steps {
             container('node') {
-              sh 'npm test'
+              sh 'npm run test:coverage'
             }
           }
         }
@@ -187,7 +187,8 @@ spec:
                 -Dsonar.sources=apps,packages \
                 -Dsonar.tests=apps,packages \
                 -Dsonar.exclusions='**/node_modules/**,**/dist/**,**/*.test.ts,**/*.spec.ts,apps/web/e2e/**' \
-                -Dsonar.test.inclusions='**/*.test.ts,**/*.spec.ts,apps/web/e2e/**'
+                -Dsonar.test.inclusions='**/*.test.ts,**/*.spec.ts,apps/web/e2e/**' \
+                -Dsonar.javascript.lcov.reportPaths=coverage/api/lcov.info,coverage/web/lcov.info,coverage/shared/lcov.info
             '''
           }
           container('node') {

@@ -262,8 +262,8 @@ test('restores durable page context after refresh', async ({ page }, testInfo) =
 
 test('protects and restores an unfinished timesheet draft', async ({ page }, testInfo) => {
   const employee = regularisationUsers.employee;
-  test.skip(!employee.email || !employee.password, 'Employee E2E credentials are required');
-  test.skip(testInfo.project.name !== 'desktop-chromium', 'Covered once on desktop');
+  test.skip(!employee.email || !employee.password, 'Employee E2E credentials are required'); // Intentional skip when optional employee credentials are unavailable in CI.
+  test.skip(testInfo.project.name !== 'desktop-chromium', 'Covered once on desktop'); // Intentional skip to avoid duplicating this workflow on mobile.
 
   await signIn(page, employee);
   await navigationLink(page, 'Timesheets').click();

@@ -14,6 +14,7 @@
     "import:data-folder": "tsx src/scripts/import-data-folder.ts",
     "start": "node dist/server.js",
     "test": "cross-env NODE_ENV=test ACCESS_TOKEN_SECRET=test-access-secret-with-at-least-32-characters REFRESH_TOKEN_SECRET=test-refresh-secret-with-at-least-32-characters vitest run",
+    "test:coverage": "cross-env NODE_ENV=test ACCESS_TOKEN_SECRET=test-access-secret-with-at-least-32-characters REFRESH_TOKEN_SECRET=test-refresh-secret-with-at-least-32-characters vitest run --coverage --coverage.reporter=lcov --coverage.reportsDirectory=../../coverage/api",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

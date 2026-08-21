@@ -9,6 +9,7 @@
     "e2e": "playwright test",
     "preview": "vite preview",
     "test": "vitest run src --passWithNoTests",
+    "test:coverage": "vitest run src --passWithNoTests --coverage --coverage.reporter=lcov --coverage.reportsDirectory=../../coverage/web",
     "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {
