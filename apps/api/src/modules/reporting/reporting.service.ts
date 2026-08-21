@@ -34,7 +34,10 @@ export async function buildWorkforceReport(
   assertReportDateRange(input);
   const scope = await buildEmployeeScopeFilter(user, [...REPORT_PERMISSIONS]);
   const employees = await Employee.find({
-    $and: [scope, { profileSource: { $in: ['users_csv', 'manual'] } }],
+    // Attendance imports can provision profiles without a login account. They
+    // still belong in attendance/workforce reports; only the system account is
+    // excluded from the employee-facing report population.
+    $and: [scope, { profileSource: { $ne: 'system' } }],
   })
     .select({ employeeCode: 1, firstName: 1, lastName: 1, status: 1 })
     .lean()
@@ -183,7 +186,10 @@ export async function buildAttendanceDetails(
 ): Promise<AttendanceDetailsDto> {
   const scope = await buildEmployeeScopeFilter(user, [...REPORT_PERMISSIONS]);
   const employees = await Employee.find({
-    $and: [scope, { profileSource: { $in: ['users_csv', 'manual'] } }],
+    // Attendance imports can provision profiles without a login account. They
+    // still belong in attendance/workforce reports; only the system account is
+    // excluded from the employee-facing report population.
+    $and: [scope, { profileSource: { $ne: 'system' } }],
   })
     .select({
       employeeCode: 1,
