@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { RoleCodeSchema, ScopeTypeSchema } from './authorization.js';
+import { EmployeeAttendanceIdentityDtoSchema, EmployeeHrProfileDtoSchema } from './employee.js';
 
 const ObjectIdStringSchema = z.string().regex(/^[a-f\d]{24}$/i, 'A valid identifier is required');
 
@@ -28,6 +29,9 @@ export const SecurityEmployeeAccessDtoSchema = z.object({
   employeeDisplayName: z.string(),
   employeeEmail: z.string().email(),
   employeeStatus: z.enum(['active', 'inactive']),
+  profileSource: z.enum(['users_csv', 'door_workbook', 'manual', 'system']),
+  hrProfile: EmployeeHrProfileDtoSchema.nullable(),
+  attendanceIdentity: EmployeeAttendanceIdentityDtoSchema.nullable(),
   account: z
     .object({
       userId: z.string(),

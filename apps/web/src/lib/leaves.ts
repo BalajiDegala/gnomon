@@ -1,6 +1,7 @@
 import type {
   CreateLeaveRequest,
   HolidayDto,
+  LeaveApprovalRoutePreviewDto,
   LeaveBalanceDto,
   LeaveDecisionRequest,
   LeaveRequestDto,
@@ -13,6 +14,7 @@ interface MyLeavesResponse {
   requests: LeaveRequestDto[];
   balances: LeaveBalanceDto[];
   holidays: HolidayDto[];
+  approvalRoute: LeaveApprovalRoutePreviewDto;
 }
 
 interface LeaveListResponse {
@@ -29,6 +31,7 @@ async function refreshLeaveQueries(queryClient: ReturnType<typeof useQueryClient
     queryClient.invalidateQueries({ queryKey: ['leave-approvals'] }),
     queryClient.invalidateQueries({ queryKey: ['calendar'] }),
     queryClient.invalidateQueries({ queryKey: ['timecard', 'today'] }),
+    queryClient.invalidateQueries({ queryKey: ['notifications'] }),
   ]);
 }
 
@@ -60,6 +63,7 @@ export function useMyLeaves(year: number) {
     requests: query.data?.requests ?? [],
     balances: query.data?.balances ?? [],
     holidays: query.data?.holidays ?? [],
+    approvalRoute: query.data?.approvalRoute ?? null,
     isLoading: query.isLoading,
     isUpdating: create.isPending || cancel.isPending,
     error: query.error ?? create.error ?? cancel.error,

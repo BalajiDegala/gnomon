@@ -13,6 +13,7 @@ import { HttpError } from '../../middleware/errors.js';
 import { Employee } from '../employees/employee.model.js';
 import { LeaveRequest } from '../leaves/leave.model.js';
 import { listApplicableHolidays } from '../policies/holiday-applicability.service.js';
+import { Holiday } from '../policies/holiday.model.js';
 import { DailyTimecard } from '../reconciliation/daily-timecard.model.js';
 import { Show, ShowAssignment } from '../shows/show.model.js';
 
@@ -36,7 +37,7 @@ interface AvailabilityEvidence {
   today: string;
   holiday: boolean;
   leave: {
-    status: 'pending_manager' | 'approved';
+    status: 'pending_manager' | 'pending_hr' | 'approved';
     dayPart: 'full_day' | 'first_half' | 'second_half';
   } | null;
   attendanceStatus:
@@ -54,7 +55,8 @@ export function resolveManagedCalendarAvailability(
   evidence: AvailabilityEvidence,
 ): ManagedCalendarAvailability {
   if (evidence.weekday > 5 || evidence.holiday) return 'non_working';
-  if (evidence.leave?.status === 'pending_manager') return 'pending';
+  if (evidence.leave?.status === 'pending_manager' || evidence.leave?.status === 'pending_hr')
+    return 'pending';
   if (evidence.leave?.status === 'approved') {
     return evidence.leave.dayPart === 'full_day' ? 'unavailable' : 'partial';
   }
@@ -91,7 +93,7 @@ export async function getPersonalCalendar(
       .exec(),
     LeaveRequest.find({
       employeeId,
-      status: { $in: ['pending_manager', 'approved'] },
+      status: { $in: ['pending_manager', 'pending_hr', 'approved'] },
       workingDates: { $elemMatch: { $gte: window.startDate, $lte: window.endDate } },
     })
       .lean()
@@ -258,43 +260,90 @@ export async function getManagedCalendar(
   if (query.audienceType && !selectedAudience) {
     throw new HttpError(403, 'This calendar is outside your assigned scope', 'SCOPE_FORBIDDEN');
   }
-  if (!selectedAudience) return { month, audiences, selectedAudience: null, members: [] };
+  if (!selectedAudience) {
+    return {
+      month,
+      latestRecordedMonth: null,
+      audiences,
+      selectedAudience: null,
+      totalMembers: 0,
+      page: query.page,
+      pageSize: query.pageSize,
+      totalPages: 0,
+      members: [],
+    };
+  }
 
   const selectedEmployeeIds =
     selectedAudience.type === 'direct_reports'
       ? directReports.map((employee) => String(employee._id))
       : [...(assignmentIdsByShow.get(selectedAudience.id) ?? [])];
+  const totalMembers = selectedEmployeeIds.length;
+  const totalPages = totalMembers === 0 ? 0 : Math.ceil(totalMembers / query.pageSize);
+  const page = totalPages === 0 ? 1 : Math.min(query.page, totalPages);
+  const pagedEmployeeIds = selectedEmployeeIds.slice(
+    (page - 1) * query.pageSize,
+    page * query.pageSize,
+  );
   if (selectedEmployeeIds.length === 0) {
-    return { month, audiences, selectedAudience, members: [] };
+    return {
+      month,
+      latestRecordedMonth: null,
+      audiences,
+      selectedAudience,
+      totalMembers,
+      page,
+      pageSize: query.pageSize,
+      totalPages,
+      members: [],
+    };
   }
 
   const employeeObjectIds = validObjectIds(selectedEmployeeIds);
-  const [employees, dailyTimecards, leaveRequests, holidayRows] = await Promise.all([
-    Employee.find({ _id: { $in: employeeObjectIds }, status: 'active' })
-      .select({ employeeCode: 1, firstName: 1, lastName: 1 })
+  const pagedEmployeeObjectIds = validObjectIds(pagedEmployeeIds);
+  const [employees, dailyTimecards, leaveRequests, holidays, latestTimecard] = await Promise.all([
+    Employee.find({ _id: { $in: pagedEmployeeObjectIds }, status: 'active' })
+      .select({ employeeCode: 1, firstName: 1, lastName: 1, hrProfile: 1 })
       .sort({ firstName: 1, lastName: 1 })
       .lean()
       .exec(),
     DailyTimecard.find({
-      employeeId: { $in: employeeObjectIds },
+      employeeId: { $in: pagedEmployeeObjectIds },
       workDate: { $gte: window.startDate, $lte: window.endDate },
     })
+      .select({
+        employeeId: 1,
+        workDate: 1,
+        calculated: 1,
+        regularisationStatus: 1,
+        finalisation: 1,
+      })
       .lean()
       .exec(),
     LeaveRequest.find({
-      employeeId: { $in: employeeObjectIds },
-      status: { $in: ['pending_manager', 'approved'] },
+      employeeId: { $in: pagedEmployeeObjectIds },
+      status: { $in: ['pending_manager', 'pending_hr', 'approved'] },
       workingDates: { $elemMatch: { $gte: window.startDate, $lte: window.endDate } },
     })
+      .select({ employeeId: 1, workingDates: 1, dayPart: 1, status: 1 })
       .lean()
       .exec(),
-    Promise.all(
-      selectedEmployeeIds.map(async (employeeId) => ({
-        employeeId,
-        holidays: await listApplicableHolidays(employeeId, window.startDate, window.endDate),
-      })),
-    ),
+    Holiday.find({
+      status: 'active',
+      scopeType: 'company',
+      locationId: null,
+      date: { $gte: window.startDate, $lte: window.endDate },
+    })
+      .select({ date: 1, name: 1, scopeType: 1 })
+      .lean()
+      .exec(),
+    DailyTimecard.findOne({ employeeId: { $in: employeeObjectIds } })
+      .select({ workDate: 1 })
+      .sort({ workDate: -1 })
+      .lean()
+      .exec(),
   ]);
+  const latestRecordedMonth = latestTimecard?.workDate.slice(0, 7) ?? null;
 
   const timecardByEmployeeDate = new Map<string, (typeof dailyTimecards)[number]>(
     dailyTimecards.map((record) => [`${String(record.employeeId)}:${record.workDate}`, record]),
@@ -306,11 +355,7 @@ export async function getManagedCalendar(
         .map((date) => [`${String(request.employeeId)}:${date}`, request] as const),
     ),
   );
-  const holidayByEmployeeDate = new Map<string, (typeof holidayRows)[number]['holidays'][number]>(
-    holidayRows.flatMap(({ employeeId, holidays }) =>
-      holidays.map((holiday) => [`${employeeId}:${holiday.date}`, holiday] as const),
-    ),
-  );
+  const holidayByDate = new Map(holidays.map((holiday) => [holiday.date, holiday]));
   const today = getWorkDate(now);
 
   const members = employees.map((employee) => {
@@ -347,10 +392,13 @@ export async function getManagedCalendar(
       }
       const timecard = timecardByEmployeeDate.get(key);
       const leave = leaveByEmployeeDate.get(key);
-      const holiday = holidayByEmployeeDate.get(key);
+      const holiday = holidayByDate.get(isoDate);
       const attendanceStatus = timecard?.calculated?.status ?? null;
       const leaveSummary = leave
-        ? { dayPart: leave.dayPart, status: leave.status as 'pending_manager' | 'approved' }
+        ? {
+            dayPart: leave.dayPart,
+            status: leave.status as 'pending_manager' | 'pending_hr' | 'approved',
+          }
         : null;
       days.push({
         date: isoDate,
@@ -371,10 +419,21 @@ export async function getManagedCalendar(
     return {
       employeeId: String(employee._id),
       employeeCode: employee.employeeCode,
-      displayName: `${employee.firstName} ${employee.lastName}`.trim(),
+      displayName:
+        employee.hrProfile?.fullName ?? `${employee.firstName} ${employee.lastName}`.trim(),
       days,
     };
   });
 
-  return { month, audiences, selectedAudience, members };
+  return {
+    month,
+    latestRecordedMonth,
+    audiences,
+    selectedAudience,
+    totalMembers,
+    page,
+    pageSize: query.pageSize,
+    totalPages,
+    members,
+  };
 }

@@ -13,13 +13,14 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
   TextField,
   Tooltip,
   Typography,
 } from '@mui/material';
 import { ArrowLeft, ChevronLeft, ChevronRight, UsersRound } from 'lucide-react';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import { currentIndiaMonth, useManagedCalendar } from '../lib/calendar';
 import { parseYearMonth, useUrlQueryState } from '../lib/url-query-state';
@@ -29,6 +30,12 @@ interface TeamCalendarPageProps {
 }
 
 const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const pageSize = 25;
+
+function parsePage(value: string): number | null {
+  const page = Number(value);
+  return Number.isInteger(page) && page >= 1 ? page : null;
+}
 
 const availabilityTones = {
   available: { background: '#e6f7ef', color: '#19764d', short: 'A', label: 'Available' },
@@ -124,13 +131,37 @@ function MobileMemberCalendar({ member }: { member: ManagedCalendarMemberDto }) 
 export function TeamCalendarPage({ onBack }: TeamCalendarPageProps) {
   const defaultMonth = useMemo(currentIndiaMonth, []);
   const [month, setMonth] = useUrlQueryState('month', defaultMonth, parseYearMonth);
-  const managed = useManagedCalendar(month);
+  const [page, setPage] = useUrlQueryState('page', 1, parsePage);
+  const selectedLatestRecordedMonth = useRef(false);
+  const managed = useManagedCalendar(month, page, pageSize);
   const calendar = managed.calendar;
   const allDays = calendar?.members.flatMap((member) => member.days) ?? [];
   const unavailableDays = allDays.filter((day) => day.availability === 'unavailable').length;
   const partialDays = allDays.filter((day) => day.availability === 'partial').length;
   const pendingDays = allDays.filter((day) => day.availability === 'pending').length;
   const headerDays = calendar?.members[0]?.days ?? [];
+  const selectMonth = (value: string) => {
+    setMonth(value);
+    setPage(1);
+  };
+
+  useEffect(() => {
+    if (
+      selectedLatestRecordedMonth.current ||
+      month !== defaultMonth ||
+      !calendar?.latestRecordedMonth ||
+      calendar.latestRecordedMonth === month ||
+      calendar.members.some((member) => member.days.some((day) => day.attendanceStatus !== null))
+    ) {
+      return;
+    }
+    selectedLatestRecordedMonth.current = true;
+    selectMonth(calendar.latestRecordedMonth);
+  }, [calendar, defaultMonth, month]);
+
+  useEffect(() => {
+    if (calendar?.totalPages && page > calendar.totalPages) setPage(calendar.totalPages);
+  }, [calendar?.totalPages, page, setPage]);
 
   return (
     <Stack spacing={3} sx={{ width: '100%', maxWidth: 1500, mx: 'auto' }}>
@@ -156,6 +187,13 @@ export function TeamCalendarPage({ onBack }: TeamCalendarPageProps) {
         <Alert severity="warning">Your account cannot read team attendance.</Alert>
       )}
       {managed.error && <Alert severity="error">{managed.error.message}</Alert>}
+      {calendar?.latestRecordedMonth &&
+        month === calendar.latestRecordedMonth &&
+        month !== defaultMonth && (
+          <Alert severity="info">
+            The current month has no attendance records, so the latest recorded month is shown.
+          </Alert>
+        )}
 
       <Card sx={{ boxShadow: 'none' }}>
         <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
@@ -167,7 +205,7 @@ export function TeamCalendarPage({ onBack }: TeamCalendarPageProps) {
               <Button
                 aria-label="Previous month"
                 color="inherit"
-                onClick={() => setMonth(moveMonth(month, -1))}
+                onClick={() => selectMonth(moveMonth(month, -1))}
                 sx={{ minWidth: 38, px: 0.75 }}
               >
                 <ChevronLeft size={18} />
@@ -181,7 +219,7 @@ export function TeamCalendarPage({ onBack }: TeamCalendarPageProps) {
               <Button
                 aria-label="Next month"
                 color="inherit"
-                onClick={() => setMonth(moveMonth(month, 1))}
+                onClick={() => selectMonth(moveMonth(month, 1))}
                 sx={{ minWidth: 38, px: 0.75 }}
               >
                 <ChevronRight size={18} />
@@ -192,7 +230,7 @@ export function TeamCalendarPage({ onBack }: TeamCalendarPageProps) {
                 type="month"
                 label="Calendar month"
                 value={month}
-                onChange={(event) => setMonth(event.target.value)}
+                onChange={(event) => selectMonth(event.target.value)}
                 slotProps={{ inputLabel: { shrink: true } }}
                 size="small"
               />
@@ -203,12 +241,12 @@ export function TeamCalendarPage({ onBack }: TeamCalendarPageProps) {
             <Chip
               icon={<UsersRound size={14} />}
               size="small"
-              label={`${calendar?.members.length ?? 0} people`}
+              label={`${calendar?.totalMembers ?? 0} people`}
               variant="outlined"
             />
             <Chip
               size="small"
-              label={`${unavailableDays} unavailable`}
+              label={`${unavailableDays} unavailable on page`}
               sx={{
                 bgcolor: availabilityTones.unavailable.background,
                 color: availabilityTones.unavailable.color,
@@ -216,7 +254,7 @@ export function TeamCalendarPage({ onBack }: TeamCalendarPageProps) {
             />
             <Chip
               size="small"
-              label={`${partialDays} partial`}
+              label={`${partialDays} partial on page`}
               sx={{
                 bgcolor: availabilityTones.partial.background,
                 color: availabilityTones.partial.color,
@@ -224,7 +262,7 @@ export function TeamCalendarPage({ onBack }: TeamCalendarPageProps) {
             />
             <Chip
               size="small"
-              label={`${pendingDays} pending`}
+              label={`${pendingDays} pending on page`}
               sx={{
                 bgcolor: availabilityTones.pending.background,
                 color: availabilityTones.pending.color,
@@ -311,6 +349,15 @@ export function TeamCalendarPage({ onBack }: TeamCalendarPageProps) {
               <MobileMemberCalendar key={member.employeeId} member={member} />
             ))}
           </Stack>
+          <TablePagination
+            component="div"
+            count={calendar.totalMembers}
+            page={calendar.page - 1}
+            rowsPerPage={calendar.pageSize}
+            rowsPerPageOptions={[calendar.pageSize]}
+            onPageChange={(_event, nextPage) => setPage(nextPage + 1)}
+            labelDisplayedRows={({ from, to, count }) => `${from}–${to} of ${count} people`}
+          />
         </>
       )}
 

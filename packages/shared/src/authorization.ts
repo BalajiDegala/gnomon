@@ -24,6 +24,7 @@ export type PermissionCode = z.infer<typeof PermissionCodeSchema>;
 export const roleCodes = [
   'EMPLOYEE',
   'REPORTING_MANAGER',
+  'LEAVE_APPROVER',
   'SHOW_MANAGER',
   'HR',
   'ATTENDANCE_ADMIN',

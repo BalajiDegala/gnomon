@@ -18,7 +18,8 @@ The completed workforce-management MVP includes:
 - Employee website start/stop sessions with a database-enforced single-running-session rule.
 - Live timecard dashboard with a nine-hour progress view, three attendance-signal
   cards, session history, and correct 07:00-to-07:00 work-date assignment.
-- Company-scoped biometric and access-card CSV imports with file/row idempotency,
+- Company-scoped biometric/access-card CSV imports and first-in/last-out door
+  workbook imports with file/row idempotency,
   immutable raw events, validation results, and import history.
 - Permission-to-scope authorization grants for protected company-wide actions.
 - Company- or show-scoped show administration with editable show identity and lifecycle
@@ -46,8 +47,8 @@ The completed workforce-management MVP includes:
   private employee reasons.
 - Optional annual paid-leave balances that are enforced when configured and shown
   explicitly as not configured otherwise; the MVP does not invent entitlements.
-- Single-step Reporting Manager leave approval with direct-report scope and
-  self-approval prevention.
+- Department-configurable one- or two-stage leave approval with any-of second-approver
+  pools, snapshotted request routing, and self-approval prevention.
 - Approved full-day leave finalises the effective attendance state while keeping
   source evidence intact; approved half-day leave reduces the attendance requirement
   to 270 minutes and retains the worked portion.
@@ -99,6 +100,8 @@ The attendance correction and approval workflow is documented in
 [`docs/REGULARISATION_WORKFLOW.md`](docs/REGULARISATION_WORKFLOW.md).
 The leave, approval, balance, calendar, and attendance interaction is documented in
 [`docs/LEAVE_CALENDAR_WORKFLOW.md`](docs/LEAVE_CALENDAR_WORKFLOW.md).
+The `approvals.csv` mapping and second-approver pool behavior are documented in
+[`docs/APPROVAL_ROUTE_IMPORT.md`](docs/APPROVAL_ROUTE_IMPORT.md).
 Company holiday and leave-balance administration is documented in
 [`docs/POLICY_ADMINISTRATION.md`](docs/POLICY_ADMINISTRATION.md).
 Manager team availability calendars are documented in

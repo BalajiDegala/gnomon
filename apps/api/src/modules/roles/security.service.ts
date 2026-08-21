@@ -22,6 +22,7 @@ import { ensureSystemRoles } from './system-roles.js';
 const allowedScopes: Record<RoleCode, ScopeType[]> = {
   EMPLOYEE: ['self'],
   REPORTING_MANAGER: ['direct_reports', 'company'],
+  LEAVE_APPROVER: ['self'],
   SHOW_MANAGER: ['show', 'company'],
   HR: ['department', 'location', 'company'],
   ATTENDANCE_ADMIN: ['department', 'location', 'company'],
@@ -63,7 +64,11 @@ export async function listSecurityDirectory(user: AuthUser): Promise<SecurityDir
   await ensureSystemRoles();
   const now = new Date();
   const [employees, users, roles, assignments, shows, locations] = await Promise.all([
-    Employee.find().sort({ status: 1, firstName: 1, lastName: 1 }).limit(500).lean().exec(),
+    Employee.find({ profileSource: { $in: ['users_csv', 'manual', 'system'] } })
+      .sort({ status: 1, 'hrProfile.fullName': 1, firstName: 1, lastName: 1 })
+      .limit(500)
+      .lean()
+      .exec(),
     User.find().lean().exec(),
     Role.find().sort({ name: 1 }).lean().exec(),
     RoleAssignment.find({
@@ -96,9 +101,40 @@ export async function listSecurityDirectory(user: AuthUser): Promise<SecurityDir
       return {
         employeeId: String(employee._id),
         employeeCode: employee.employeeCode,
-        employeeDisplayName: `${employee.firstName} ${employee.lastName}`.trim(),
-        employeeEmail: employee.email,
+        employeeDisplayName:
+          employee.hrProfile?.fullName ?? `${employee.firstName} ${employee.lastName}`.trim(),
+        employeeEmail: employee.hrProfile?.mailId ?? employee.email,
         employeeStatus: employee.status,
+        profileSource: employee.profileSource,
+        hrProfile: employee.hrProfile
+          ? {
+              source: employee.hrProfile.source,
+              userId: employee.hrProfile.userId,
+              mailId: employee.hrProfile.mailId,
+              fullName: employee.hrProfile.fullName,
+              designation: employee.hrProfile.designation,
+              departmentName: employee.hrProfile.departmentName,
+              leaveApprover1Name: employee.hrProfile.leaveApprover1Name,
+              leaveApprover2Name: employee.hrProfile.leaveApprover2Name,
+              approver1EmployeeId: employee.hrProfile.approver1EmployeeId
+                ? String(employee.hrProfile.approver1EmployeeId)
+                : null,
+              approver2EmployeeId: employee.hrProfile.approver2EmployeeId
+                ? String(employee.hrProfile.approver2EmployeeId)
+                : null,
+              emailTriggers: employee.hrProfile.emailTriggers,
+              importedAt: employee.hrProfile.importedAt.toISOString(),
+            }
+          : null,
+        attendanceIdentity: employee.attendanceIdentity
+          ? {
+              source: employee.attendanceIdentity.source,
+              personnelId: employee.attendanceIdentity.personnelId,
+              cardNumber: employee.attendanceIdentity.cardNumber,
+              departmentName: employee.attendanceIdentity.departmentName,
+              lastSeenAt: employee.attendanceIdentity.lastSeenAt.toISOString(),
+            }
+          : null,
         account: account
           ? {
               userId: String(account._id),

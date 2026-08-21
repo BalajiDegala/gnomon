@@ -97,6 +97,22 @@ describe('calculateDailyReconciliation', () => {
     expect(result.calculated.anomalies).toContain('source_time_mismatch');
   });
 
+  it('does not require review only because optional website evidence is absent', () => {
+    const result = calculate({
+      events: [
+        { source: 'biometric', eventType: 'in', occurredAt: new Date('2026-07-27T03:30:00Z') },
+        { source: 'biometric', eventType: 'out', occurredAt: new Date('2026-07-27T12:30:00Z') },
+        { source: 'access_card', eventType: 'entry', occurredAt: new Date('2026-07-27T03:29:00Z') },
+        { source: 'access_card', eventType: 'exit', occurredAt: new Date('2026-07-27T12:31:00Z') },
+      ],
+    });
+
+    expect(result.sourceSummary.website.status).toBe('none');
+    expect(result.calculated.anomalies).not.toContain('missing_web_start');
+    expect(result.calculated.anomalies).not.toContain('missing_web_stop');
+    expect(result.calculated.requiresReview).toBe(false);
+  });
+
   it('flags show time that is outside website presence', () => {
     const result = calculate({
       now: new Date('2026-07-27T06:00:00Z'),

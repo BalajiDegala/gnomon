@@ -6,13 +6,20 @@ export type LeaveType = z.infer<typeof LeaveTypeSchema>;
 export const LeaveDayPartSchema = z.enum(['full_day', 'first_half', 'second_half']);
 export type LeaveDayPart = z.infer<typeof LeaveDayPartSchema>;
 
-export const LeaveStatusSchema = z.enum(['pending_manager', 'approved', 'rejected', 'cancelled']);
+export const LeaveStatusSchema = z.enum([
+  'pending_manager',
+  'pending_hr',
+  'approved',
+  'rejected',
+  'cancelled',
+]);
 export type LeaveStatus = z.infer<typeof LeaveStatusSchema>;
 
 export const LeaveDecisionSchema = z.object({
+  step: z.number().int().min(1).max(2),
   decision: z.enum(['approved', 'rejected']),
   actorDisplayName: z.string(),
-  actorRole: z.enum(['reporting_manager', 'system_admin']),
+  actorRole: z.enum(['reporting_manager', 'department_approver', 'system_admin']),
   comment: z.string(),
   decidedAt: z.string().datetime(),
 });
@@ -31,13 +38,26 @@ export const LeaveRequestDtoSchema = z.object({
   workingDates: z.array(z.string().date()),
   reason: z.string(),
   status: LeaveStatusSchema,
+  approvalSteps: z.union([z.literal(1), z.literal(2)]),
+  currentStep: z.number().int().min(1).max(3),
+  approver1DisplayName: z.string(),
+  approver2DisplayName: z.string().nullable(),
+  approver2DisplayNames: z.array(z.string()),
   approvalPolicyVersion: z.string(),
   decision: LeaveDecisionSchema.nullable(),
+  decisions: z.array(LeaveDecisionSchema),
   submittedAt: z.string().datetime(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
 export type LeaveRequestDto = z.infer<typeof LeaveRequestDtoSchema>;
+
+export const LeaveApprovalRoutePreviewDtoSchema = z.object({
+  approvalSteps: z.union([z.literal(1), z.literal(2)]),
+  approver1DisplayName: z.string().nullable(),
+  approver2DisplayNames: z.array(z.string()),
+});
+export type LeaveApprovalRoutePreviewDto = z.infer<typeof LeaveApprovalRoutePreviewDtoSchema>;
 
 export const LeaveBalanceDtoSchema = z.object({
   leaveType: LeaveTypeSchema,

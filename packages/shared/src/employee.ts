@@ -17,6 +17,31 @@ export const EmployeeReferenceDtoSchema = z.object({
 });
 export type EmployeeReferenceDto = z.infer<typeof EmployeeReferenceDtoSchema>;
 
+export const EmployeeAttendanceIdentityDtoSchema = z.object({
+  source: z.literal('door_workbook'),
+  personnelId: z.string(),
+  cardNumber: z.string().nullable(),
+  departmentName: z.string().nullable(),
+  lastSeenAt: z.string().datetime(),
+});
+export type EmployeeAttendanceIdentityDto = z.infer<typeof EmployeeAttendanceIdentityDtoSchema>;
+
+export const EmployeeHrProfileDtoSchema = z.object({
+  source: z.literal('users_csv'),
+  userId: z.string(),
+  mailId: z.string().email(),
+  fullName: z.string(),
+  designation: z.string(),
+  departmentName: z.string(),
+  leaveApprover1Name: z.string().nullable(),
+  leaveApprover2Name: z.string().nullable(),
+  approver1EmployeeId: z.string().nullable(),
+  approver2EmployeeId: z.string().nullable(),
+  emailTriggers: z.array(z.string().email()),
+  importedAt: z.string().datetime(),
+});
+export type EmployeeHrProfileDto = z.infer<typeof EmployeeHrProfileDtoSchema>;
+
 export const EmployeeDirectoryItemDtoSchema = z.object({
   id: z.string(),
   employeeCode: z.string(),
@@ -26,6 +51,9 @@ export const EmployeeDirectoryItemDtoSchema = z.object({
   email: z.string().email(),
   timezone: z.string(),
   status: EmployeeStatusSchema,
+  profileSource: z.enum(['users_csv', 'door_workbook', 'manual', 'system']),
+  hrProfile: EmployeeHrProfileDtoSchema.nullable(),
+  attendanceIdentity: EmployeeAttendanceIdentityDtoSchema.nullable(),
   reportingManager: EmployeeReferenceDtoSchema.nullable(),
   location: z
     .object({
@@ -44,6 +72,27 @@ export const EmployeeDirectoryDtoSchema = z.object({
   canUpdate: z.boolean(),
 });
 export type EmployeeDirectoryDto = z.infer<typeof EmployeeDirectoryDtoSchema>;
+
+export const UserDirectoryImportErrorSchema = z.object({
+  rowNumber: z.number().int().positive(),
+  employeeId: z.string(),
+  reason: z.string(),
+});
+export type UserDirectoryImportError = z.infer<typeof UserDirectoryImportErrorSchema>;
+
+export const UserDirectoryImportResponseSchema = z.object({
+  fileName: z.string(),
+  totalRows: z.number().int().nonnegative(),
+  importedRows: z.number().int().nonnegative(),
+  createdEmployees: z.number().int().nonnegative(),
+  updatedEmployees: z.number().int().nonnegative(),
+  attendanceIdentitiesLinked: z.number().int().nonnegative(),
+  usersWithoutAttendanceIdentity: z.number().int().nonnegative(),
+  archivedDoorProfiles: z.number().int().nonnegative(),
+  unresolvedApproverNames: z.array(z.string()),
+  errors: z.array(UserDirectoryImportErrorSchema),
+});
+export type UserDirectoryImportResponse = z.infer<typeof UserDirectoryImportResponseSchema>;
 
 export const CreateEmployeeRequestSchema = z.object({
   employeeCode: z

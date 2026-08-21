@@ -11,6 +11,8 @@ interface ImportHistoryResponse {
   batches: ImportBatchDto[];
 }
 
+export type AttendanceUploadFormat = AttendanceImportSource | 'door_workbook';
+
 export function useAttendanceImports() {
   const { request, user } = useAuth();
   const queryClient = useQueryClient();
@@ -23,18 +25,29 @@ export function useAttendanceImports() {
   });
 
   const upload = useMutation({
-    mutationFn: async ({ source, file }: { source: AttendanceImportSource; file: File }) =>
-      request<AttendanceImportResponse>(`/api/v1/imports/attendance/${source}/csv`, {
-        method: 'POST',
-        headers: {
-          'content-type': 'text/csv; charset=utf-8',
-          'x-file-name': encodeURIComponent(file.name),
+    mutationFn: async ({ format, file }: { format: AttendanceUploadFormat; file: File }) => {
+      const isDoorWorkbook = format === 'door_workbook';
+      return request<AttendanceImportResponse>(
+        isDoorWorkbook
+          ? '/api/v1/imports/attendance/access-card/door-workbook'
+          : `/api/v1/imports/attendance/${format}/csv`,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': isDoorWorkbook
+              ? file.type || 'application/vnd.ms-excel'
+              : 'text/csv; charset=utf-8',
+            'x-file-name': encodeURIComponent(file.name),
+          },
+          body: isDoorWorkbook ? await file.arrayBuffer() : await file.text(),
         },
-        body: await file.text(),
-      }),
+      );
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['attendance-imports'] });
       await queryClient.invalidateQueries({ queryKey: ['timecard', 'today'] });
+      await queryClient.invalidateQueries({ queryKey: ['attendance-details'] });
+      await queryClient.invalidateQueries({ queryKey: ['calendar'] });
     },
   });
 
@@ -46,7 +59,7 @@ export function useAttendanceImports() {
     result: upload.data,
     uploadError: upload.error,
     isUploading: upload.isPending,
-    upload: (source: AttendanceImportSource, file: File) => upload.mutateAsync({ source, file }),
+    upload: (format: AttendanceUploadFormat, file: File) => upload.mutateAsync({ format, file }),
   };
 }
 

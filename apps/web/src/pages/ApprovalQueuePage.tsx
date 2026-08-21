@@ -68,6 +68,12 @@ function regularisationStage(request: RegularisationRequestDto): string {
   return request.status === 'pending_manager' ? 'Manager review' : 'Final HR review';
 }
 
+function leaveStage(request: LeaveRequestDto): string {
+  return request.status === 'pending_manager'
+    ? `Approver 1 of ${request.approvalSteps}`
+    : `Approver 2 of ${request.approvalSteps}`;
+}
+
 function matchesSearch(search: string, values: readonly string[]): boolean {
   const term = search.trim().toLowerCase();
   return !term || values.some((value) => value.toLowerCase().includes(term));
@@ -175,6 +181,13 @@ export function ApprovalQueuePage() {
       {activeError && !selected && <Alert severity="error">{activeError.message}</Alert>}
       {!availableTabs.length && (
         <Alert severity="info">Your account does not have an approval permission.</Alert>
+      )}
+      {regularisations.canApprove && (
+        <Alert severity="info">
+          Attendance corrections use two approvals: Step 1 reporting-manager review, followed by
+          Step 2 final HR or Attendance Admin review. Access-card entry and exit corrections from
+          the imported door data follow this workflow.
+        </Alert>
       )}
 
       {availableTabs.length > 0 && (
@@ -339,7 +352,12 @@ function RegularisationQueue({
       label: 'Source',
       hideBelow: 'sm',
       width: 140,
-      render: (request) => (request.source === 'biometric' ? 'Biometric' : 'Website'),
+      render: (request) =>
+        request.source === 'biometric'
+          ? 'Biometric'
+          : request.source === 'access_card'
+            ? 'Access card'
+            : 'Website',
     },
     {
       id: 'correction',
@@ -482,6 +500,20 @@ function LeaveQueue({
         <Typography noWrap sx={{ maxWidth: 360, fontSize: 12 }}>
           {request.reason}
         </Typography>
+      ),
+    },
+    {
+      id: 'stage',
+      label: 'Stage',
+      sortKey: 'stage',
+      width: 140,
+      render: (request) => (
+        <Chip
+          size="small"
+          variant="outlined"
+          color={request.status === 'pending_manager' ? 'warning' : 'info'}
+          label={leaveStage(request)}
+        />
       ),
     },
     detailsColumn(onSelect),
@@ -649,7 +681,14 @@ function ApprovalDetails({ selected }: { selected: SelectedApproval }) {
           values={[
             ['Employee code', request.employeeCode],
             ['Work date', request.workDate],
-            ['Source', request.source === 'biometric' ? 'Biometric' : 'Website timecard'],
+            [
+              'Source',
+              request.source === 'biometric'
+                ? 'Biometric'
+                : request.source === 'access_card'
+                  ? 'Access card'
+                  : 'Website timecard',
+            ],
             ['Stage', regularisationStage(request)],
             ['Corrected start', formatIndiaTime(request.requestedStart)],
             ['Corrected end', formatIndiaTime(request.requestedEnd)],
@@ -685,9 +724,25 @@ function ApprovalDetails({ selected }: { selected: SelectedApproval }) {
           ['End date', request.endDate],
           ['Day part', request.dayPart.replaceAll('_', ' ')],
           ['Requested days', String(request.requestedDays)],
+          ['Stage', leaveStage(request)],
+          ['Approver 1', request.approver1DisplayName],
+          ['Approver 2 pool', request.approver2DisplayName ?? 'Not required'],
         ]}
       />
       <Detail label="Private employee reason" value={request.reason} />
+      {request.decisions.length > 0 && (
+        <Box>
+          <Typography sx={{ mb: 0.75, color: 'text.secondary', fontSize: 10.5 }}>
+            Previous decisions
+          </Typography>
+          {request.decisions.map((decision) => (
+            <Typography key={`${decision.step}-${decision.decidedAt}`} sx={{ fontSize: 11.5 }}>
+              Step {decision.step} {decision.decision} by {decision.actorDisplayName}
+              {decision.comment ? ` · ${decision.comment}` : ''}
+            </Typography>
+          ))}
+        </Box>
+      )}
     </Stack>
   );
 }

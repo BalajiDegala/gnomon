@@ -35,12 +35,12 @@ export function usePersonalCalendar(month: string) {
   };
 }
 
-export function useManagedCalendar(month: string) {
+export function useManagedCalendar(month: string, page = 1, pageSize = 25) {
   const { request, user } = useAuth();
   const canRead = user?.permissions.includes('attendance:team:read') ?? false;
-  const parameters = new URLSearchParams({ month });
+  const parameters = new URLSearchParams({ month, page: String(page), pageSize: String(pageSize) });
   const query = useQuery({
-    queryKey: ['managed-calendar', month],
+    queryKey: ['managed-calendar', month, page, pageSize],
     queryFn: () => request<ManagedCalendarResponse>(`/api/v1/calendar/managed?${parameters}`),
     enabled: canRead,
   });

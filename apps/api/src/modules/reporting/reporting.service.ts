@@ -1,4 +1,11 @@
-import type { AuthUser, WorkforceReportDto, WorkforceReportQuery } from '@gnomon/shared';
+import {
+  getWorkDate,
+  type AttendanceDetailsDto,
+  type AttendanceDetailsQuery,
+  type AuthUser,
+  type WorkforceReportDto,
+  type WorkforceReportQuery,
+} from '@gnomon/shared';
 
 import { HttpError } from '../../middleware/errors.js';
 import { Employee } from '../employees/employee.model.js';
@@ -26,7 +33,9 @@ export async function buildWorkforceReport(
 ): Promise<WorkforceReportDto> {
   assertReportDateRange(input);
   const scope = await buildEmployeeScopeFilter(user, [...REPORT_PERMISSIONS]);
-  const employees = await Employee.find(scope)
+  const employees = await Employee.find({
+    $and: [scope, { profileSource: { $in: ['users_csv', 'manual'] } }],
+  })
     .select({ employeeCode: 1, firstName: 1, lastName: 1, status: 1 })
     .lean()
     .exec();
@@ -127,7 +136,7 @@ export async function buildWorkforceReport(
   });
 
   const pendingApprovals =
-    leave.filter((row) => row.status === 'pending_manager').length +
+    leave.filter((row) => row.status === 'pending_manager' || row.status === 'pending_hr').length +
     regularisationRows.filter(
       (row) => row.status === 'pending_manager' || row.status === 'pending_hr',
     ).length;
@@ -159,5 +168,196 @@ export async function buildWorkforceReport(
     leave,
     regularisations: regularisationRows,
     timesheets,
+  };
+}
+
+function isoInstant(value: unknown): string | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(String(value));
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+export async function buildAttendanceDetails(
+  user: AuthUser,
+  input: AttendanceDetailsQuery,
+): Promise<AttendanceDetailsDto> {
+  const scope = await buildEmployeeScopeFilter(user, [...REPORT_PERMISSIONS]);
+  const employees = await Employee.find({
+    $and: [scope, { profileSource: { $in: ['users_csv', 'manual'] } }],
+  })
+    .select({
+      employeeCode: 1,
+      firstName: 1,
+      lastName: 1,
+      status: 1,
+      hrProfile: 1,
+      attendanceIdentity: 1,
+    })
+    .sort({ firstName: 1, lastName: 1, employeeCode: 1 })
+    .lean()
+    .exec();
+  const employeeIds = employees.map((employee) => employee._id);
+  const employeeById = new Map(employees.map((employee) => [String(employee._id), employee]));
+  const latestTimecard = await DailyTimecard.findOne({ employeeId: { $in: employeeIds } })
+    .select({ workDate: 1 })
+    .sort({ workDate: -1 })
+    .lean()
+    .exec();
+  const recordedMonths = await DailyTimecard.aggregate<{
+    month: string;
+    attendanceDays: number;
+    employeeCount: number;
+    biometricDays: number;
+    biometricEvents: number;
+    accessCardDays: number;
+    accessCardEvents: number;
+    websiteDays: number;
+    websiteSessions: number;
+    timesheetDays: number;
+    timesheetEntries: number;
+  }>([
+    { $match: { employeeId: { $in: employeeIds } } },
+    {
+      $group: {
+        _id: { $substrBytes: ['$workDate', 0, 7] },
+        attendanceDays: { $sum: 1 },
+        employees: { $addToSet: '$employeeId' },
+        biometricDays: {
+          $sum: { $cond: [{ $gt: ['$sourceSummary.biometric.eventCount', 0] }, 1, 0] },
+        },
+        biometricEvents: { $sum: { $ifNull: ['$sourceSummary.biometric.eventCount', 0] } },
+        accessCardDays: {
+          $sum: { $cond: [{ $gt: ['$sourceSummary.accessCard.eventCount', 0] }, 1, 0] },
+        },
+        accessCardEvents: { $sum: { $ifNull: ['$sourceSummary.accessCard.eventCount', 0] } },
+        websiteDays: {
+          $sum: { $cond: [{ $gt: ['$sourceSummary.website.sessionCount', 0] }, 1, 0] },
+        },
+        websiteSessions: { $sum: { $ifNull: ['$sourceSummary.website.sessionCount', 0] } },
+        timesheetDays: {
+          $sum: { $cond: [{ $gt: ['$sourceSummary.showEntries.entryCount', 0] }, 1, 0] },
+        },
+        timesheetEntries: { $sum: { $ifNull: ['$sourceSummary.showEntries.entryCount', 0] } },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        month: '$_id',
+        attendanceDays: 1,
+        employeeCount: { $size: '$employees' },
+        biometricDays: 1,
+        biometricEvents: 1,
+        accessCardDays: 1,
+        accessCardEvents: 1,
+        websiteDays: 1,
+        websiteSessions: 1,
+        timesheetDays: 1,
+        timesheetEntries: 1,
+      },
+    },
+    { $sort: { month: -1 } },
+  ]).exec();
+  const widestCoverageMonth = [...recordedMonths].sort(
+    (left, right) =>
+      right.employeeCount - left.employeeCount ||
+      right.attendanceDays - left.attendanceDays ||
+      right.month.localeCompare(left.month),
+  )[0];
+  const latestRecordedMonth = latestTimecard?.workDate.slice(0, 7) ?? null;
+  const month =
+    input.month ??
+    widestCoverageMonth?.month ??
+    latestRecordedMonth ??
+    getWorkDate(new Date()).slice(0, 7);
+  const monthStart = `${month}-01`;
+  const monthEnd = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0))
+    .toISOString()
+    .slice(0, 10);
+  const timecards = await DailyTimecard.find({
+    employeeId: { $in: employeeIds },
+    workDate: { $gte: monthStart, $lte: monthEnd },
+  })
+    .sort({ workDate: -1, employeeId: 1 })
+    .lean()
+    .exec();
+
+  const rows: AttendanceDetailsDto['rows'] = timecards.map((timecard) => {
+    const employee = employeeById.get(String(timecard.employeeId));
+    const biometric = timecard.sourceSummary?.biometric;
+    const accessCard = timecard.sourceSummary?.accessCard;
+    const website = timecard.sourceSummary?.website;
+    const timesheets = timecard.sourceSummary?.showEntries;
+    const calculated = timecard.calculated;
+    return {
+      id: String(timecard._id),
+      employeeId: String(timecard.employeeId),
+      employeeCode: employee?.employeeCode ?? 'UNKNOWN',
+      employeeDisplayName: employee
+        ? (employee.hrProfile?.fullName ?? `${employee.firstName} ${employee.lastName}`.trim())
+        : 'Unknown employee',
+      departmentName:
+        employee?.hrProfile?.departmentName ?? employee?.attendanceIdentity?.departmentName ?? null,
+      workDate: timecard.workDate,
+      status: calculated?.status ?? 'absent',
+      requiresReview: calculated?.requiresReview ?? true,
+      biometric: {
+        status: biometric?.status ?? 'none',
+        firstAt: isoInstant(biometric?.firstAt),
+        lastAt: isoInstant(biometric?.lastAt),
+        workedMinutes: biometric?.workedMinutes ?? 0,
+        eventCount: biometric?.eventCount ?? 0,
+      },
+      accessCard: {
+        status: accessCard?.status ?? 'none',
+        firstAt: isoInstant(accessCard?.firstAt),
+        lastAt: isoInstant(accessCard?.lastAt),
+        workedMinutes: accessCard?.workedMinutes ?? 0,
+        eventCount: accessCard?.eventCount ?? 0,
+      },
+      website: {
+        status: website?.status ?? 'none',
+        firstAt: isoInstant(website?.firstAt),
+        lastAt: isoInstant(website?.lastAt),
+        workedMinutes: website?.workedMinutes ?? 0,
+        sessionCount: website?.sessionCount ?? 0,
+      },
+      timesheets: {
+        totalMinutes: timesheets?.totalMinutes ?? 0,
+        entryCount: timesheets?.entryCount ?? 0,
+        averageProgress: timesheets?.averageProgress ?? 0,
+      },
+      payableMinutes: calculated?.payableMinutes ?? 0,
+      anomalies: calculated?.anomalies ?? [],
+    };
+  });
+  const recordedEmployees = new Set(rows.map((row) => row.employeeId));
+  return {
+    month,
+    latestRecordedMonth,
+    availableMonths: recordedMonths.map((recordedMonth) => ({
+      month: recordedMonth.month,
+      attendanceDays: recordedMonth.attendanceDays,
+      employeesWithRecords: recordedMonth.employeeCount,
+      biometricDays: recordedMonth.biometricDays,
+      biometricEvents: recordedMonth.biometricEvents,
+      accessCardDays: recordedMonth.accessCardDays,
+      accessCardEvents: recordedMonth.accessCardEvents,
+      websiteDays: recordedMonth.websiteDays,
+      websiteSessions: recordedMonth.websiteSessions,
+      timesheetDays: recordedMonth.timesheetDays,
+      timesheetEntries: recordedMonth.timesheetEntries,
+    })),
+    generatedAt: new Date().toISOString(),
+    summary: {
+      scopedEmployees: employees.filter((employee) => employee.status === 'active').length,
+      employeesWithRecords: recordedEmployees.size,
+      attendanceDays: rows.length,
+      completeBiometricDays: rows.filter((row) => row.biometric.status === 'complete').length,
+      completeAccessCardDays: rows.filter((row) => row.accessCard.status === 'complete').length,
+      websiteSessionDays: rows.filter((row) => row.website.sessionCount > 0).length,
+      timesheetDays: rows.filter((row) => row.timesheets.entryCount > 0).length,
+    },
+    rows,
   };
 }

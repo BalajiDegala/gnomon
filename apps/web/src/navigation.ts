@@ -20,6 +20,7 @@ export type AppView =
   | 'leave'
   | 'calendar'
   | 'team-calendar'
+  | 'attendance-details'
   | 'approvals'
   | 'shows'
   | 'people'
@@ -34,6 +35,7 @@ export const appViewPaths: Record<AppView, string> = {
   leave: '/leave',
   calendar: '/calendar',
   'team-calendar': '/team-calendar',
+  'attendance-details': '/attendance-details',
   approvals: '/approvals',
   shows: '/shows',
   people: '/people',
@@ -137,6 +139,12 @@ const administrationNavigation: NavigationItem[] = [
 ];
 
 const reportingNavigation: NavigationItem[] = [
+  {
+    id: 'attendance-details',
+    label: 'Attendance details',
+    icon: Fingerprint,
+    requiredPermissions: ['attendance:team:read', 'attendance:all:read', 'audit:read'],
+  },
   {
     id: 'reports',
     label: 'Reports',

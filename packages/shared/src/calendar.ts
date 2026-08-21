@@ -66,6 +66,8 @@ export type ManagedCalendarAudienceType = z.infer<typeof ManagedCalendarAudience
 export const ManagedCalendarQuerySchema = z
   .object({
     month: CalendarMonthSchema.optional(),
+    page: z.coerce.number().int().min(1).default(1),
+    pageSize: z.coerce.number().int().min(10).max(50).default(25),
     audienceType: ManagedCalendarAudienceTypeSchema.optional(),
     showId: z
       .string()
@@ -106,7 +108,7 @@ export const ManagedCalendarDayDtoSchema = z.object({
   leave: z
     .object({
       dayPart: LeaveDayPartSchema,
-      status: z.enum(['pending_manager', 'approved']),
+      status: z.enum(['pending_manager', 'pending_hr', 'approved']),
     })
     .nullable(),
   holiday: z
@@ -128,8 +130,13 @@ export type ManagedCalendarMemberDto = z.infer<typeof ManagedCalendarMemberDtoSc
 
 export const ManagedCalendarDtoSchema = z.object({
   month: CalendarMonthSchema,
+  latestRecordedMonth: CalendarMonthSchema.nullable(),
   audiences: z.array(ManagedCalendarAudienceDtoSchema),
   selectedAudience: ManagedCalendarAudienceDtoSchema.nullable(),
+  totalMembers: z.number().int().nonnegative(),
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+  totalPages: z.number().int().nonnegative(),
   members: z.array(ManagedCalendarMemberDtoSchema),
 });
 export type ManagedCalendarDto = z.infer<typeof ManagedCalendarDtoSchema>;

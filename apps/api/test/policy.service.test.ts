@@ -38,6 +38,7 @@ function employee(): EmployeeDocument {
     reportingManagerId: null,
     departmentId,
     locationId,
+    profileSource: 'manual',
     status: 'active',
     createdAt: new Date(),
     updatedAt: new Date(),

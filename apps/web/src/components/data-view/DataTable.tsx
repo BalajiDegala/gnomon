@@ -13,7 +13,7 @@ import {
   type TableCellProps,
 } from '@mui/material';
 import { Inbox } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 
 export type SortDirection = 'asc' | 'desc';
 
@@ -45,6 +45,7 @@ interface DataTableProps<Row, SortKey extends string> {
   isLoading?: boolean;
   emptyTitle: string;
   emptyMessage: string;
+  getRowGroup?: (row: Row) => { key: string; label: string; secondary?: string };
 }
 
 function responsiveCellSx(hideBelow: 'sm' | 'md' | undefined) {
@@ -70,9 +71,17 @@ export function DataTable<Row, SortKey extends string>({
   isLoading = false,
   emptyTitle,
   emptyMessage,
+  getRowGroup,
 }: DataTableProps<Row, SortKey>) {
   const visibleRows = rows.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
   const emptyRows = Math.max(0, rowsPerPage - visibleRows.length);
+  const groupCounts = new Map<string, number>();
+  if (getRowGroup) {
+    for (const row of rows) {
+      const group = getRowGroup(row);
+      groupCounts.set(group.key, (groupCounts.get(group.key) ?? 0) + 1);
+    }
+  }
 
   return (
     <Box
@@ -135,48 +144,85 @@ export function DataTable<Row, SortKey extends string>({
                 </TableRow>
               ))
             ) : visibleRows.length ? (
-              visibleRows.map((row) => (
-                <TableRow
-                  key={getRowId(row)}
-                  hover={Boolean(onRowClick)}
-                  tabIndex={onRowClick ? 0 : undefined}
-                  onClick={onRowClick ? () => onRowClick(row) : undefined}
-                  onKeyDown={
-                    onRowClick
-                      ? (event) => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault();
-                            onRowClick(row);
-                          }
-                        }
-                      : undefined
-                  }
-                  sx={{
-                    height: 56,
-                    cursor: onRowClick ? 'pointer' : 'default',
-                    transition: 'background-color 150ms ease, box-shadow 150ms ease',
-                    '&:hover': { bgcolor: onRowClick ? '#f3fafb !important' : undefined },
-                    '&:hover td:first-of-type': onRowClick
-                      ? { boxShadow: 'inset 3px 0 0 #2bb4c0' }
-                      : undefined,
-                    '&:last-child td': { borderBottom: 0 },
-                  }}
-                >
-                  {columns.map((column) => (
-                    <TableCell
-                      key={column.id}
-                      align={column.align}
+              visibleRows.map((row, index) => {
+                const group = getRowGroup?.(row);
+                const previousGroup = index > 0 ? getRowGroup?.(visibleRows[index - 1]!) : null;
+                const showGroup = Boolean(group && group.key !== previousGroup?.key);
+                return (
+                  <Fragment key={getRowId(row)}>
+                    {showGroup && group && (
+                      <TableRow>
+                        <TableCell
+                          colSpan={columns.length}
+                          sx={{
+                            py: 1,
+                            bgcolor: '#eaf3f5',
+                            borderTop: index === 0 ? 0 : '1px solid',
+                            borderColor: 'divider',
+                          }}
+                        >
+                          <Typography component="span" sx={{ fontSize: 12, fontWeight: 850 }}>
+                            {group.label}
+                          </Typography>
+                          {group.secondary && (
+                            <Typography
+                              component="span"
+                              sx={{ ml: 1, color: 'text.secondary', fontSize: 10.5 }}
+                            >
+                              {group.secondary}
+                            </Typography>
+                          )}
+                          <Typography
+                            component="span"
+                            sx={{ ml: 1, color: 'text.secondary', fontSize: 10.5 }}
+                          >
+                            · {groupCounts.get(group.key) ?? 0} records
+                          </Typography>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    <TableRow
+                      hover={Boolean(onRowClick)}
+                      tabIndex={onRowClick ? 0 : undefined}
+                      onClick={onRowClick ? () => onRowClick(row) : undefined}
+                      onKeyDown={
+                        onRowClick
+                          ? (event) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                onRowClick(row);
+                              }
+                            }
+                          : undefined
+                      }
                       sx={{
-                        ...responsiveCellSx(column.hideBelow),
-                        py: 1,
-                        fontSize: 12.5,
+                        height: 56,
+                        cursor: onRowClick ? 'pointer' : 'default',
+                        transition: 'background-color 150ms ease, box-shadow 150ms ease',
+                        '&:hover': { bgcolor: onRowClick ? '#f3fafb !important' : undefined },
+                        '&:hover td:first-of-type': onRowClick
+                          ? { boxShadow: 'inset 3px 0 0 #2bb4c0' }
+                          : undefined,
+                        '&:last-child td': { borderBottom: 0 },
                       }}
                     >
-                      {column.render(row)}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+                      {columns.map((column) => (
+                        <TableCell
+                          key={column.id}
+                          align={column.align}
+                          sx={{
+                            ...responsiveCellSx(column.hideBelow),
+                            py: 1,
+                            fontSize: 12.5,
+                          }}
+                        >
+                          {column.render(row)}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  </Fragment>
+                );
+              })
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length}>

@@ -36,7 +36,10 @@ export const errorHandler: ErrorRequestHandler = (error, _request, response, _ne
     (error as { type?: unknown }).type === 'entity.too.large'
   ) {
     response.status(413).json({
-      error: { code: 'PAYLOAD_TOO_LARGE', message: 'The uploaded file exceeds the 5 MB limit' },
+      error: {
+        code: 'PAYLOAD_TOO_LARGE',
+        message: 'The uploaded file exceeds the allowed size limit',
+      },
     });
     return;
   }

@@ -4,13 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsup src/server.ts --format esm --clean --sourcemap",
+    "build": "tsup src/server.ts src/scripts/import-data-folder.ts --format esm --clean --sourcemap",
     "dev": "tsx watch src/server.ts",
     "seed:admin": "tsx src/scripts/seed-admin.ts",
     "seed:demo": "cross-env ACCESS_TOKEN_SECRET=demo-seed-access-secret-with-at-least-32-characters REFRESH_TOKEN_SECRET=demo-seed-refresh-secret-with-at-least-32-characters tsx src/scripts/seed-demo-data.ts",
     "seed:e2e-workflows": "tsx test/seed-regularisation-e2e.ts",
     "seed:e2e-regularisation": "tsx test/seed-regularisation-e2e.ts",
     "seed:roles": "tsx src/scripts/seed-system-roles.ts",
+    "import:data-folder": "tsx src/scripts/import-data-folder.ts",
     "start": "node dist/server.js",
     "test": "cross-env NODE_ENV=test ACCESS_TOKEN_SECRET=test-access-secret-with-at-least-32-characters REFRESH_TOKEN_SECRET=test-refresh-secret-with-at-least-32-characters vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
@@ -23,11 +24,13 @@
     "csv-parse": "^7.0.1",
     "dotenv": "latest",
     "express": "latest",
+    "fflate": "^0.8.3",
     "helmet": "latest",
     "jose": "latest",
     "mongoose": "latest",
     "pino": "latest",
     "pino-http": "latest",
+    "saxes": "^6.0.0",
     "zod": "latest"
   },
   "devDependencies": {

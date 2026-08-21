@@ -280,8 +280,14 @@ export function calculateDailyReconciliation(
     if (!biometric.lastAt) anomalies.add('missing_biometric_out');
     if (!accessCard.firstAt) anomalies.add('missing_access_entry');
     if (!accessCard.lastAt) anomalies.add('missing_access_exit');
-    if (!website.firstAt) anomalies.add('missing_web_start');
-    if (!website.lastAt || website.status === 'incomplete') anomalies.add('missing_web_stop');
+    // Website timecards are optional supporting evidence. If an employee starts a
+    // website session it still participates in reconciliation, but an entirely
+    // absent website session must not turn a complete biometric/access-card day
+    // into a review exception.
+    if (website.sessionCount > 0 && !website.firstAt) anomalies.add('missing_web_start');
+    if (website.sessionCount > 0 && (!website.lastAt || website.status === 'incomplete')) {
+      anomalies.add('missing_web_stop');
+    }
     if (grossMinutes < defaultWorkdayPolicy.requiredMinutes) anomalies.add('insufficient_hours');
   } else {
     if (biometric.status === 'missing_in') anomalies.add('missing_biometric_in');

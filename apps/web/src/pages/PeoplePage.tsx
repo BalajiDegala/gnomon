@@ -52,7 +52,7 @@ interface EmployeeFormState {
 }
 
 type EmployeeStatusFilter = 'all' | EmployeeStatus;
-type PeopleSortKey = 'employee' | 'code' | 'email' | 'manager' | 'location' | 'status' | 'updated';
+type PeopleSortKey = 'employee' | 'code' | 'email' | 'manager' | 'status' | 'updated';
 
 const emptyForm: EmployeeFormState = {
   employeeCode: '',
@@ -112,15 +112,7 @@ function formsMatch(left: EmployeeFormState, right: EmployeeFormState): boolean 
   );
 }
 const employeeStatusFilters = ['all', 'active', 'inactive'] as const;
-const peopleSortKeys = [
-  'employee',
-  'code',
-  'email',
-  'manager',
-  'location',
-  'status',
-  'updated',
-] as const;
+const peopleSortKeys = ['employee', 'code', 'email', 'manager', 'status', 'updated'] as const;
 const sortDirections = ['asc', 'desc'] as const;
 const pageSizes = [10, 25, 50, 100] as const;
 
@@ -160,30 +152,30 @@ function compareEmployees(
       ? left.displayName
       : key === 'manager'
         ? (left.reportingManager?.displayName ?? '')
-        : key === 'location'
-          ? (left.location?.name ?? '')
-          : key === 'updated'
-            ? left.updatedAt
-            : key === 'code'
-              ? left.employeeCode
-              : key === 'email'
-                ? left.email
-                : left.status;
+        : key === 'updated'
+          ? left.updatedAt
+          : key === 'code'
+            ? left.employeeCode
+            : key === 'email'
+              ? left.email
+              : left.status;
   const rightValue =
     key === 'employee'
       ? right.displayName
       : key === 'manager'
         ? (right.reportingManager?.displayName ?? '')
-        : key === 'location'
-          ? (right.location?.name ?? '')
-          : key === 'updated'
-            ? right.updatedAt
-            : key === 'code'
-              ? right.employeeCode
-              : key === 'email'
-                ? right.email
-                : right.status;
+        : key === 'updated'
+          ? right.updatedAt
+          : key === 'code'
+            ? right.employeeCode
+            : key === 'email'
+              ? right.email
+              : right.status;
   return leftValue.localeCompare(rightValue, undefined, { numeric: true, sensitivity: 'base' });
+}
+
+function contactEmail(employee: EmployeeDirectoryItemDto): string {
+  return employee.email.endsWith('@gnomon.invalid') ? 'Not supplied in workbook' : employee.email;
 }
 
 export function PeoplePage() {
@@ -200,11 +192,6 @@ export function PeoplePage() {
   );
   const [managerFilter, setManagerFilter] = useUrlQueryState(
     'manager',
-    'all',
-    parseDirectoryFilter,
-  );
-  const [locationFilter, setLocationFilter] = useUrlQueryState(
-    'location',
     'all',
     parseDirectoryFilter,
   );
@@ -270,19 +257,6 @@ export function PeoplePage() {
     }
     return [...values.values()].sort((left, right) => left.label.localeCompare(right.label));
   }, [directory.employees]);
-  const locationOptions = useMemo(() => {
-    const values = new Map<string, { id: string; label: string }>();
-    for (const employee of directory.employees) {
-      if (employee.location) {
-        values.set(employee.location.id, {
-          id: employee.location.id,
-          label: employee.location.name,
-        });
-      }
-    }
-    return [...values.values()].sort((left, right) => left.label.localeCompare(right.label));
-  }, [directory.employees]);
-
   const filteredEmployees = useMemo(() => {
     const term = search.trim().toLowerCase();
     const direction = sortDirection === 'asc' ? 1 : -1;
@@ -293,26 +267,26 @@ export function PeoplePage() {
         if (managerFilter === 'unassigned') return !employee.reportingManager;
         return employee.reportingManager?.id === managerFilter;
       })
-      .filter((employee) => {
-        if (locationFilter === 'all') return true;
-        if (locationFilter === 'unassigned') return !employee.location;
-        return employee.location?.id === locationFilter;
-      })
       .filter(
         (employee) =>
           !term ||
           employee.displayName.toLowerCase().includes(term) ||
           employee.employeeCode.toLowerCase().includes(term) ||
           employee.email.toLowerCase().includes(term) ||
-          employee.reportingManager?.displayName.toLowerCase().includes(term) ||
-          employee.location?.name.toLowerCase().includes(term),
+          employee.hrProfile?.userId.toLowerCase().includes(term) ||
+          employee.hrProfile?.designation.toLowerCase().includes(term) ||
+          employee.hrProfile?.departmentName.toLowerCase().includes(term) ||
+          employee.hrProfile?.emailTriggers.some((email) => email.includes(term)) ||
+          employee.attendanceIdentity?.cardNumber?.toLowerCase().includes(term) ||
+          employee.attendanceIdentity?.departmentName?.toLowerCase().includes(term) ||
+          employee.reportingManager?.displayName.toLowerCase().includes(term),
       )
       .slice()
       .sort(
         (left, right) =>
           compareEmployees(left, right, sortKey) * direction || left.id.localeCompare(right.id),
       );
-  }, [directory.employees, locationFilter, managerFilter, search, sortDirection, sortKey, status]);
+  }, [directory.employees, managerFilter, search, sortDirection, sortKey, status]);
 
   useEffect(() => {
     const lastPage = Math.max(1, Math.ceil(filteredEmployees.length / rowsPerPage));
@@ -408,7 +382,6 @@ export function PeoplePage() {
   const clearFilters = () => {
     setSearch('');
     setManagerFilter('all');
-    setLocationFilter('all');
     setStatus('active');
     setPageNumber(1);
   };
@@ -416,34 +389,48 @@ export function PeoplePage() {
   const columns: ReadonlyArray<DataTableColumn<EmployeeDirectoryItemDto, PeopleSortKey>> = [
     {
       id: 'employee',
-      label: 'Employee',
+      label: 'Emp name',
       sortKey: 'employee',
       minWidth: 220,
       render: (employee) => <EmployeeIdentity employee={employee} />,
     },
     {
+      id: 'employee-code',
+      label: 'Emp ID',
+      sortKey: 'code',
+      minWidth: 110,
+      render: (employee) => employee.employeeCode,
+    },
+    {
+      id: 'user-id',
+      label: 'User ID',
+      minWidth: 140,
+      render: (employee) => employee.hrProfile?.userId ?? '—',
+    },
+    {
       id: 'email',
-      label: 'Contact',
+      label: 'Mail ID',
       sortKey: 'email',
       minWidth: 230,
-      hideBelow: 'md',
-      render: (employee) => employee.email,
+      render: (employee) => contactEmail(employee),
     },
     {
-      id: 'manager',
-      label: 'Reporting manager',
-      sortKey: 'manager',
+      id: 'designation',
+      label: 'New Designation',
       minWidth: 190,
-      hideBelow: 'sm',
-      render: (employee) => employee.reportingManager?.displayName ?? 'Not assigned',
+      render: (employee) => employee.hrProfile?.designation ?? '—',
     },
     {
-      id: 'location',
-      label: 'Location',
-      sortKey: 'location',
+      id: 'department',
+      label: 'Dept',
       minWidth: 150,
-      hideBelow: 'md',
-      render: (employee) => employee.location?.name ?? 'Not assigned',
+      render: (employee) => employee.hrProfile?.departmentName ?? '—',
+    },
+    {
+      id: 'email-triggers',
+      label: 'Email Triggers',
+      minWidth: 240,
+      render: (employee) => employee.hrProfile?.emailTriggers.join(', ') || '—',
     },
     {
       id: 'status',
@@ -479,7 +466,7 @@ export function PeoplePage() {
   ];
 
   return (
-    <Stack spacing={2.5} sx={{ width: '100%', maxWidth: 1440, mx: 'auto' }}>
+    <Stack spacing={2.5} sx={{ width: '100%', maxWidth: 1600, mx: 'auto' }}>
       <PageHeader
         eyebrow="HR & TEAM STRUCTURE"
         title="People"
@@ -522,12 +509,7 @@ export function PeoplePage() {
           searchLabel="Search people"
           resultCount={filteredEmployees.length}
           resultLabel={filteredEmployees.length === 1 ? 'employee' : 'employees'}
-          hasActiveFilters={
-            Boolean(search) ||
-            status !== 'active' ||
-            managerFilter !== 'all' ||
-            locationFilter !== 'all'
-          }
+          hasActiveFilters={Boolean(search) || status !== 'active' || managerFilter !== 'all'}
           onClear={clearFilters}
         >
           <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 210 } }}>
@@ -546,26 +528,6 @@ export function PeoplePage() {
               {managerOptions.map((manager) => (
                 <MenuItem key={manager.id} value={manager.id}>
                   {manager.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 190 } }}>
-            <InputLabel id="people-location-filter-label">Location</InputLabel>
-            <Select
-              labelId="people-location-filter-label"
-              label="Location"
-              value={locationFilter}
-              onChange={(event) => {
-                setLocationFilter(event.target.value);
-                setPageNumber(1);
-              }}
-            >
-              <MenuItem value="all">All locations</MenuItem>
-              <MenuItem value="unassigned">Not assigned</MenuItem>
-              {locationOptions.map((location) => (
-                <MenuItem key={location.id} value={location.id}>
-                  {location.label}
                 </MenuItem>
               ))}
             </Select>
@@ -757,9 +719,6 @@ function EmployeeIdentity({ employee }: { employee: EmployeeDirectoryItemDto }) 
       <Box sx={{ minWidth: 0 }}>
         <Typography noWrap sx={{ fontSize: 13, fontWeight: 750 }}>
           {employee.displayName}
-        </Typography>
-        <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>
-          {employee.employeeCode}
         </Typography>
       </Box>
     </Stack>

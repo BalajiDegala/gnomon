@@ -9,10 +9,11 @@ import { parseEnumValue, useUrlQueryState } from '../lib/url-query-state';
 import { AttendanceImportsPage } from './AttendanceImportsPage';
 import { PolicyAdministrationPage } from './PolicyAdministrationPage';
 import { SecurityAdministrationSection } from './SecurityAdministrationSection';
+import { SitePreferencesPage } from './SitePreferencesPage';
 
-type AdministrationSection = 'imports' | 'leave_policy' | 'security';
+type AdministrationSection = 'site_preferences' | 'imports' | 'leave_policy' | 'security';
 
-const administrationSections = ['imports', 'leave_policy', 'security'] as const;
+const administrationSections = ['site_preferences', 'imports', 'leave_policy', 'security'] as const;
 
 function parseAdministrationSection(value: string): AdministrationSection | null {
   return parseEnumValue(value, administrationSections);
@@ -28,11 +29,13 @@ export function AdministrationPage() {
     user?.grants.some(
       (grant) => grant.roleCode === 'SYSTEM_ADMIN' && grant.scope.type === 'company',
     ) ?? false;
-  const defaultSection: AdministrationSection = canImport
-    ? 'imports'
-    : canSeeLeavePolicy
-      ? 'leave_policy'
-      : 'security';
+  const defaultSection: AdministrationSection = canManagePolicy
+    ? 'site_preferences'
+    : canImport
+      ? 'imports'
+      : canSeeLeavePolicy
+        ? 'leave_policy'
+        : 'security';
   const [section, setSection] = useUrlQueryState(
     'section',
     defaultSection,
@@ -42,6 +45,7 @@ export function AdministrationPage() {
   useEffect(() => {
     const canSeeSection =
       (section === 'imports' && canImport) ||
+      (section === 'site_preferences' && canManagePolicy) ||
       (section === 'leave_policy' && canSeeLeavePolicy) ||
       (section === 'security' && canManageSecurity);
     if (!canSeeSection) setSection(defaultSection);
@@ -49,6 +53,8 @@ export function AdministrationPage() {
 
   const tabs = useMemo<ReadonlyArray<PageTab<AdministrationSection>>>(() => {
     const availableTabs: PageTab<AdministrationSection>[] = [];
+    if (canManagePolicy)
+      availableTabs.push({ value: 'site_preferences', label: 'Site preferences' });
     if (canImport) availableTabs.push({ value: 'imports', label: 'Attendance imports' });
     if (canManageSecurity) availableTabs.push({ value: 'security', label: 'Access & roles' });
     if (canSeeLeavePolicy) availableTabs.push({ value: 'leave_policy', label: 'Leave & holidays' });
@@ -74,7 +80,9 @@ export function AdministrationPage() {
         />
       )}
 
-      {section === 'imports' && canImport ? (
+      {section === 'site_preferences' && canManagePolicy ? (
+        <SitePreferencesPage />
+      ) : section === 'imports' && canImport ? (
         <AttendanceImportsPage embedded />
       ) : section === 'leave_policy' && canSeeLeavePolicy ? (
         <PolicyAdministrationPage />

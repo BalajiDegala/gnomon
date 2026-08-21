@@ -252,7 +252,7 @@ Controls:
 {
   _id: ObjectId,
   source: "biometric" | "access_card",
-  importType: "csv" | "api",
+  importType: "csv" | "door_workbook" | "api",
   fileName: string,
   fileHash: string,
   periodStart: ISODate,
@@ -261,6 +261,7 @@ Controls:
   successfulRows: number,
   failedRows: number,
   duplicateRows: number,
+  ignoredRows: number,
   status: "processing" | "completed" | "partial" | "failed",
   importedBy: ObjectId,
   errors: [{

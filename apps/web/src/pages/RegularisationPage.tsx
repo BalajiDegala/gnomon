@@ -62,7 +62,7 @@ const regularisationTabs = [
   'rejected',
   'cancelled',
 ] as const;
-const sourceFilters = ['all', 'biometric', 'website'] as const;
+const sourceFilters = ['all', 'biometric', 'access_card', 'website'] as const;
 const sortKeys = ['date', 'source', 'duration', 'status', 'submitted'] as const;
 const sortDirections = ['asc', 'desc'] as const;
 const pageSizes = [10, 25, 50, 100] as const;
@@ -81,7 +81,7 @@ function isRegularisationFormDraft(value: unknown): value is RegularisationFormD
   const draft = value as Partial<RegularisationFormDraft>;
   return (
     typeof draft.workDate === 'string' &&
-    ['biometric', 'website'].includes(draft.source ?? '') &&
+    ['biometric', 'access_card', 'website'].includes(draft.source ?? '') &&
     ['opening', 'closing', 'both'].includes(draft.missingEvent ?? '') &&
     typeof draft.requestedStart === 'string' &&
     typeof draft.requestedEnd === 'string' &&
@@ -118,12 +118,14 @@ function statusLabel(status: RegularisationStatus): string {
 }
 
 function sourceLabel(source: RegularisationSource): string {
-  return source === 'biometric' ? 'Biometric' : 'Website timecard';
+  if (source === 'biometric') return 'Biometric';
+  if (source === 'access_card') return 'Access card';
+  return 'Website timecard';
 }
 
 function eventLabel(source: RegularisationSource, missingEvent: MissingEvent): string {
-  const opening = source === 'biometric' ? 'in' : 'start';
-  const closing = source === 'biometric' ? 'out' : 'stop';
+  const opening = source === 'biometric' ? 'in' : source === 'access_card' ? 'entry' : 'start';
+  const closing = source === 'biometric' ? 'out' : source === 'access_card' ? 'exit' : 'stop';
   return missingEvent === 'both'
     ? `Missing ${opening} and ${closing}`
     : `Missing ${missingEvent === 'opening' ? opening : closing}`;
@@ -535,6 +537,7 @@ export function RegularisationPage() {
             >
               <MenuItem value="all">All sources</MenuItem>
               <MenuItem value="biometric">Biometric</MenuItem>
+              <MenuItem value="access_card">Access card</MenuItem>
               <MenuItem value="website">Website timecard</MenuItem>
             </Select>
           </FormControl>
@@ -671,6 +674,7 @@ function CreateRegularisationDialog({
                   onChange={(event) => onSourceChange(event.target.value as RegularisationSource)}
                 >
                   <MenuItem value="biometric">Biometric</MenuItem>
+                  <MenuItem value="access_card">Access card</MenuItem>
                   <MenuItem value="website">Website timecard</MenuItem>
                 </Select>
               </FormControl>
@@ -683,10 +687,18 @@ function CreateRegularisationDialog({
                   onChange={(event) => onMissingEventChange(event.target.value as MissingEvent)}
                 >
                   <MenuItem value="opening">
-                    {source === 'biometric' ? 'In punch' : 'Start'}
+                    {source === 'biometric'
+                      ? 'In punch'
+                      : source === 'access_card'
+                        ? 'Entry swipe'
+                        : 'Start'}
                   </MenuItem>
                   <MenuItem value="closing">
-                    {source === 'biometric' ? 'Out punch' : 'Stop'}
+                    {source === 'biometric'
+                      ? 'Out punch'
+                      : source === 'access_card'
+                        ? 'Exit swipe'
+                        : 'Stop'}
                   </MenuItem>
                   <MenuItem value="both">Both events</MenuItem>
                 </Select>

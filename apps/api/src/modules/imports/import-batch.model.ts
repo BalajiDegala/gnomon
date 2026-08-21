@@ -2,13 +2,14 @@ import type {
   AttendanceImportErrorDto,
   AttendanceImportSource,
   AttendanceImportStatus,
+  AttendanceImportType,
 } from '@gnomon/shared';
 import { model, Schema, Types, type HydratedDocument } from 'mongoose';
 
 export interface ImportBatchDocument {
   _id: Types.ObjectId;
   source: AttendanceImportSource;
-  importType: 'csv';
+  importType: AttendanceImportType;
   fileName: string;
   fileHash: string;
   periodStart: Date | null;
@@ -17,6 +18,9 @@ export interface ImportBatchDocument {
   successfulRows: number;
   failedRows: number;
   duplicateRows: number;
+  ignoredRows: number;
+  provisionedEmployees: number;
+  reconciledTimecards: number;
   status: AttendanceImportStatus;
   importedBy: Types.ObjectId;
   errors: AttendanceImportErrorDto[];
@@ -39,7 +43,12 @@ const importErrorSchema = new Schema<AttendanceImportErrorDto>(
 const importBatchSchema = new Schema<ImportBatchDocument>(
   {
     source: { type: String, enum: ['biometric', 'access_card'], required: true },
-    importType: { type: String, enum: ['csv'], required: true, default: 'csv' },
+    importType: {
+      type: String,
+      enum: ['csv', 'door_workbook'],
+      required: true,
+      default: 'csv',
+    },
     fileName: { type: String, required: true, trim: true, maxlength: 255 },
     fileHash: { type: String, required: true },
     periodStart: { type: Date, default: null },
@@ -48,6 +57,9 @@ const importBatchSchema = new Schema<ImportBatchDocument>(
     successfulRows: { type: Number, required: true, min: 0, default: 0 },
     failedRows: { type: Number, required: true, min: 0, default: 0 },
     duplicateRows: { type: Number, required: true, min: 0, default: 0 },
+    ignoredRows: { type: Number, required: true, min: 0, default: 0 },
+    provisionedEmployees: { type: Number, required: true, min: 0, default: 0 },
+    reconciledTimecards: { type: Number, required: true, min: 0, default: 0 },
     status: {
       type: String,
       enum: ['processing', 'completed', 'partial', 'failed'],

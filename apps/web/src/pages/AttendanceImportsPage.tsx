@@ -28,7 +28,11 @@ import {
 } from 'lucide-react';
 import { useState, type DragEvent } from 'react';
 
-import { downloadAttendanceTemplate, useAttendanceImports } from '../lib/imports';
+import {
+  downloadAttendanceTemplate,
+  useAttendanceImports,
+  type AttendanceUploadFormat,
+} from '../lib/imports';
 
 interface AttendanceImportsPageProps {
   onBack?: () => void;
@@ -53,6 +57,11 @@ function sourceLabel(source: AttendanceImportSource): string {
   return source === 'biometric' ? 'Biometric' : 'Access card';
 }
 
+function uploadFormatLabel(format: AttendanceUploadFormat): string {
+  if (format === 'door_workbook') return 'Door access workbook';
+  return format === 'biometric' ? 'Biometric CSV' : 'Access-card CSV';
+}
+
 function statusColor(status: ImportBatchDto['status']): 'success' | 'warning' | 'error' | 'info' {
   if (status === 'completed') return 'success';
   if (status === 'partial') return 'warning';
@@ -62,9 +71,10 @@ function statusColor(status: ImportBatchDto['status']): 'success' | 'warning' | 
 
 export function AttendanceImportsPage({ onBack, embedded = false }: AttendanceImportsPageProps) {
   const imports = useAttendanceImports();
-  const [source, setSource] = useState<AttendanceImportSource>('biometric');
+  const [format, setFormat] = useState<AttendanceUploadFormat>('biometric');
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const isDoorWorkbook = format === 'door_workbook';
 
   const acceptFile = (candidate?: File) => {
     if (candidate) setFile(candidate);
@@ -98,7 +108,8 @@ export function AttendanceImportsPage({ onBack, embedded = false }: AttendanceIm
         </Typography>
         <Typography sx={{ maxWidth: 760, color: 'text.secondary', fontSize: 13.5, mt: 0.7 }}>
           Import biometric and access-card punches as immutable attendance evidence. Duplicate files
-          and rows are detected automatically.
+          and rows are detected automatically. Door workbooks also add missing employee profiles and
+          refresh the affected daily timecards.
         </Typography>
       </Box>
 
@@ -122,30 +133,40 @@ export function AttendanceImportsPage({ onBack, embedded = false }: AttendanceIm
               sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' }, gap: 2 }}
             >
               <Box>
-                <Typography sx={{ fontSize: 16, fontWeight: 800 }}>New CSV import</Typography>
+                <Typography sx={{ fontSize: 16, fontWeight: 800 }}>
+                  New attendance import
+                </Typography>
                 <Typography sx={{ mt: 0.3, color: 'text.secondary', fontSize: 12 }}>
-                  Maximum 5 MB and 20,000 attendance rows per file.
+                  {isDoorWorkbook
+                    ? 'Maximum 10 MB and 250,000 door transactions per workbook.'
+                    : 'Maximum 5 MB and 20,000 attendance rows per CSV file.'}
                 </Typography>
               </Box>
-              <Button
-                variant="outlined"
-                startIcon={<Download size={16} />}
-                onClick={() => downloadAttendanceTemplate(source)}
-              >
-                Download template
-              </Button>
+              {!isDoorWorkbook && (
+                <Button
+                  variant="outlined"
+                  startIcon={<Download size={16} />}
+                  onClick={() => downloadAttendanceTemplate(format)}
+                >
+                  Download template
+                </Button>
+              )}
             </Stack>
 
             <FormControl fullWidth sx={{ mt: 3 }}>
-              <InputLabel id="attendance-source-label">Attendance source</InputLabel>
+              <InputLabel id="attendance-source-label">File type</InputLabel>
               <Select
                 labelId="attendance-source-label"
-                label="Attendance source"
-                value={source}
-                onChange={(event) => setSource(event.target.value as AttendanceImportSource)}
+                label="File type"
+                value={format}
+                onChange={(event) => {
+                  setFormat(event.target.value as AttendanceUploadFormat);
+                  setFile(null);
+                }}
               >
-                <MenuItem value="biometric">Biometric machine</MenuItem>
-                <MenuItem value="access_card">Access-card system</MenuItem>
+                <MenuItem value="biometric">Biometric CSV</MenuItem>
+                <MenuItem value="access_card">Access-card CSV</MenuItem>
+                <MenuItem value="door_workbook">Door access workbook</MenuItem>
               </Select>
             </FormControl>
 
@@ -185,33 +206,74 @@ export function AttendanceImportsPage({ onBack, embedded = false }: AttendanceIm
                   {file ? <FileCheck2 size={24} /> : <UploadCloud size={25} />}
                 </Box>
                 <Typography sx={{ fontSize: 14, fontWeight: 800 }}>
-                  {file ? file.name : 'Drop a CSV file here'}
+                  {file ? file.name : `Drop a ${isDoorWorkbook ? 'workbook' : 'CSV file'} here`}
                 </Typography>
                 <Typography sx={{ mt: 0.4, color: 'text.secondary', fontSize: 11.5 }}>
-                  {file
-                    ? `${(file.size / 1024).toFixed(1)} KB selected`
-                    : 'or choose it from this device'}
+                  {file ? `${(file.size / 1024).toFixed(1)} KB selected` : 'or choose it here'}
                 </Typography>
                 <Button component="label" size="small" variant="text" sx={{ mt: 1 }}>
-                  {file ? 'Choose another file' : 'Choose CSV file'}
+                  {file
+                    ? 'Choose another file'
+                    : `Choose ${isDoorWorkbook ? 'workbook' : 'CSV file'}`}
                   <input
                     hidden
                     type="file"
-                    accept=".csv,text/csv"
+                    accept={
+                      isDoorWorkbook
+                        ? '.xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                        : '.csv,text/csv'
+                    }
                     onChange={(event) => acceptFile(event.target.files?.[0])}
                   />
                 </Button>
               </Box>
             </Box>
 
-            <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.75, mt: 2 }}>
-              {requiredColumns.map((column) => (
-                <Chip key={column} size="small" color="primary" label={column} variant="outlined" />
-              ))}
-              {optionalColumns.map((column) => (
-                <Chip key={column} size="small" label={`${column} · optional`} variant="outlined" />
-              ))}
-            </Stack>
+            {isDoorWorkbook ? (
+              <Alert severity="info" sx={{ mt: 2 }}>
+                Uses successful card swipes from NORTH/SOUTH ZONE ENTRY only. The earliest In and
+                latest Out per employee workday become attendance; passage and intermediate swipes
+                are ignored.
+              </Alert>
+            ) : format === 'biometric' ? (
+              <Stack spacing={1.25} sx={{ mt: 2 }}>
+                <Alert severity="info">
+                  Accepts event CSVs and monthly biometric summaries with Date, Employee Code, In
+                  Time, and Out Time. Empty Absent and WeeklyOff rows are ignored automatically.
+                </Alert>
+                <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.75 }}>
+                  {['Date', 'Employee Code', 'In Time', 'Out Time'].map((column) => (
+                    <Chip
+                      key={column}
+                      size="small"
+                      color="primary"
+                      label={column}
+                      variant="outlined"
+                    />
+                  ))}
+                </Stack>
+              </Stack>
+            ) : (
+              <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.75, mt: 2 }}>
+                {requiredColumns.map((column) => (
+                  <Chip
+                    key={column}
+                    size="small"
+                    color="primary"
+                    label={column}
+                    variant="outlined"
+                  />
+                ))}
+                {optionalColumns.map((column) => (
+                  <Chip
+                    key={column}
+                    size="small"
+                    label={`${column} · optional`}
+                    variant="outlined"
+                  />
+                ))}
+              </Stack>
+            )}
 
             <Button
               fullWidth
@@ -225,12 +287,12 @@ export function AttendanceImportsPage({ onBack, embedded = false }: AttendanceIm
                   <DatabaseZap size={18} />
                 )
               }
-              onClick={() => file && void imports.upload(source, file)}
+              onClick={() => file && void imports.upload(format, file)}
               sx={{ mt: 3, py: 1.35 }}
             >
               {imports.isUploading
                 ? 'Validating and importing…'
-                : `Import ${sourceLabel(source)} CSV`}
+                : `Import ${uploadFormatLabel(format)}`}
             </Button>
           </CardContent>
         </Card>
@@ -302,7 +364,10 @@ function ImportResult({ result }: { result: ReturnType<typeof useAttendanceImpor
           {[
             { label: 'Imported', value: batch.successfulRows, color: '#24855e' },
             { label: 'Duplicates', value: batch.duplicateRows, color: '#7a6ac8' },
+            { label: 'Ignored', value: batch.ignoredRows, color: '#147f8d' },
             { label: 'Rejected', value: batch.failedRows, color: '#c45b5f' },
+            { label: 'Employees added', value: batch.provisionedEmployees, color: '#3f6fa8' },
+            { label: 'Timecards updated', value: batch.reconciledTimecards, color: '#8a5d9f' },
             { label: 'Total rows', value: batch.totalRows, color: '#526174' },
           ].map(({ label, value, color }) => (
             <Box key={label} sx={{ p: 1.5, borderRadius: 2, bgcolor: '#f7f9fb' }}>
@@ -369,7 +434,10 @@ function ImportHistory({ batches, loading }: { batches: ImportBatchDto[]; loadin
                 key={batch.id}
                 sx={{
                   display: 'grid',
-                  gridTemplateColumns: { xs: '1fr auto', md: '1.4fr .7fr .7fr .7fr auto' },
+                  gridTemplateColumns: {
+                    xs: '1fr auto',
+                    md: '1.4fr .65fr .65fr .65fr .65fr auto',
+                  },
                   gap: 1.5,
                   alignItems: 'center',
                   px: 1.5,
@@ -383,11 +451,15 @@ function ImportHistory({ batches, loading }: { batches: ImportBatchDto[]; loadin
                     {batch.fileName}
                   </Typography>
                   <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
-                    {sourceLabel(batch.source)} · {formatBatchDate(batch.createdAt)}
+                    {batch.importType === 'door_workbook'
+                      ? 'Door access workbook'
+                      : sourceLabel(batch.source)}{' '}
+                    · {formatBatchDate(batch.createdAt)}
                   </Typography>
                 </Box>
                 <HistoryMetric label="Imported" value={batch.successfulRows} />
                 <HistoryMetric label="Duplicate" value={batch.duplicateRows} />
+                <HistoryMetric label="Ignored" value={batch.ignoredRows} />
                 <HistoryMetric label="Rejected" value={batch.failedRows} />
                 <Chip
                   size="small"

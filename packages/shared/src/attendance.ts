@@ -11,6 +11,9 @@ export const AttendanceImportStatusSchema = z.enum([
 ]);
 export type AttendanceImportStatus = z.infer<typeof AttendanceImportStatusSchema>;
 
+export const AttendanceImportTypeSchema = z.enum(['csv', 'door_workbook']);
+export type AttendanceImportType = z.infer<typeof AttendanceImportTypeSchema>;
+
 export const AttendanceImportErrorDtoSchema = z.object({
   rowNumber: z.number().int().positive(),
   employeeCode: z.string(),
@@ -21,7 +24,7 @@ export type AttendanceImportErrorDto = z.infer<typeof AttendanceImportErrorDtoSc
 export const ImportBatchDtoSchema = z.object({
   id: z.string(),
   source: AttendanceImportSourceSchema,
-  importType: z.literal('csv'),
+  importType: AttendanceImportTypeSchema,
   fileName: z.string(),
   periodStart: z.string().datetime().nullable(),
   periodEnd: z.string().datetime().nullable(),
@@ -29,6 +32,9 @@ export const ImportBatchDtoSchema = z.object({
   successfulRows: z.number().int().nonnegative(),
   failedRows: z.number().int().nonnegative(),
   duplicateRows: z.number().int().nonnegative(),
+  ignoredRows: z.number().int().nonnegative(),
+  provisionedEmployees: z.number().int().nonnegative(),
+  reconciledTimecards: z.number().int().nonnegative(),
   status: AttendanceImportStatusSchema,
   errors: z.array(AttendanceImportErrorDtoSchema),
   errorsTruncated: z.boolean(),

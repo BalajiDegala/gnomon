@@ -1,18 +1,45 @@
-# Attendance CSV Format
+# Attendance Import Formats
 
 Gnomon accepts biometric and access-card attendance files from the secured
-**Administration → Attendance imports** page. Imported source rows are immutable;
-corrections must be handled by the regularisation workflow.
+**Administration → Attendance imports** page. It accepts canonical attendance CSVs
+and the door controller's **All Transactions** workbook. Imported attendance evidence
+is immutable; corrections must be handled by the regularisation workflow.
 
 ## File limits
 
-- CSV encoded as UTF-8, with or without a byte-order mark.
-- Maximum file size: 5 MB.
-- Maximum attendance rows: 20,000.
+- CSV: UTF-8 with or without a byte-order mark, maximum 5 MB and 20,000 rows.
+- Door workbook: XLSX/OOXML content, maximum 10 MB and 250,000 transactions. The
+  controller may give this export an `.xls` filename even though its content is XLSX.
 - Quoted fields, commas inside quoted fields, and Windows or Unix line endings
-  are supported.
+  are supported in CSVs.
 
-## Columns
+## Door access workbook
+
+Choose **Door access workbook** for the controller's **All Transactions** export.
+The importer locates these columns: `Time`, `Event Point`, `Event Description`,
+`Event Level`, `Personnel ID`, `First Name`, `Last Name`, `Card Number`,
+`Department Name`, `Reader Name`, and `Verification Mode`.
+
+Attendance endpoints are derived as follows:
+
+- Existing employees are matched by `Personnel ID`. Missing employee profiles are
+  created automatically using the supplied name, card, and department metadata.
+  Since the controller does not supply email addresses or passwords, imported
+  profiles receive a reserved non-deliverable email and no login account.
+- The workday is 07:00 through 06:59 the following calendar day in Asia/Kolkata.
+- Only successful, normal card verifications at `NORTH-ZONE-ENTRY` and
+  `SOUTH-ZONE-ENTRY` are eligible.
+- The earliest eligible reader ending in `-In` is the day's access-card entry.
+- The latest eligible reader ending in `-Out` is the day's access-card exit.
+- Internal `NORTH-ZONE-PASSAGE` and `SOUTH-ZONE-PASSAGE` movement, intermediate
+  gate swipes, exit-button/superuser opens, expired or unregistered credentials,
+  and controller status events are counted as ignored rather than rejected.
+
+The selected entry and exit retain their source row, event point, reader name, and
+raw workbook fields for audit. Affected daily attendance timecards are regenerated
+after import. Re-uploading the same workbook is idempotent.
+
+## CSV columns
 
 | Column            | Required | Description                                       |
 | ----------------- | -------- | ------------------------------------------------- |
@@ -62,6 +89,15 @@ DDI0001,2026-07-27 09:03:00,in,BIO-000001,BIO-01,Main gate
 DDI0001,2026-07-27 18:07:00,out,BIO-000002,BIO-01,Main gate
 ```
 
+### Monthly biometric summary export
+
+The biometric importer also accepts the attendance-system summary layout used by
+`data/biometrix.csv`. Its required columns are `Date`, `Employee Code`, `In Time`, and
+`Out Time`; additional columns remain attached to the immutable raw evidence. A populated In Time
+becomes an `in` event and a populated Out Time becomes an `out` event. Empty Absent and WeeklyOff
+rows are ignored. When Out Time is earlier than In Time, it is treated as an overnight exit on the
+following calendar date while remaining attached to the report's stated work date.
+
 ## Access-card example
 
 ```csv
@@ -73,7 +109,8 @@ DDI0001,2026-07-27T18:12:00+05:30,exit,CARD-000002,READER-01,Studio entrance
 ## Duplicate and failure behavior
 
 - The file content is hashed. Uploading the exact file again returns its
-  original result without processing it twice.
+  original completed result without processing it twice. Failed or partial
+  batches can be retried after employee-directory or source-data corrections.
 - Every accepted row receives a stable fingerprint. A row already seen in a
   different file is counted as a duplicate and does not create another event.
 - Invalid timestamps, invalid event types, and unknown/inactive employee codes

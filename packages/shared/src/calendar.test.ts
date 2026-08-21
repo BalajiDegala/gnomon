@@ -17,6 +17,8 @@ describe('managed calendar contracts', () => {
       month: '2026-07',
       audienceType: 'show',
       showId: '507f1f77bcf86cd799439011',
+      page: 1,
+      pageSize: 25,
     });
   });
 

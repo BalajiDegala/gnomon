@@ -5,6 +5,7 @@ import { Role } from './role.model.js';
 const roleNames: Record<RoleCode, string> = {
   EMPLOYEE: 'Employee',
   REPORTING_MANAGER: 'Reporting Manager',
+  LEAVE_APPROVER: 'Leave Approver',
   SHOW_MANAGER: 'Show Manager',
   HR: 'Human Resources',
   ATTENDANCE_ADMIN: 'Attendance Administrator',
@@ -25,6 +26,7 @@ export const systemRolePermissions: Record<RoleCode, PermissionCode[]> = {
     'regularisation:approve',
     'leave:approve',
   ],
+  LEAVE_APPROVER: ['leave:approve'],
   SHOW_MANAGER: ['show:manage'],
   HR: [
     'employee:read',

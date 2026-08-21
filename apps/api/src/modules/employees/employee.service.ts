@@ -50,6 +50,9 @@ async function toDirectoryItems(
       | 'email'
       | 'timezone'
       | 'status'
+      | 'attendanceIdentity'
+      | 'profileSource'
+      | 'hrProfile'
       | 'reportingManagerId'
       | 'locationId'
       | 'updatedAt'
@@ -64,7 +67,7 @@ async function toDirectoryItems(
     .filter((id): id is Types.ObjectId => Boolean(id));
   const [managers, locations] = await Promise.all([
     Employee.find({ _id: { $in: managerIds } })
-      .select({ employeeCode: 1, firstName: 1, lastName: 1 })
+      .select({ employeeCode: 1, firstName: 1, lastName: 1, hrProfile: 1 })
       .lean()
       .exec(),
     Location.find({ _id: { $in: locationIds } })
@@ -85,15 +88,47 @@ async function toDirectoryItems(
       employeeCode: employee.employeeCode,
       firstName: employee.firstName,
       lastName: employee.lastName,
-      displayName: `${employee.firstName} ${employee.lastName}`.trim(),
-      email: employee.email,
+      displayName:
+        employee.hrProfile?.fullName ?? `${employee.firstName} ${employee.lastName}`.trim(),
+      email: employee.hrProfile?.mailId ?? employee.email,
       timezone: employee.timezone,
       status: employee.status,
+      profileSource: employee.profileSource,
+      hrProfile: employee.hrProfile
+        ? {
+            source: employee.hrProfile.source,
+            userId: employee.hrProfile.userId,
+            mailId: employee.hrProfile.mailId,
+            fullName: employee.hrProfile.fullName,
+            designation: employee.hrProfile.designation,
+            departmentName: employee.hrProfile.departmentName,
+            leaveApprover1Name: employee.hrProfile.leaveApprover1Name,
+            leaveApprover2Name: employee.hrProfile.leaveApprover2Name,
+            approver1EmployeeId: employee.hrProfile.approver1EmployeeId
+              ? String(employee.hrProfile.approver1EmployeeId)
+              : null,
+            approver2EmployeeId: employee.hrProfile.approver2EmployeeId
+              ? String(employee.hrProfile.approver2EmployeeId)
+              : null,
+            emailTriggers: employee.hrProfile.emailTriggers,
+            importedAt: employee.hrProfile.importedAt.toISOString(),
+          }
+        : null,
+      attendanceIdentity: employee.attendanceIdentity
+        ? {
+            source: employee.attendanceIdentity.source,
+            personnelId: employee.attendanceIdentity.personnelId,
+            cardNumber: employee.attendanceIdentity.cardNumber,
+            departmentName: employee.attendanceIdentity.departmentName,
+            lastSeenAt: employee.attendanceIdentity.lastSeenAt.toISOString(),
+          }
+        : null,
       reportingManager: manager
         ? {
             id: String(manager._id),
             employeeCode: manager.employeeCode,
-            displayName: `${manager.firstName} ${manager.lastName}`.trim(),
+            displayName:
+              manager.hrProfile?.fullName ?? `${manager.firstName} ${manager.lastName}`.trim(),
           }
         : null,
       location: location
@@ -110,7 +145,10 @@ export async function listEmployees(
 ): Promise<EmployeeDirectoryDto> {
   await ensureIndexes();
   const scope = await buildEmployeeScopeFilter(user, ['employee:read']);
-  const filters: QueryFilter<EmployeeDocument>[] = [scope];
+  const filters: QueryFilter<EmployeeDocument>[] = [
+    scope,
+    { profileSource: { $in: ['users_csv', 'manual'] } },
+  ];
   if (input.status) filters.push({ status: input.status });
   if (input.search) {
     const search = new RegExp(escapeRegex(input.search), 'i');
@@ -120,11 +158,17 @@ export async function listEmployees(
         { firstName: search },
         { lastName: search },
         { email: search },
+        { 'hrProfile.userId': search },
+        { 'hrProfile.fullName': search },
+        { 'hrProfile.designation': search },
+        { 'hrProfile.departmentName': search },
+        { 'hrProfile.leaveApprover1Name': search },
+        { 'hrProfile.leaveApprover2Name': search },
       ],
     });
   }
   const employees = await Employee.find({ $and: filters })
-    .sort({ status: 1, firstName: 1, lastName: 1, employeeCode: 1 })
+    .sort({ status: 1, 'hrProfile.fullName': 1, firstName: 1, lastName: 1, employeeCode: 1 })
     .limit(500)
     .lean()
     .exec();

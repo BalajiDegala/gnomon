@@ -1,24 +1,36 @@
 import {
   AppBar,
   Avatar,
+  Badge,
   Box,
   Button,
+  Divider,
   Drawer,
   IconButton,
   List,
   ListItemButton,
+  ListItemText,
+  Menu as MuiMenu,
+  MenuItem,
   Stack,
   Toolbar,
   Tooltip,
   Typography,
 } from '@mui/material';
-import { ChevronRight, Clock3, LogOut, Menu, Sparkles } from 'lucide-react';
+import { Bell, ChevronRight, Clock3, LogOut, Menu, Sparkles } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import { useAppNavigation } from '../lib/app-navigation';
 import { useAuth } from '../lib/auth';
+import { useNotifications } from '../lib/notifications';
 import { confirmDiscardChanges } from '../lib/unsaved-changes';
-import { type AppView, appViewPath, navigationGroups, type NavigationItem } from '../navigation';
+import {
+  type AppView,
+  appViewFromPath,
+  appViewPath,
+  navigationGroups,
+  type NavigationItem,
+} from '../navigation';
 import { DashboardPage } from '../pages/DashboardPage';
 import { ModulePage } from '../pages/ModulePage';
 
@@ -129,7 +141,9 @@ function NavigationList({ activeView, items, label, onSelect }: NavigationListPr
 
 export function AppShell() {
   const { user, logout } = useAuth();
+  const notifications = useNotifications();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [notificationAnchor, setNotificationAnchor] = useState<HTMLElement | null>(null);
   const permissions = user?.permissions ?? [];
   const visibleGroups = useMemo(
     () =>
@@ -320,6 +334,72 @@ export function AppShell() {
             </Typography>
           </Box>
           <Stack direction="row" sx={{ alignItems: 'center', gap: 1 }}>
+            <Tooltip title="Notifications">
+              <IconButton
+                aria-label="Notifications"
+                onClick={(event) => setNotificationAnchor(event.currentTarget)}
+                sx={{ color: 'text.secondary' }}
+              >
+                <Badge
+                  color="error"
+                  badgeContent={notifications.notifications.unreadCount}
+                  max={99}
+                >
+                  <Bell size={19} />
+                </Badge>
+              </IconButton>
+            </Tooltip>
+            <MuiMenu
+              anchorEl={notificationAnchor}
+              open={Boolean(notificationAnchor)}
+              onClose={() => setNotificationAnchor(null)}
+              slotProps={{ paper: { sx: { width: 360, maxWidth: 'calc(100vw - 24px)' } } }}
+            >
+              <Stack
+                direction="row"
+                sx={{ px: 2, py: 1, alignItems: 'center', justifyContent: 'space-between' }}
+              >
+                <Typography sx={{ fontSize: 13.5, fontWeight: 820 }}>Notifications</Typography>
+                {notifications.notifications.unreadCount > 0 && (
+                  <Button
+                    size="small"
+                    onClick={() => void notifications.markAllRead()}
+                    sx={{ fontSize: 10.5 }}
+                  >
+                    Mark all read
+                  </Button>
+                )}
+              </Stack>
+              <Divider />
+              {notifications.notifications.items.length === 0 ? (
+                <MenuItem disabled>No notifications yet</MenuItem>
+              ) : (
+                notifications.notifications.items.map((notification) => (
+                  <MenuItem
+                    key={notification.id}
+                    selected={!notification.readAt}
+                    onClick={() => {
+                      setNotificationAnchor(null);
+                      if (!notification.readAt) void notifications.markRead(notification.id);
+                      const view = appViewFromPath(notification.href);
+                      if (view) selectView(view);
+                    }}
+                    sx={{ alignItems: 'flex-start', whiteSpace: 'normal', py: 1.25 }}
+                  >
+                    <ListItemText
+                      primary={notification.title}
+                      secondary={`${notification.message} · ${new Date(notification.createdAt).toLocaleString('en-IN')}`}
+                      slotProps={{
+                        primary: {
+                          sx: { fontSize: 12.5, fontWeight: notification.readAt ? 650 : 820 },
+                        },
+                        secondary: { sx: { mt: 0.35, fontSize: 10.5, lineHeight: 1.45 } },
+                      }}
+                    />
+                  </MenuItem>
+                ))
+              )}
+            </MuiMenu>
             <Button
               variant="outlined"
               color="inherit"

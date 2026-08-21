@@ -38,6 +38,7 @@ function employee(overrides: Partial<EmployeeDocument> = {}): EmployeeDocument {
     reportingManagerId: managerEmployeeId,
     departmentId,
     locationId: null,
+    profileSource: 'manual',
     status: 'active',
     createdAt: new Date(),
     updatedAt: new Date(),

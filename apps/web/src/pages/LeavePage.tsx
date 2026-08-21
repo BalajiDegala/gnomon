@@ -48,7 +48,14 @@ export const leaveTypeLabels: Record<LeaveType, string> = {
 type LeaveTab = 'all' | LeaveStatus;
 type LeaveSortKey = 'date' | 'type' | 'days' | 'status' | 'submitted';
 
-const leaveTabs = ['all', 'pending_manager', 'approved', 'rejected', 'cancelled'] as const;
+const leaveTabs = [
+  'all',
+  'pending_manager',
+  'pending_hr',
+  'approved',
+  'rejected',
+  'cancelled',
+] as const;
 const leaveSortKeys = ['date', 'type', 'days', 'status', 'submitted'] as const;
 const sortDirections = ['asc', 'desc'] as const;
 const pageSizes = [10, 25, 50, 100] as const;
@@ -111,6 +118,7 @@ function workingDayCount(
 function statusLabel(status: LeaveStatus): string {
   const labels: Record<LeaveStatus, string> = {
     pending_manager: 'Manager review',
+    pending_hr: 'Approver 2 review',
     approved: 'Approved',
     rejected: 'Rejected',
     cancelled: 'Cancelled',
@@ -118,8 +126,9 @@ function statusLabel(status: LeaveStatus): string {
   return labels[status];
 }
 
-function statusColor(status: LeaveStatus): 'warning' | 'success' | 'error' | 'default' {
+function statusColor(status: LeaveStatus): 'warning' | 'info' | 'success' | 'error' | 'default' {
   if (status === 'pending_manager') return 'warning';
+  if (status === 'pending_hr') return 'info';
   if (status === 'approved') return 'success';
   if (status === 'rejected') return 'error';
   return 'default';
@@ -274,8 +283,13 @@ export function LeavePage() {
       { value: 'all', label: 'All', count: leaves.requests.length },
       {
         value: 'pending_manager',
-        label: 'Manager review',
+        label: 'Approver 1',
         count: leaves.requests.filter((request) => request.status === 'pending_manager').length,
+      },
+      {
+        value: 'pending_hr',
+        label: 'Approver 2',
+        count: leaves.requests.filter((request) => request.status === 'pending_hr').length,
       },
       {
         value: 'approved',
@@ -405,7 +419,7 @@ export function LeavePage() {
       width: 88,
       render: (request) => (
         <Stack direction="row" sx={{ justifyContent: 'flex-end', gap: 0.25 }}>
-          {request.status === 'pending_manager' && (
+          {(request.status === 'pending_manager' || request.status === 'pending_hr') && (
             <Tooltip title="Cancel request">
               <IconButton
                 size="small"
@@ -522,7 +536,7 @@ export function LeavePage() {
         emptyMessage={
           leaves.requests.length
             ? 'Change or clear the status, year, or search filters.'
-            : 'New requests and manager decisions will appear here.'
+            : 'New requests and approval decisions will appear here.'
         }
       />
 
@@ -535,6 +549,7 @@ export function LeavePage() {
         reason={reason}
         requestedDays={requestedDays}
         selectedBalance={selectedBalance}
+        approvalRoute={leaves.approvalRoute}
         hasHoliday={leaves.holidays.some(
           (holiday) => holiday.date >= startDate && holiday.date <= endDate,
         )}
@@ -623,6 +638,7 @@ interface CreateLeaveDialogProps {
   reason: string;
   requestedDays: number;
   selectedBalance: ReturnType<typeof useMyLeaves>['balances'][number] | undefined;
+  approvalRoute: ReturnType<typeof useMyLeaves>['approvalRoute'];
   hasHoliday: boolean;
   isUpdating: boolean;
   error?: string;
@@ -644,6 +660,7 @@ function CreateLeaveDialog({
   reason,
   requestedDays,
   selectedBalance,
+  approvalRoute,
   hasHoliday,
   isUpdating,
   error,
@@ -710,6 +727,17 @@ function CreateLeaveDialog({
                 {startDate === endDate && <MenuItem value="second_half">Second half</MenuItem>}
               </Select>
             </FormControl>
+            <Alert severity={approvalRoute?.approver1DisplayName ? 'info' : 'warning'}>
+              {approvalRoute?.approver1DisplayName ? (
+                <>
+                  <strong>Approval path:</strong> {approvalRoute.approver1DisplayName}
+                  {approvalRoute.approvalSteps === 2 &&
+                    ` → any one of ${approvalRoute.approver2DisplayNames.join(', ')}`}
+                </>
+              ) : (
+                'An approval route is not fully configured for your department.'
+              )}
+            </Alert>
             <TextField
               multiline
               minRows={4}
@@ -755,7 +783,7 @@ function CreateLeaveDialog({
             disabled={requestedDays <= 0 || reason.trim().length < 5 || isUpdating}
             startIcon={isUpdating ? <CircularProgress size={16} /> : <Send size={17} />}
           >
-            Submit for manager review
+            Submit for approval
           </Button>
         </DialogActions>
       </Box>
@@ -813,25 +841,37 @@ function LeaveDetailsDrawer({
                 ['Day portion', dayPartLabel(request.dayPart)],
                 ['Requested days', String(request.requestedDays)],
                 ['Status', statusLabel(request.status)],
+                [
+                  'Approval route',
+                  `${request.approvalSteps} stage${request.approvalSteps === 1 ? '' : 's'}`,
+                ],
+                ['Approver 1', request.approver1DisplayName],
+                ['Approver 2 pool', request.approver2DisplayName ?? 'Not required'],
                 ['Submitted', new Date(request.submittedAt).toLocaleString('en-IN')],
                 ['Policy', request.approvalPolicyVersion],
               ]}
             />
             <Detail label="Private reason" value={request.reason} />
-            {request.decision && (
+            {request.decisions.length > 0 && (
               <Box sx={{ pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-                <Typography sx={{ fontSize: 12.5, fontWeight: 800 }}>
-                  {request.decision.decision === 'approved' ? 'Approved' : 'Rejected'} by{' '}
-                  {request.decision.actorDisplayName}
+                <Typography sx={{ mb: 0.75, fontSize: 12.5, fontWeight: 800 }}>
+                  Approval history
                 </Typography>
-                <Typography sx={{ mt: 0.4, color: 'text.secondary', fontSize: 11.5 }}>
-                  {request.decision.comment || 'No decision comment.'}
-                </Typography>
+                {request.decisions.map((decision) => (
+                  <Box key={`${decision.step}-${decision.decidedAt}`} sx={{ mb: 1 }}>
+                    <Typography sx={{ fontSize: 11.5, fontWeight: 750 }}>
+                      Step {decision.step} {decision.decision} by {decision.actorDisplayName}
+                    </Typography>
+                    <Typography sx={{ color: 'text.secondary', fontSize: 11 }}>
+                      {decision.comment || 'No decision comment.'}
+                    </Typography>
+                  </Box>
+                ))}
               </Box>
             )}
           </Stack>
         )}
-        {request?.status === 'pending_manager' && (
+        {(request?.status === 'pending_manager' || request?.status === 'pending_hr') && (
           <>
             <Divider />
             <Box sx={{ p: 2 }}>

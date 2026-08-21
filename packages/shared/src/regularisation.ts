@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-export const RegularisationSourceSchema = z.enum(['biometric', 'website']);
+export const RegularisationSourceSchema = z.enum(['biometric', 'access_card', 'website']);
 export type RegularisationSource = z.infer<typeof RegularisationSourceSchema>;
 
 export const MissingEventSchema = z.enum(['opening', 'closing', 'both']);

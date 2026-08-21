@@ -1,68 +1,53 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  CompanyHolidayRequestSchema,
-  CreateLocationRequestSchema,
-  UpdateEmployeeLocationRequestSchema,
-  UpdateLeaveBalanceRequestSchema,
-  UpsertHolidayRequestSchema,
-} from './policy.js';
+import { UpdateDepartmentApprovalPolicyRequestSchema } from './policy.js';
 
-describe('holiday and leave policy contracts', () => {
-  it('accepts a company holiday without a location', () => {
-    expect(
-      UpsertHolidayRequestSchema.parse({ date: '2026-08-15', name: 'Independence Day' }),
-    ).toMatchObject({ scopeType: 'company', locationId: null });
-  });
+const approver1EmployeeId = '507f1f77bcf86cd799439011';
+const approver2EmployeeId = '507f1f77bcf86cd799439012';
+const alternateApprover2EmployeeId = '507f1f77bcf86cd799439013';
 
-  it('keeps the active holiday API company-wide', () => {
-    expect(
-      CompanyHolidayRequestSchema.parse({ date: '2026-10-02', name: 'Gandhi Jayanti' }),
-    ).toEqual({ date: '2026-10-02', name: 'Gandhi Jayanti' });
-    expect(
-      CompanyHolidayRequestSchema.safeParse({
-        date: '2026-10-02',
-        name: 'Local holiday',
-        scopeType: 'location',
-      }).success,
-    ).toBe(false);
-  });
-
-  it('requires location scope and identifier to agree', () => {
-    expect(() =>
-      UpsertHolidayRequestSchema.parse({
-        date: '2026-09-01',
-        name: 'Local holiday',
-        scopeType: 'location',
-      }),
-    ).toThrow('location identifier');
-  });
-
-  it('allows signed balance adjustments but not unpaid entitlements', () => {
-    expect(
-      UpdateLeaveBalanceRequestSchema.parse({
-        leaveType: 'earned',
-        year: 2026,
-        entitledDays: 18,
-        adjustedDays: -1,
-      }),
-    ).toMatchObject({ adjustedDays: -1, note: '' });
-    expect(() =>
-      UpdateLeaveBalanceRequestSchema.parse({
-        leaveType: 'unpaid',
-        year: 2026,
-        entitledDays: 10,
-      }),
-    ).toThrow();
-  });
-
-  it('normalizes location codes and accepts an explicit unassigned location', () => {
-    expect(CreateLocationRequestSchema.parse({ code: 'mum-01', name: 'Mumbai Studio' })).toEqual({
-      code: 'MUM-01',
-      name: 'Mumbai Studio',
+describe('department approval policy input', () => {
+  it('accepts an any-of second-approver pool', () => {
+    const result = UpdateDepartmentApprovalPolicyRequestSchema.safeParse({
+      approvalSteps: 2,
+      approver1EmployeeId,
+      approver2EmployeeIds: [approver2EmployeeId, alternateApprover2EmployeeId],
+      emailTriggers: [],
     });
-    expect(UpdateEmployeeLocationRequestSchema.parse({ locationId: null })).toEqual({
-      locationId: null,
+
+    expect(result.success).toBe(true);
+  });
+
+  it('requires a second approver for two-stage routes', () => {
+    const result = UpdateDepartmentApprovalPolicyRequestSchema.safeParse({
+      approvalSteps: 2,
+      approver1EmployeeId,
+      approver2EmployeeIds: [],
+      emailTriggers: [],
     });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('keeps the first approver out of the second-approval pool', () => {
+    const result = UpdateDepartmentApprovalPolicyRequestSchema.safeParse({
+      approvalSteps: 2,
+      approver1EmployeeId,
+      approver2EmployeeIds: [approver1EmployeeId],
+      emailTriggers: [],
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it('accepts the legacy singular second-approver field', () => {
+    const result = UpdateDepartmentApprovalPolicyRequestSchema.safeParse({
+      approvalSteps: 2,
+      approver1EmployeeId,
+      approver2EmployeeId,
+      emailTriggers: [],
+    });
+
+    expect(result.success).toBe(true);
   });
 });

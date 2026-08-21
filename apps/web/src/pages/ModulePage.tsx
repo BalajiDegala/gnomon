@@ -18,6 +18,7 @@ import { useAuth } from '../lib/auth';
 import type { AppView } from '../navigation';
 import { AdministrationPage } from './AdministrationPage';
 import { ApprovalQueuePage } from './ApprovalQueuePage';
+import { AttendanceDetailsPage } from './AttendanceDetailsPage';
 import { CalendarPage } from './CalendarPage';
 import { LeavePage } from './LeavePage';
 import { PeoplePage } from './PeoplePage';
@@ -51,6 +52,7 @@ export function ModulePage({ view, onNavigate }: ModulePageProps) {
   if (view === 'team-calendar') {
     return <TeamCalendarPage onBack={() => onNavigate('overview')} />;
   }
+  if (view === 'attendance-details') return <AttendanceDetailsPage />;
   if (view === 'approvals') {
     return <ApprovalQueuePage />;
   }
