@@ -129,7 +129,7 @@ spec:
     }
 
     stage('Validate') {
-      parallel {
+      stages {
         stage('Formatting') {
           steps {
             container('node') {
