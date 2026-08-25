@@ -87,7 +87,7 @@ function bestRow(
   rows: AttendanceDetailsRow[],
   score: (row: AttendanceDetailsRow) => number,
 ): AttendanceDetailsRow {
-  return rows.reduce((best, row) => (score(row) > score(best) ? row : best));
+  return rows.slice(1).reduce((best, row) => (score(row) > score(best) ? row : best), rows[0]!);
 }
 
 function canonicalRow(rows: AttendanceDetailsRow[]): AttendanceDetailsRow {
