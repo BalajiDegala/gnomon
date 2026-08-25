@@ -10,6 +10,7 @@ import {
   type EmployeeRecord,
 } from '../employees/employee.model.js';
 import { DepartmentApprovalPolicy } from '../policies/department-approval-policy.model.js';
+import { DailyTimecard } from '../reconciliation/daily-timecard.model.js';
 import { reconcileDailyTimecard } from '../reconciliation/reconciliation.service.js';
 import { parseUserDirectoryCsv, type ParsedUserDirectoryRow } from './user-directory.parser.js';
 
@@ -240,6 +241,7 @@ async function mergeDoorProfile(source: EmployeeRecord, target: EmployeeRecord):
     { employeeId: source._id },
     { $set: { employeeId: target._id } },
   ).exec();
+  await DailyTimecard.deleteMany({ employeeId: source._id }).exec();
   await Promise.all(
     workDates.map((workDate) => reconcileDailyTimecard(String(target._id), workDate)),
   );

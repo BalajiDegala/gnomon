@@ -27,8 +27,9 @@ import { useEffect, useMemo, useState, type MouseEvent } from 'react';
 
 import { DataTable, type DataTableColumn } from '../components/data-view/DataTable';
 import { FilterBar } from '../components/data-view/FilterBar';
+import { MonthPicker } from '../components/data-view/MonthPicker';
 import { PageHeader } from '../components/data-view/PageHeader';
-import { useAttendanceDetails } from '../lib/attendance-details';
+import { mergeAttendanceRows, useAttendanceDetails } from '../lib/attendance-details';
 
 type AttendanceSortKey =
   | 'employee'
@@ -233,6 +234,18 @@ export function AttendanceDetailsPage() {
   const attendance = details.attendance;
   const selectedMonth = month || attendance?.month || '';
   const biometricMonth = attendance?.availableMonths.find((item) => item.biometricEvents > 0);
+  const mergedRows = useMemo(() => mergeAttendanceRows(attendance?.rows ?? []), [attendance?.rows]);
+  const mergedSummary = useMemo(
+    () => ({
+      employeesWithRecords: new Set(mergedRows.map((row) => row.employeeId)).size,
+      attendanceDays: mergedRows.length,
+      completeBiometricDays: mergedRows.filter((row) => row.biometric.status === 'complete').length,
+      completeAccessCardDays: mergedRows.filter((row) => row.accessCard.status === 'complete')
+        .length,
+      websiteSessionDays: mergedRows.filter((row) => row.website.sessionCount > 0).length,
+    }),
+    [mergedRows],
+  );
 
   useEffect(() => {
     localStorage.setItem(COLUMN_STORAGE_KEY, JSON.stringify([...visibleColumnIds]));
@@ -240,7 +253,7 @@ export function AttendanceDetailsPage() {
 
   const filteredRows = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const rows = (attendance?.rows ?? []).filter((row) => {
+    const rows = mergedRows.filter((row) => {
       const matchesSource =
         sourceFilter === 'all' ||
         (sourceFilter === 'biometric' && row.biometric.eventCount > 0) ||
@@ -286,7 +299,7 @@ export function AttendanceDetailsPage() {
         left.workDate.localeCompare(right.workDate)
       );
     });
-  }, [attendance?.rows, groupBy, search, sortDirection, sortKey, sourceFilter]);
+  }, [groupBy, mergedRows, search, sortDirection, sortKey, sourceFilter]);
 
   useEffect(() => setPage(0), [groupBy, month, search, sourceFilter]);
   useEffect(() => {
@@ -482,16 +495,7 @@ export function AttendanceDetailsPage() {
         eyebrow="ATTENDANCE EVIDENCE"
         title="Attendance details"
         meta="Biometric and access-card entry/exit evidence for all scoped employees"
-        action={
-          <TextField
-            size="small"
-            type="month"
-            label="Attendance month"
-            value={selectedMonth}
-            onChange={(event) => setMonth(event.target.value)}
-            slotProps={{ inputLabel: { shrink: true } }}
-          />
-        }
+        action={<MonthPicker label="Attendance month" value={selectedMonth} onChange={setMonth} />}
       />
 
       {!details.canRead && (
@@ -551,27 +555,27 @@ export function AttendanceDetailsPage() {
             <SummaryCard
               icon={UsersRound}
               label="Employees"
-              value={attendance.summary.employeesWithRecords}
+              value={mergedSummary.employeesWithRecords}
             />
             <SummaryCard
               icon={CalendarClock}
               label="Attendance days"
-              value={attendance.summary.attendanceDays}
+              value={mergedSummary.attendanceDays}
             />
             <SummaryCard
               icon={Fingerprint}
               label="Biometric complete"
-              value={attendance.summary.completeBiometricDays}
+              value={mergedSummary.completeBiometricDays}
             />
             <SummaryCard
               icon={ScanLine}
               label="Access complete"
-              value={attendance.summary.completeAccessCardDays}
+              value={mergedSummary.completeAccessCardDays}
             />
             <SummaryCard
               icon={TimerReset}
               label="Website sessions"
-              value={attendance.summary.websiteSessionDays}
+              value={mergedSummary.websiteSessionDays}
             />
           </Box>
 

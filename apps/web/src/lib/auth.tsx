@@ -26,9 +26,21 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 async function parseResponse(response: Response): Promise<AuthResponse> {
-  const body = (await response.json()) as AuthResponse & {
-    error?: { message?: string };
-  };
+  const contentType = response.headers.get('content-type') ?? '';
+  if (!contentType.toLowerCase().includes('application/json')) {
+    throw new Error(
+      `The API returned ${contentType || 'an unexpected response'} instead of JSON. Check that /api requests are routed to the API server.`,
+    );
+  }
+
+  let body: AuthResponse & { error?: { message?: string } };
+  try {
+    body = (await response.json()) as AuthResponse & {
+      error?: { message?: string };
+    };
+  } catch {
+    throw new Error('The API returned invalid JSON. Check the API server and /api proxy.');
+  }
 
   if (!response.ok) {
     throw new Error(body.error?.message ?? 'The request could not be completed');

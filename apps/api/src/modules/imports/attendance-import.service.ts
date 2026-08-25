@@ -102,6 +102,19 @@ function importedEmployeeEmail(employeeCode: string): string {
   return `attendance.${slug}.${sha256(employeeCode).slice(0, 10)}@gnomon.invalid`;
 }
 
+function normalizedEmployeeName(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '');
+}
+
+function numericPersonnelId(value: string): string | null {
+  const match = value.match(/^DDIH(\d+)$/i);
+  return match ? String(Number(match[1])) : null;
+}
+
 async function provisionWorkbookEmployees(
   parsed: ParsedAttendanceFile,
   importedBy: string,
@@ -113,23 +126,66 @@ async function provisionWorkbookEmployees(
   );
   const employeeCodes = [...profiles.keys()];
   const existing = await Employee.find({
+    status: 'active',
     $or: [
       { employeeCode: { $in: employeeCodes } },
       { 'attendanceIdentity.personnelId': { $in: employeeCodes } },
+      { profileSource: { $in: ['users_csv', 'manual'] } },
     ],
   })
-    .select({ employeeCode: 1, attendanceIdentity: 1 })
+    .select({
+      employeeCode: 1,
+      firstName: 1,
+      lastName: 1,
+      attendanceIdentity: 1,
+      profileSource: 1,
+      hrProfile: 1,
+    })
     .lean()
     .exec();
-  const existingCodes = new Set(
+  const byCode = new Map(
     existing.flatMap((employee) => [
-      employee.employeeCode,
+      [employee.employeeCode, employee] as const,
       ...(employee.attendanceIdentity?.personnelId
-        ? [employee.attendanceIdentity.personnelId]
+        ? ([[employee.attendanceIdentity.personnelId, employee] as const] as const)
         : []),
     ]),
   );
-  const missingCodes = employeeCodes.filter((employeeCode) => !existingCodes.has(employeeCode));
+  const byName = new Map<string, typeof existing>();
+  const byPersonnelId = new Map<string, typeof existing>();
+  for (const employee of existing) {
+    if (!['users_csv', 'manual'].includes(employee.profileSource)) continue;
+    const employeeName =
+      employee.hrProfile?.fullName ?? `${employee.firstName} ${employee.lastName}`;
+    const name = normalizedEmployeeName(employeeName);
+    const matches = byName.get(name) ?? [];
+    matches.push(employee);
+    byName.set(name, matches);
+    const personnelId = numericPersonnelId(employee.employeeCode);
+    if (personnelId) {
+      const personnelMatches = byPersonnelId.get(personnelId) ?? [];
+      personnelMatches.push(employee);
+      byPersonnelId.set(personnelId, personnelMatches);
+    }
+  }
+  const matchedEmployees = new Map<string, (typeof existing)[number]>();
+  const createdCodes: string[] = [];
+  for (const profile of profiles.values()) {
+    const exact = byCode.get(profile.employeeCode);
+    if (exact) {
+      matchedEmployees.set(profile.employeeCode, exact);
+      continue;
+    }
+    const personnelMatches = byPersonnelId.get(String(Number(profile.employeeCode))) ?? [];
+    if (personnelMatches.length === 1) {
+      matchedEmployees.set(profile.employeeCode, personnelMatches[0]!);
+      continue;
+    }
+    const nameMatches =
+      byName.get(normalizedEmployeeName(`${profile.firstName} ${profile.lastName}`)) ?? [];
+    if (nameMatches.length === 1) matchedEmployees.set(profile.employeeCode, nameMatches[0]!);
+    else createdCodes.push(profile.employeeCode);
+  }
 
   await Employee.bulkWrite(
     [...profiles.values()].map((profile) => {
@@ -138,14 +194,17 @@ async function provisionWorkbookEmployees(
         profile.lastName.trim().slice(0, 80) ||
         'Personnel';
       const lastName = profile.lastName.trim().slice(0, 80) || profile.employeeCode.slice(0, 80);
+      const matchedEmployee = matchedEmployees.get(profile.employeeCode);
       return {
         updateOne: {
-          filter: {
-            $or: [
-              { employeeCode: profile.employeeCode },
-              { 'attendanceIdentity.personnelId': profile.employeeCode },
-            ],
-          },
+          filter: matchedEmployee
+            ? { _id: matchedEmployee._id }
+            : {
+                $or: [
+                  { employeeCode: profile.employeeCode },
+                  { 'attendanceIdentity.personnelId': profile.employeeCode },
+                ],
+              },
           update: {
             $set: {
               attendanceIdentity: {
@@ -176,9 +235,9 @@ async function provisionWorkbookEmployees(
     { ordered: false },
   );
 
-  if (missingCodes.length > 0) {
+  if (createdCodes.length > 0) {
     const createdEmployees = await Employee.find({
-      'attendanceIdentity.personnelId': { $in: missingCodes },
+      'attendanceIdentity.personnelId': { $in: createdCodes },
     })
       .select({ _id: 1, employeeCode: 1, status: 1 })
       .lean()
@@ -198,7 +257,7 @@ async function provisionWorkbookEmployees(
     );
   }
 
-  return missingCodes.length;
+  return createdCodes.length;
 }
 
 async function reconcileImportedTimecards(

@@ -6,7 +6,6 @@ import {
   CircularProgress,
   IconButton,
   Stack,
-  TextField,
   Tooltip,
   Typography,
 } from '@mui/material';
@@ -15,6 +14,7 @@ import { useMemo } from 'react';
 
 import { PageHeader } from '../components/data-view/PageHeader';
 import { PageTabs, type PageTab } from '../components/data-view/PageTabs';
+import { MonthPicker } from '../components/data-view/MonthPicker';
 import { currentIndiaMonth, usePersonalCalendar } from '../lib/calendar';
 import { formatMinutes } from '../lib/timesheets';
 import { parseEnumValue, parseYearMonth, useUrlQueryState } from '../lib/url-query-state';
@@ -154,15 +154,7 @@ export function CalendarPage() {
                 <ChevronLeft size={18} />
               </IconButton>
             </Tooltip>
-            <TextField
-              type="month"
-              label="Jump to month"
-              value={month}
-              onChange={(event) => setMonth(event.target.value)}
-              slotProps={{ inputLabel: { shrink: true } }}
-              size="small"
-              sx={{ width: 175 }}
-            />
+            <MonthPicker label="Jump to month" value={month} onChange={setMonth} />
             <Tooltip title="Next month">
               <IconButton
                 aria-label="Next month"

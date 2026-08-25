@@ -15,7 +15,6 @@ import {
   TableHead,
   TablePagination,
   TableRow,
-  TextField,
   Tooltip,
   Typography,
 } from '@mui/material';
@@ -24,6 +23,7 @@ import { useEffect, useMemo, useRef } from 'react';
 
 import { currentIndiaMonth, useManagedCalendar } from '../lib/calendar';
 import { parseYearMonth, useUrlQueryState } from '../lib/url-query-state';
+import { MonthPicker } from '../components/data-view/MonthPicker';
 
 interface TeamCalendarPageProps {
   onBack: () => void;
@@ -226,14 +226,7 @@ export function TeamCalendarPage({ onBack }: TeamCalendarPageProps) {
               </Button>
             </Stack>
             <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ gap: 1.25 }}>
-              <TextField
-                type="month"
-                label="Calendar month"
-                value={month}
-                onChange={(event) => selectMonth(event.target.value)}
-                slotProps={{ inputLabel: { shrink: true } }}
-                size="small"
-              />
+              <MonthPicker label="Calendar month" value={month} onChange={selectMonth} />
             </Stack>
           </Stack>
 

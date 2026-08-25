@@ -40,6 +40,15 @@ function assertIsolatedTestDatabase(): void {
   }
 }
 
+function currentIndiaYear(): number {
+  return Number(
+    new Intl.DateTimeFormat('en-CA', {
+      year: 'numeric',
+      timeZone: 'Asia/Kolkata',
+    }).format(new Date()),
+  );
+}
+
 async function upsertEmployee(
   employeeCode: string,
   email: string,
@@ -196,6 +205,22 @@ async function seedWorkflowFixtures(): Promise<void> {
       grantedBy: null,
     },
   ]);
+
+  await LeaveBalance.insertMany(
+    [
+      ['casual', 12],
+      ['sick', 10],
+      ['earned', 15],
+    ].map(([leaveType, entitledDays]) => ({
+      employeeId: employee._id,
+      leaveType,
+      year: currentIndiaYear(),
+      entitledDays,
+      adjustedDays: 0,
+      note: 'E2E fixture annual balance',
+      updatedByUserId: hrUser._id,
+    })),
+  );
 
   process.stdout.write('Seeded isolated attendance, timesheet, leave, and policy E2E fixtures\n');
 }
