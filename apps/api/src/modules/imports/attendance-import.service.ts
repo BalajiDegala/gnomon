@@ -14,6 +14,7 @@ import { AttendanceEvent } from '../attendance/attendance-event.model.js';
 import { EmployeeAuditEvent } from '../employees/employee-audit.model.js';
 import { Employee } from '../employees/employee.model.js';
 import { reconcileDailyTimecard } from '../reconciliation/reconciliation.service.js';
+import { matchWorkbookEmployeeProfiles } from './attendance-employee-matcher.js';
 import { parseAttendanceCsv, type ParsedAttendanceFile } from './attendance-import.parser.js';
 import { parseDoorAttendanceWorkbook } from './door-attendance-workbook.parser.js';
 import { ImportBatch, type ImportBatchRecord } from './import-batch.model.js';
@@ -102,20 +103,7 @@ function importedEmployeeEmail(employeeCode: string): string {
   return `attendance.${slug}.${sha256(employeeCode).slice(0, 10)}@gnomon.invalid`;
 }
 
-function normalizedEmployeeName(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '');
-}
-
-function numericPersonnelId(value: string): string | null {
-  const match = value.match(/^DDIH(\d+)$/i);
-  return match ? String(Number(match[1])) : null;
-}
-
-async function provisionWorkbookEmployees(
+export async function provisionWorkbookEmployees(
   parsed: ParsedAttendanceFile,
   importedBy: string,
 ): Promise<number> {
@@ -143,49 +131,10 @@ async function provisionWorkbookEmployees(
     })
     .lean()
     .exec();
-  const byCode = new Map(
-    existing.flatMap((employee) => [
-      [employee.employeeCode, employee] as const,
-      ...(employee.attendanceIdentity?.personnelId
-        ? ([[employee.attendanceIdentity.personnelId, employee] as const] as const)
-        : []),
-    ]),
+  const { matchedEmployees, createdCodes } = matchWorkbookEmployeeProfiles(
+    [...profiles.values()],
+    existing,
   );
-  const byName = new Map<string, typeof existing>();
-  const byPersonnelId = new Map<string, typeof existing>();
-  for (const employee of existing) {
-    if (!['users_csv', 'manual'].includes(employee.profileSource)) continue;
-    const employeeName =
-      employee.hrProfile?.fullName ?? `${employee.firstName} ${employee.lastName}`;
-    const name = normalizedEmployeeName(employeeName);
-    const matches = byName.get(name) ?? [];
-    matches.push(employee);
-    byName.set(name, matches);
-    const personnelId = numericPersonnelId(employee.employeeCode);
-    if (personnelId) {
-      const personnelMatches = byPersonnelId.get(personnelId) ?? [];
-      personnelMatches.push(employee);
-      byPersonnelId.set(personnelId, personnelMatches);
-    }
-  }
-  const matchedEmployees = new Map<string, (typeof existing)[number]>();
-  const createdCodes: string[] = [];
-  for (const profile of profiles.values()) {
-    const exact = byCode.get(profile.employeeCode);
-    if (exact) {
-      matchedEmployees.set(profile.employeeCode, exact);
-      continue;
-    }
-    const personnelMatches = byPersonnelId.get(String(Number(profile.employeeCode))) ?? [];
-    if (personnelMatches.length === 1) {
-      matchedEmployees.set(profile.employeeCode, personnelMatches[0]!);
-      continue;
-    }
-    const nameMatches =
-      byName.get(normalizedEmployeeName(`${profile.firstName} ${profile.lastName}`)) ?? [];
-    if (nameMatches.length === 1) matchedEmployees.set(profile.employeeCode, nameMatches[0]!);
-    else createdCodes.push(profile.employeeCode);
-  }
 
   await Employee.bulkWrite(
     [...profiles.values()].map((profile) => {

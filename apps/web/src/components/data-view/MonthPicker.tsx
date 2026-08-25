@@ -1,9 +1,9 @@
 import { TextField } from '@mui/material';
 
 interface MonthPickerProps {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
+  readonly label: string;
+  readonly value: string;
+  readonly onChange: (value: string) => void;
 }
 
 export function MonthPicker({ label, value, onChange }: MonthPickerProps) {

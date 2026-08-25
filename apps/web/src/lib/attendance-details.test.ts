@@ -65,7 +65,20 @@ describe('mergeAttendanceRows', () => {
         workedMinutes: 673,
         eventCount: 2,
       },
-      anomalies: ['missing_biometric_in', 'missing_biometric_out'],
+      website: {
+        status: 'complete',
+        firstAt: '2026-06-30T02:37:00.000Z',
+        lastAt: '2026-06-30T13:50:00.000Z',
+        workedMinutes: 673,
+        sessionCount: 1,
+      },
+      timesheets: { totalMinutes: 480, entryCount: 2, averageProgress: 90 },
+      anomalies: [
+        'missing_biometric_in',
+        'missing_biometric_out',
+        'missing_web_start',
+        'missing_web_stop',
+      ],
     });
 
     const [merged] = mergeAttendanceRows([row({}), accessCardRow]);
@@ -80,8 +93,90 @@ describe('mergeAttendanceRows', () => {
       requiresReview: false,
       biometric: { eventCount: 2, status: 'complete' },
       accessCard: { eventCount: 2, status: 'complete' },
+      website: { sessionCount: 1, status: 'complete' },
+      timesheets: { entryCount: 2, totalMinutes: 480 },
     });
     expect(merged).toBeDefined();
     expect(mergeAttendanceRows([row({}), accessCardRow])).toHaveLength(1);
+  });
+
+  it.each([
+    {
+      label: 'no events',
+      firstAt: null,
+      lastAt: null,
+      eventCount: 0,
+      biometricStatus: 'none',
+      accessStatus: 'none',
+    },
+    {
+      label: 'missing first event',
+      firstAt: null,
+      lastAt: '2026-06-30T13:50:00.000Z',
+      eventCount: 1,
+      biometricStatus: 'missing_in',
+      accessStatus: 'missing_entry',
+    },
+    {
+      label: 'missing last event',
+      firstAt: '2026-06-30T02:37:00.000Z',
+      lastAt: null,
+      eventCount: 1,
+      biometricStatus: 'missing_out',
+      accessStatus: 'missing_exit',
+    },
+    {
+      label: 'invalid event order',
+      firstAt: '2026-06-30T13:50:00.000Z',
+      lastAt: '2026-06-30T02:37:00.000Z',
+      eventCount: 2,
+      biometricStatus: 'invalid',
+      accessStatus: 'invalid',
+    },
+  ] as const)(
+    'derives $label source statuses while merging',
+    ({ firstAt, lastAt, eventCount, biometricStatus, accessStatus }) => {
+      const biometric = {
+        status: biometricStatus,
+        firstAt,
+        lastAt,
+        workedMinutes: 0,
+        eventCount,
+      };
+      const accessCard = {
+        status: accessStatus,
+        firstAt,
+        lastAt,
+        workedMinutes: 0,
+        eventCount,
+      };
+      const [merged] = mergeAttendanceRows([
+        row({ biometric, accessCard, status: 'partial', anomalies: ['insufficient_hours'] }),
+        row({
+          id: 'second-row',
+          employeeId: 'second-employee',
+          employeeCode: '667',
+          biometric,
+          accessCard,
+          status: 'absent',
+          anomalies: [],
+        }),
+      ]);
+
+      expect(merged?.biometric.status).toBe(biometricStatus);
+      expect(merged?.accessCard.status).toBe(accessStatus);
+      expect(merged?.status).toBe('partial');
+      expect(merged?.requiresReview).toBe(true);
+    },
+  );
+
+  it('keeps different personnel and work dates as separate attendance rows', () => {
+    const rows = mergeAttendanceRows([
+      row({ employeeId: 'alpha', employeeCode: 'HR-A' }),
+      row({ employeeId: 'beta', employeeCode: 'HR-B' }),
+      row({ id: 'next-day', employeeCode: '667', workDate: '2026-07-01' }),
+    ]);
+
+    expect(rows).toHaveLength(3);
   });
 });

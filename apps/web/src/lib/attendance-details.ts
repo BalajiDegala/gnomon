@@ -7,43 +7,73 @@ interface AttendanceDetailsResponse {
   attendance: AttendanceDetailsDto;
 }
 
+interface IntervalSummary<Status extends string> {
+  status: Status;
+  firstAt: string | null;
+  lastAt: string | null;
+  workedMinutes: number;
+  eventCount: number;
+}
+
+interface IntervalStatuses<Status extends string> {
+  none: Status;
+  complete: Status;
+  missingFirst: Status;
+  missingLast: Status;
+  invalid: Status;
+}
+
+const BIOMETRIC_STATUSES: IntervalStatuses<AttendanceDetailsRow['biometric']['status']> = {
+  none: 'none',
+  complete: 'complete',
+  missingFirst: 'missing_in',
+  missingLast: 'missing_out',
+  invalid: 'invalid',
+};
+const ACCESS_CARD_STATUSES: IntervalStatuses<AttendanceDetailsRow['accessCard']['status']> = {
+  none: 'none',
+  complete: 'complete',
+  missingFirst: 'missing_entry',
+  missingLast: 'missing_exit',
+  invalid: 'invalid',
+};
+const ATTENDANCE_STATUS_PRIORITY: AttendanceDetailsRow['status'][] = [
+  'present',
+  'leave',
+  'holiday',
+  'weekend',
+  'pending_regularisation',
+  'partial',
+  'absent',
+];
+
 function attendanceIdentityKey(row: AttendanceDetailsRow): string {
   const code = row.employeeCode.trim().toUpperCase();
-  const personnelMatch = code.match(/^DDIH0*(\d+)$/) ?? code.match(/^0*(\d+)$/);
-  if (personnelMatch) return `personnel:${String(Number(personnelMatch[1]))}`;
+  const directoryMatch = /^DDIH(\d+)$/i.exec(code);
+  const personnelCode = directoryMatch?.[1] ?? (/^\d+$/.test(code) ? code : null);
+  if (personnelCode) return `personnel:${String(Number(personnelCode))}`;
   return `employee:${row.employeeId}`;
 }
 
-function firstInstant(values: Array<string | null>): string | null {
-  return values.filter((value): value is string => Boolean(value)).sort()[0] ?? null;
+function orderedInstants(values: Array<string | null>): string[] {
+  return values
+    .filter((value): value is string => Boolean(value))
+    .sort((left, right) => left.localeCompare(right));
 }
 
-function lastInstant(values: Array<string | null>): string | null {
-  return (
-    values
-      .filter((value): value is string => Boolean(value))
-      .sort()
-      .at(-1) ?? null
-  );
-}
-
-function mergeEvidence(
-  left: AttendanceDetailsRow['biometric'],
-  right: AttendanceDetailsRow['biometric'],
-): AttendanceDetailsRow['biometric'] {
-  const firstAt = firstInstant([left.firstAt, right.firstAt]);
-  const lastAt = lastInstant([left.lastAt, right.lastAt]);
+function mergeInterval<Status extends string>(
+  left: IntervalSummary<Status>,
+  right: IntervalSummary<Status>,
+  statuses: IntervalStatuses<Status>,
+): IntervalSummary<Status> {
+  const firstAt = orderedInstants([left.firstAt, right.firstAt])[0] ?? null;
+  const lastAt = orderedInstants([left.lastAt, right.lastAt]).at(-1) ?? null;
   const eventCount = Math.max(left.eventCount, right.eventCount);
-  const status: AttendanceDetailsRow['biometric']['status'] =
-    eventCount === 0
-      ? 'none'
-      : firstAt && lastAt
-        ? 'complete'
-        : !firstAt
-          ? 'missing_in'
-          : !lastAt
-            ? 'missing_out'
-            : 'invalid';
+  let status = statuses.none;
+  if (eventCount > 0 && !firstAt) status = statuses.missingFirst;
+  else if (eventCount > 0 && !lastAt) status = statuses.missingLast;
+  else if (firstAt && lastAt && lastAt <= firstAt) status = statuses.invalid;
+  else if (eventCount > 0) status = statuses.complete;
   return {
     status,
     firstAt,
@@ -53,34 +83,15 @@ function mergeEvidence(
   };
 }
 
-function mergeAccessCardEvidence(
-  left: AttendanceDetailsRow['accessCard'],
-  right: AttendanceDetailsRow['accessCard'],
-): AttendanceDetailsRow['accessCard'] {
-  const firstAt = firstInstant([left.firstAt, right.firstAt]);
-  const lastAt = lastInstant([left.lastAt, right.lastAt]);
-  const eventCount = Math.max(left.eventCount, right.eventCount);
-  const status: AttendanceDetailsRow['accessCard']['status'] =
-    eventCount === 0
-      ? 'none'
-      : firstAt && lastAt
-        ? 'complete'
-        : !firstAt
-          ? 'missing_entry'
-          : !lastAt
-            ? 'missing_exit'
-            : 'invalid';
-  return {
-    status,
-    firstAt,
-    lastAt,
-    workedMinutes: Math.max(left.workedMinutes, right.workedMinutes),
-    eventCount,
-  };
+function bestRow(
+  rows: AttendanceDetailsRow[],
+  score: (row: AttendanceDetailsRow) => number,
+): AttendanceDetailsRow {
+  return rows.reduce((best, row) => (score(row) > score(best) ? row : best));
 }
 
-function mergeRows(rows: AttendanceDetailsRow[]): AttendanceDetailsRow {
-  const canonical = [...rows].sort((left, right) => {
+function canonicalRow(rows: AttendanceDetailsRow[]): AttendanceDetailsRow {
+  return [...rows].sort((left, right) => {
     const leftIsDirectory = /^DDIH\d+$/i.test(left.employeeCode) ? 1 : 0;
     const rightIsDirectory = /^DDIH\d+$/i.test(right.employeeCode) ? 1 : 0;
     return (
@@ -88,64 +99,68 @@ function mergeRows(rows: AttendanceDetailsRow[]): AttendanceDetailsRow {
       left.employeeDisplayName.length - right.employeeDisplayName.length
     );
   })[0]!;
+}
+
+function resolvedAnomalies(
+  rows: AttendanceDetailsRow[],
+  biometric: AttendanceDetailsRow['biometric'],
+  accessCard: AttendanceDetailsRow['accessCard'],
+  website: AttendanceDetailsRow['website'],
+): string[] {
+  const anomalies = new Set(rows.flatMap((row) => row.anomalies));
+  const resolved = [
+    [biometric.status === 'complete', ['missing_biometric_in', 'missing_biometric_out']],
+    [accessCard.status === 'complete', ['missing_access_entry', 'missing_access_exit']],
+    [website.status === 'complete', ['missing_web_start', 'missing_web_stop']],
+  ] as const;
+  for (const [isResolved, values] of resolved) {
+    if (isResolved) values.forEach((value) => anomalies.delete(value));
+  }
+  return [...anomalies];
+}
+
+function mergedAttendanceStatus(rows: AttendanceDetailsRow[]): AttendanceDetailsRow['status'] {
+  return (
+    ATTENDANCE_STATUS_PRIORITY.find((status) => rows.some((row) => row.status === status)) ??
+    'absent'
+  );
+}
+
+function mergeRows(rows: AttendanceDetailsRow[]): AttendanceDetailsRow {
+  const canonical = canonicalRow(rows);
   const biometric = rows
     .slice(1)
-    .reduce((current, row) => mergeEvidence(current, row.biometric), rows[0]!.biometric);
+    .reduce(
+      (current, row) => mergeInterval(current, row.biometric, BIOMETRIC_STATUSES),
+      rows[0]!.biometric,
+    );
   const accessCard = rows
     .slice(1)
     .reduce(
-      (current, row) => mergeAccessCardEvidence(current, row.accessCard),
+      (current, row) => mergeInterval(current, row.accessCard, ACCESS_CARD_STATUSES),
       rows[0]!.accessCard,
     );
-  const website = [...rows].sort(
-    (left, right) =>
-      right.website.sessionCount - left.website.sessionCount ||
-      right.website.workedMinutes - left.website.workedMinutes,
-  )[0]!.website;
-  const timesheets = [...rows].sort(
-    (left, right) =>
-      right.timesheets.entryCount - left.timesheets.entryCount ||
-      right.timesheets.totalMinutes - left.timesheets.totalMinutes,
-  )[0]!.timesheets;
-  const anomalies = new Set(rows.flatMap((row) => row.anomalies));
-  if (biometric.status === 'complete') {
-    anomalies.delete('missing_biometric_in');
-    anomalies.delete('missing_biometric_out');
-  }
-  if (accessCard.status === 'complete') {
-    anomalies.delete('missing_access_entry');
-    anomalies.delete('missing_access_exit');
-  }
-  if (website.status === 'complete') {
-    anomalies.delete('missing_web_start');
-    anomalies.delete('missing_web_stop');
-  }
-
-  const status = rows.some((row) => row.status === 'present')
-    ? 'present'
-    : rows.some((row) => row.status === 'leave')
-      ? 'leave'
-      : rows.some((row) => row.status === 'holiday')
-        ? 'holiday'
-        : rows.some((row) => row.status === 'weekend')
-          ? 'weekend'
-          : rows.some((row) => row.status === 'pending_regularisation')
-            ? 'pending_regularisation'
-            : rows.some((row) => row.status === 'partial')
-              ? 'partial'
-              : 'absent';
+  const website = bestRow(
+    rows,
+    (row) => row.website.sessionCount * 100_000 + row.website.workedMinutes,
+  ).website;
+  const timesheets = bestRow(
+    rows,
+    (row) => row.timesheets.entryCount * 100_000 + row.timesheets.totalMinutes,
+  ).timesheets;
+  const anomalies = resolvedAnomalies(rows, biometric, accessCard, website);
 
   return {
     ...canonical,
     id: canonical.id,
-    status,
-    requiresReview: anomalies.size > 0,
+    status: mergedAttendanceStatus(rows),
+    requiresReview: anomalies.length > 0,
     biometric,
     accessCard,
     website,
     timesheets,
     payableMinutes: Math.max(...rows.map((row) => row.payableMinutes)),
-    anomalies: [...anomalies],
+    anomalies,
   };
 }
 

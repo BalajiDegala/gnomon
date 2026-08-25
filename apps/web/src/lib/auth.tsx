@@ -25,7 +25,7 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-async function parseResponse(response: Response): Promise<AuthResponse> {
+export async function parseAuthResponse(response: Response): Promise<AuthResponse> {
   const contentType = response.headers.get('content-type') ?? '';
   if (!contentType.toLowerCase().includes('application/json')) {
     throw new Error(
@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       method: 'POST',
       credentials: 'include',
     });
-    const auth = await parseResponse(response);
+    const auth = await parseAuthResponse(response);
     applyAuth(auth);
     return auth;
   }, [applyAuth]);
@@ -108,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(input),
       });
-      applyAuth(await parseResponse(response));
+      applyAuth(await parseAuthResponse(response));
     },
     [applyAuth],
   );
