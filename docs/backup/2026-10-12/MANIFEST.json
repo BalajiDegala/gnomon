@@ -1,0 +1,220 @@
+{
+  "date": "2026-10-12",
+  "purpose": "Handover folder cleanup; originals retained for recovery",
+  "entries": [
+    {
+      "original_path": "docs/APPROVAL_ROUTE_IMPORT.md",
+      "backup_path": "docs/backup/2026-10-12/docs/APPROVAL_ROUTE_IMPORT.md",
+      "action": "moved",
+      "sha256": "299e99a2c1130bab5e5e0c8a878c0a0bf25e5fbe78af1452ede9a86277ed8da5",
+      "files": 1,
+      "bytes": 2009
+    },
+    {
+      "original_path": "docs/ATTENDANCE_CSV_FORMAT.md",
+      "backup_path": "docs/backup/2026-10-12/docs/ATTENDANCE_CSV_FORMAT.md",
+      "action": "copied",
+      "sha256": "4c0af77cca42ea9958c7fb6b8a46f7d78c470673f9335b38cad5a29cb92c5c3f",
+      "files": 1,
+      "bytes": 11878
+    },
+    {
+      "original_path": "docs/CI_CD_DEPLOYMENT.md",
+      "backup_path": "docs/backup/2026-10-12/docs/CI_CD_DEPLOYMENT.md",
+      "action": "copied",
+      "sha256": "915eb98cf8fa09bb99319d5530cbcb601e86c45b6afe04008e972b0c35aab27f",
+      "files": 1,
+      "bytes": 16402
+    },
+    {
+      "original_path": "docs/DEMO_DATA.md",
+      "backup_path": "docs/backup/2026-10-12/docs/DEMO_DATA.md",
+      "action": "moved",
+      "sha256": "73f824cb5dc23a41385f432646c94e03058b5f5102c681fe6d5acbcc1f306af9",
+      "files": 1,
+      "bytes": 1663
+    },
+    {
+      "original_path": "docs/HANDOVER_RUNBOOK.md",
+      "backup_path": "docs/backup/2026-10-12/docs/HANDOVER_RUNBOOK.md",
+      "action": "copied",
+      "sha256": "1ccd1ecceed69db404f3a1e487f74b0861edeceffa79cdd5947cbf0de9e7e156",
+      "files": 1,
+      "bytes": 44171
+    },
+    {
+      "original_path": "docs/LEAVE_CALENDAR_WORKFLOW.md",
+      "backup_path": "docs/backup/2026-10-12/docs/LEAVE_CALENDAR_WORKFLOW.md",
+      "action": "moved",
+      "sha256": "ba5b1cd89b338771b80524c6025595ae615c618e387b1ef2e6dd9c2a8a6a261a",
+      "files": 1,
+      "bytes": 7330
+    },
+    {
+      "original_path": "docs/LOCAL_DOCKER_IMAGES.md",
+      "backup_path": "docs/backup/2026-10-12/docs/LOCAL_DOCKER_IMAGES.md",
+      "action": "moved",
+      "sha256": "eb74c197b88f6277c456cf96064938120810b090f322b1338e57f3dcd8ed2640",
+      "files": 1,
+      "bytes": 11161
+    },
+    {
+      "original_path": "docs/MVP_PLAN.md",
+      "backup_path": "docs/backup/2026-10-12/docs/MVP_PLAN.md",
+      "action": "moved",
+      "sha256": "a8ea8fc1f484e34c6e0ce071b635900b8590b563a30cb917ce0fa03308f960d8",
+      "files": 1,
+      "bytes": 24424
+    },
+    {
+      "original_path": "docs/MVP_STABILIZATION_BACKLOG.md",
+      "backup_path": "docs/backup/2026-10-12/docs/MVP_STABILIZATION_BACKLOG.md",
+      "action": "copied",
+      "sha256": "af1e5caaef7d3e036b046f3a262d20cf71d1e974e8b75e5c61f478c951fba622",
+      "files": 1,
+      "bytes": 2946
+    },
+    {
+      "original_path": "docs/POLICY_ADMINISTRATION.md",
+      "backup_path": "docs/backup/2026-10-12/docs/POLICY_ADMINISTRATION.md",
+      "action": "moved",
+      "sha256": "49fd65ac4fea67e8fb6b5224071bb65d854918f2d52f96285adb5191b62b2ff6",
+      "files": 1,
+      "bytes": 7349
+    },
+    {
+      "original_path": "docs/RECONCILIATION_POLICY.md",
+      "backup_path": "docs/backup/2026-10-12/docs/RECONCILIATION_POLICY.md",
+      "action": "moved",
+      "sha256": "9a9d9e50658bb7699ccbdb7bef61a20edf3213ec9f9e421d3aafb50e3c0bb659",
+      "files": 1,
+      "bytes": 6790
+    },
+    {
+      "original_path": "docs/REGULARISATION_WORKFLOW.md",
+      "backup_path": "docs/backup/2026-10-12/docs/REGULARISATION_WORKFLOW.md",
+      "action": "moved",
+      "sha256": "8a818da2968b7b99e1d8518e3195ca0b4925534c5cf0c52908015bec26d4b15d",
+      "files": 1,
+      "bytes": 3748
+    },
+    {
+      "original_path": "docs/TEAM_CALENDAR_WORKFLOW.md",
+      "backup_path": "docs/backup/2026-10-12/docs/TEAM_CALENDAR_WORKFLOW.md",
+      "action": "moved",
+      "sha256": "cfabe03e428a88aedb845597d178b11bb02554bb987fe1d156be71c1eaaa921c",
+      "files": 1,
+      "bytes": 2067
+    },
+    {
+      "original_path": "docs/TIMESHEET_WORKFLOW.md",
+      "backup_path": "docs/backup/2026-10-12/docs/TIMESHEET_WORKFLOW.md",
+      "action": "moved",
+      "sha256": "a400fff20aab56c97a46c02783d20bd1d62675271f75a54604b0155daefa2e6b",
+      "files": 1,
+      "bytes": 3506
+    },
+    {
+      "original_path": "coverage",
+      "backup_path": "docs/backup/2026-10-12/local-only/coverage",
+      "action": "moved",
+      "local_only": true,
+      "sha256": "e833445d510e546d9f837003e70c17d2c2b9e70a70f6aa3000f9f8ec5cd82ee9",
+      "files": 129,
+      "bytes": 2181722
+    },
+    {
+      "original_path": "apps/api/coverage",
+      "backup_path": "docs/backup/2026-10-12/local-only/apps/api/coverage",
+      "action": "moved",
+      "local_only": true,
+      "sha256": "06a0ec3612deffc3791e43142feb5b325d9f1c90f15f86e0ef0453604dd9afe0",
+      "files": 92,
+      "bytes": 1794721
+    },
+    {
+      "original_path": "apps/web/coverage",
+      "backup_path": "docs/backup/2026-10-12/local-only/apps/web/coverage",
+      "action": "moved",
+      "local_only": true,
+      "sha256": "3901664317a87978488aae4d34508bd8cd68831337d63287e2214e204c83b256",
+      "files": 14,
+      "bytes": 103767
+    },
+    {
+      "original_path": "packages/shared/coverage",
+      "backup_path": "docs/backup/2026-10-12/local-only/packages/shared/coverage",
+      "action": "moved",
+      "local_only": true,
+      "sha256": "a088597a5a9ebdffd80e5c640a07fcaedc1bd9e2155fcd711c034baa7f743a61",
+      "files": 20,
+      "bytes": 259728
+    },
+    {
+      "original_path": "apps/web/test-results",
+      "backup_path": "docs/backup/2026-10-12/local-only/apps/web/test-results",
+      "action": "moved",
+      "local_only": true,
+      "sha256": "3e8c4a9fe12d236106cd11197fe0ba72b0b785e087211ad3dc9b5d915c684894",
+      "files": 3,
+      "bytes": 1328250
+    },
+    {
+      "original_path": "apps/web/tsconfig.app.tsbuildinfo",
+      "backup_path": "docs/backup/2026-10-12/local-only/apps/web/tsconfig.app.tsbuildinfo",
+      "action": "moved",
+      "local_only": true,
+      "sha256": "11b56a962b66fbee5bf3a50fe3451a7a0004cb2aaa256318796ca3f6ffa231ec",
+      "files": 1,
+      "bytes": 21924
+    },
+    {
+      "original_path": "apps/web/tsconfig.node.tsbuildinfo",
+      "backup_path": "docs/backup/2026-10-12/local-only/apps/web/tsconfig.node.tsbuildinfo",
+      "action": "moved",
+      "local_only": true,
+      "sha256": "f66eaf951d01fca1f401a2124e1d6953164d355d8db8107b29a7dc0f1550e34c",
+      "files": 1,
+      "bytes": 69852
+    },
+    {
+      "original_path": "cred",
+      "backup_path": "docs/backup/2026-10-12/local-only/private/cred",
+      "action": "moved",
+      "local_only": true,
+      "verified": true
+    },
+    {
+      "original_path": "README.md",
+      "backup_path": "docs/backup/2026-10-12/README.md",
+      "action": "copied",
+      "sha256": "338fcb41c808e36ef7b433a833b04a9422ee7247dbcdcd54d7e27b6cbcbb4c91",
+      "files": 1,
+      "bytes": 10830
+    },
+    {
+      "original_path": ".gitignore",
+      "backup_path": "docs/backup/2026-10-12/configuration/gitignore.original",
+      "action": "copied",
+      "sha256": "690b2daff37b7c8ef1dcdad3096988d3989768998526718ed722f539e6907621",
+      "files": 1,
+      "bytes": 177
+    },
+    {
+      "original_path": ".dockerignore",
+      "backup_path": "docs/backup/2026-10-12/configuration/dockerignore.original",
+      "action": "copied",
+      "sha256": "09edc8db6f02e443c1ec234e243f3032ba72bc82e87ac5fd2a942979602e1dfe",
+      "files": 1,
+      "bytes": 82
+    },
+    {
+      "original_path": ".prettierignore",
+      "backup_path": "docs/backup/2026-10-12/configuration/prettierignore.original",
+      "action": "copied",
+      "sha256": "8cf8575b669bbed23323d3f91ebed43493d6523cb912a6b7dd092362c5f09dc2",
+      "files": 1,
+      "bytes": 71
+    }
+  ]
+}

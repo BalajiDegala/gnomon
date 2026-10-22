@@ -1,4 +1,9 @@
 import type { ParsedEmployeeProfile } from './attendance-import.parser.js';
+import {
+  directoryPersonnelIdCandidates,
+  normalizeAttendanceName,
+  normalizePersonnelId,
+} from './attendance-identity.js';
 
 export interface WorkbookEmployeeCandidate {
   employeeCode: string;
@@ -10,21 +15,7 @@ export interface WorkbookEmployeeCandidate {
 }
 
 function normalizedName(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '');
-}
-
-function normalizedNumericId(value: string): string | null {
-  if (!/^\d+$/.test(value)) return null;
-  return String(Number(value));
-}
-
-function directoryPersonnelId(value: string): string | null {
-  const match = /^DDIH(\d+)$/i.exec(value);
-  return match ? normalizedNumericId(match[1]!) : null;
+  return normalizeAttendanceName(value);
 }
 
 function appendLookup<T>(lookup: Map<string, T[]>, key: string, value: T): void {
@@ -33,9 +24,13 @@ function appendLookup<T>(lookup: Map<string, T[]>, key: string, value: T): void 
   lookup.set(key, matches);
 }
 
-function uniqueMatch<T>(lookup: Map<string, T[]>, key: string | null): T | null {
+function uniqueMatch<T>(
+  lookup: Map<string, T[]>,
+  key: string | null,
+  used: Set<T> = new Set(),
+): T | null {
   if (!key) return null;
-  const matches = lookup.get(key) ?? [];
+  const matches = (lookup.get(key) ?? []).filter((match) => !used.has(match));
   return matches.length === 1 ? matches[0]! : null;
 }
 
@@ -46,28 +41,51 @@ export function matchWorkbookEmployeeProfiles<T extends WorkbookEmployeeCandidat
   const byCode = new Map<string, T>();
   const byName = new Map<string, T[]>();
   const byPersonnelId = new Map<string, T[]>();
+  const matchedEmployees = new Map<string, T>();
+  const usedEmployees = new Set<T>();
 
   for (const employee of employees) {
     byCode.set(employee.employeeCode, employee);
     if (employee.attendanceIdentity?.personnelId) {
       byCode.set(employee.attendanceIdentity.personnelId, employee);
     }
-    if (employee.profileSource !== 'users_csv' && employee.profileSource !== 'manual') continue;
+    if (!['users_csv', 'biometric_csv', 'manual'].includes(employee.profileSource)) continue;
     const name = employee.hrProfile?.fullName ?? `${employee.firstName} ${employee.lastName}`;
     appendLookup(byName, normalizedName(name), employee);
-    const personnelId = directoryPersonnelId(employee.employeeCode);
-    if (personnelId) appendLookup(byPersonnelId, personnelId, employee);
+    for (const personnelId of directoryPersonnelIdCandidates(employee.employeeCode)) {
+      appendLookup(byPersonnelId, personnelId, employee);
+    }
   }
 
-  const matchedEmployees = new Map<string, T>();
   const createdCodes: string[] = [];
   for (const profile of profiles) {
     const matched =
-      byCode.get(profile.employeeCode) ??
-      uniqueMatch(byPersonnelId, normalizedNumericId(profile.employeeCode)) ??
-      uniqueMatch(byName, normalizedName(`${profile.firstName} ${profile.lastName}`));
-    if (matched) matchedEmployees.set(profile.employeeCode, matched);
-    else createdCodes.push(profile.employeeCode);
+      (byCode.get(profile.employeeCode) && !usedEmployees.has(byCode.get(profile.employeeCode)!)
+        ? byCode.get(profile.employeeCode)
+        : null) ??
+      uniqueMatch(
+        byName,
+        normalizedName(`${profile.firstName} ${profile.lastName}`),
+        usedEmployees,
+      );
+    if (matched) {
+      matchedEmployees.set(profile.employeeCode, matched);
+      usedEmployees.add(matched);
+    }
+  }
+  for (const profile of profiles) {
+    if (matchedEmployees.has(profile.employeeCode)) continue;
+    const matched = uniqueMatch(
+      byPersonnelId,
+      normalizePersonnelId(profile.employeeCode),
+      usedEmployees,
+    );
+    if (matched) {
+      matchedEmployees.set(profile.employeeCode, matched);
+      usedEmployees.add(matched);
+    } else {
+      createdCodes.push(profile.employeeCode);
+    }
   }
   return { matchedEmployees, createdCodes };
 }

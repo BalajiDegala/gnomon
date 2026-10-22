@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { matchWorkbookEmployeeProfiles } from '../src/modules/imports/attendance-employee-matcher.js';
+import { directoryPersonnelIdCandidates } from '../src/modules/imports/attendance-identity.js';
 import type { ParsedEmployeeProfile } from '../src/modules/imports/attendance-import.parser.js';
 
 function profile(
@@ -42,6 +43,15 @@ function employee(
 }
 
 describe('matchWorkbookEmployeeProfiles', () => {
+  it('maps biometric directory families to controller Personnel IDs', () => {
+    expect(directoryPersonnelIdCandidates('DDIC279')).toEqual(['7279']);
+    expect(directoryPersonnelIdCandidates('DDIH054')).toEqual(['54', '9054']);
+    expect(directoryPersonnelIdCandidates('DDIH0667')).toEqual(['667', '9667']);
+    expect(directoryPersonnelIdCandidates('DDII061')).toEqual(['5061']);
+    expect(directoryPersonnelIdCandidates('DDHK051')).toEqual([]);
+    expect(directoryPersonnelIdCandidates('UNKNOWN104')).toEqual([]);
+  });
+
   it('matches exact employee and attendance identity codes', () => {
     const exact = employee('exact', '667');
     const identity = employee('identity', 'DDIH668', {
@@ -66,6 +76,13 @@ describe('matchWorkbookEmployeeProfiles', () => {
     expect(result.matchedEmployees.get('667')).toBe(directory);
   });
 
+  it('links a later door import to a profile created from biometric attendance', () => {
+    const biometric = employee('biometric', 'DDIH667', { profileSource: 'biometric_csv' });
+    const result = matchWorkbookEmployeeProfiles([profile('9667')], [biometric]);
+    expect(result.matchedEmployees.get('9667')).toBe(biometric);
+    expect(result.createdCodes).toEqual([]);
+  });
+
   it('falls back to a unique normalized HR name', () => {
     const directory = employee('directory', 'HR-667', {
       firstName: 'Unused',
@@ -76,6 +93,35 @@ describe('matchWorkbookEmployeeProfiles', () => {
     const result = matchWorkbookEmployeeProfiles([profile('door-667')], [directory]);
 
     expect(result.matchedEmployees.get('door-667')).toBe(directory);
+  });
+
+  it('prefers the exact name when several Personnel IDs share a directory suffix', () => {
+    const directory = employee('directory', 'DDIH104', {
+      firstName: 'Naga Jagan',
+      lastName: 'Midde',
+      hrProfile: { fullName: 'Naga Jagan Midde' },
+    });
+
+    const result = matchWorkbookEmployeeProfiles(
+      [profile('11104', 'Sanjaya', 'T'), profile('9104', 'Naga Jagan', 'Midde')],
+      [directory],
+    );
+
+    expect(result.matchedEmployees.get('9104')).toBe(directory);
+    expect(result.createdCodes).toEqual(['11104']);
+  });
+
+  it('does not link unrelated 10/11-series personnel when the employee is absent', () => {
+    const directory = employee('directory', 'DDIH104', {
+      firstName: 'Naga Jagan',
+      lastName: 'Midde',
+    });
+    const result = matchWorkbookEmployeeProfiles(
+      [profile('10104', 'Dhanamma', 'K'), profile('11104', 'Sanjaya', 'T')],
+      [directory],
+    );
+    expect(result.matchedEmployees.size).toBe(0);
+    expect(result.createdCodes).toEqual(['10104', '11104']);
   });
 
   it('creates a profile when directory matches are absent or ambiguous', () => {

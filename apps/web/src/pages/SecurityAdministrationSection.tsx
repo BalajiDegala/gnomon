@@ -180,7 +180,9 @@ export function SecurityAdministrationSection() {
           employee.employeeCode,
           employee.employeeDisplayName,
           employee.employeeEmail,
-          employee.attendanceIdentity?.departmentName ?? '',
+          employee.biometricProfile?.departmentName ??
+            employee.attendanceIdentity?.departmentName ??
+            '',
           employee.attendanceIdentity?.cardNumber ?? '',
           employee.account?.email ?? '',
           ...(employee.account?.assignments.map((assignment) => assignment.roleName) ?? []),
@@ -361,7 +363,9 @@ export function SecurityAdministrationSection() {
       render: (employee) => (
         <Box>
           <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 750 }}>
-            {employee.attendanceIdentity?.departmentName ?? 'Manual profile'}
+            {employee.biometricProfile?.departmentName ??
+              employee.attendanceIdentity?.departmentName ??
+              'Manual profile'}
           </Typography>
           <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
             {employee.attendanceIdentity?.cardNumber

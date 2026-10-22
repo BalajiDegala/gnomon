@@ -276,6 +276,8 @@ export function PeoplePage() {
           employee.hrProfile?.userId.toLowerCase().includes(term) ||
           employee.hrProfile?.designation.toLowerCase().includes(term) ||
           employee.hrProfile?.departmentName.toLowerCase().includes(term) ||
+          employee.biometricProfile?.designation?.toLowerCase().includes(term) ||
+          employee.biometricProfile?.departmentName?.toLowerCase().includes(term) ||
           employee.hrProfile?.emailTriggers.some((email) => email.includes(term)) ||
           employee.attendanceIdentity?.cardNumber?.toLowerCase().includes(term) ||
           employee.attendanceIdentity?.departmentName?.toLowerCase().includes(term) ||
@@ -418,13 +420,15 @@ export function PeoplePage() {
       id: 'designation',
       label: 'New Designation',
       minWidth: 190,
-      render: (employee) => employee.hrProfile?.designation ?? '—',
+      render: (employee) =>
+        employee.hrProfile?.designation ?? employee.biometricProfile?.designation ?? '—',
     },
     {
       id: 'department',
       label: 'Dept',
       minWidth: 150,
-      render: (employee) => employee.hrProfile?.departmentName ?? '—',
+      render: (employee) =>
+        employee.hrProfile?.departmentName ?? employee.biometricProfile?.departmentName ?? '—',
     },
     {
       id: 'email-triggers',

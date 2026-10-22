@@ -1,10 +1,22 @@
 import { Types } from 'mongoose';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { AttendanceEvent } from '../src/modules/attendance/attendance-event.model.js';
 import { EmployeeAuditEvent } from '../src/modules/employees/employee-audit.model.js';
 import { Employee } from '../src/modules/employees/employee.model.js';
-import { provisionWorkbookEmployees } from '../src/modules/imports/attendance-import.service.js';
+import {
+  importAttendanceCsv,
+  provisionWorkbookEmployees,
+} from '../src/modules/imports/attendance-import.service.js';
 import type { ParsedAttendanceFile } from '../src/modules/imports/attendance-import.parser.js';
+import { ImportBatch } from '../src/modules/imports/import-batch.model.js';
+
+vi.mock('../src/modules/reconciliation/reconciliation.service.js', () => ({
+  reconcileDailyTimecard: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock('../src/modules/imports/attendance-write-lock.js', () => ({
+  withAttendanceWriteLock: (action: () => Promise<unknown>) => action(),
+}));
 
 function queryResult<T>(value: T) {
   const query = {
@@ -98,4 +110,71 @@ describe('provisionWorkbookEmployees', () => {
       { ordered: false },
     );
   });
+});
+
+describe('attendance identity resolution', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it.each(['DDIH054', 'CARD-54'])(
+    'preserves the exact %s match when a numeric candidate belongs to another employee',
+    async (sourceCode) => {
+      const employeeId = new Types.ObjectId();
+      const actorId = new Types.ObjectId();
+      vi.spyOn(AttendanceEvent, 'createIndexes').mockResolvedValue(undefined);
+      vi.spyOn(ImportBatch, 'createIndexes').mockResolvedValue(undefined);
+      vi.spyOn(ImportBatch, 'findOne').mockReturnValue(queryResult(null) as never);
+      const batch = new ImportBatch({
+        source: 'biometric',
+        importType: 'csv',
+        fileName: 'biometric.csv',
+        fileHash: 'test',
+        importedBy: actorId,
+        createdAt: new Date(),
+      });
+      vi.spyOn(batch, 'save').mockResolvedValue(batch);
+      vi.spyOn(ImportBatch, 'create').mockResolvedValue(batch as never);
+      vi.spyOn(Employee, 'find').mockReturnValue(
+        queryResult([
+          {
+            _id: employeeId,
+            employeeCode: 'DDIH054',
+            firstName: 'Correct',
+            lastName: 'Employee',
+            attendanceIdentity: { personnelId: 'CARD-54' },
+          },
+          {
+            _id: new Types.ObjectId(),
+            employeeCode: '9054',
+            firstName: 'Different',
+            lastName: 'Employee',
+            attendanceIdentity: { personnelId: '9054' },
+          },
+        ]) as never,
+      );
+      const write = vi.spyOn(AttendanceEvent, 'bulkWrite').mockResolvedValue({
+        upsertedCount: 1,
+      } as never);
+
+      const result = await importAttendanceCsv({
+        source: 'biometric',
+        fileName: 'biometric.csv',
+        importedBy: actorId.toString(),
+        csvText: `employee_code,occurred_at,event_type\n${sourceCode},2026-06-01 09:00:00,in`,
+      });
+
+      expect(result.batch.successfulRows).toBe(1);
+      expect(write).toHaveBeenCalledWith(
+        [
+          expect.objectContaining({
+            updateOne: expect.objectContaining({
+              update: expect.objectContaining({
+                $setOnInsert: expect.objectContaining({ employeeId }),
+              }),
+            }),
+          }),
+        ],
+        { ordered: false },
+      );
+    },
+  );
 });

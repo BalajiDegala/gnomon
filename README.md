@@ -1,229 +1,88 @@
 # Gnomon 2.0
 
-Gnomon is the DIGITAL DOMAIN INDIA workforce management application described in
-[`docs/MVP_PLAN.md`](docs/MVP_PLAN.md). It is a TypeScript MERN monorepo for
-attendance reconciliation, website timecards, show-level timesheets, leave,
-regularisation, calendars, request approvals, and scoped administration.
+Gnomon is DIGITAL DOMAIN INDIA's workforce management application. It covers
+attendance, show timesheets, leave, attendance corrections, approvals, and reporting.
+The application uses React, Express, TypeScript, and MongoDB.
 
-## Current implementation
+## Start the handover here
 
-The completed workforce-management MVP includes:
+Read the [plain-language handover runbook](docs/HANDOVER_RUNBOOK.md) first. It covers
+HR/admin tasks, local setup, releases, troubleshooting, backups, recovery, and the
+ownership checklist.
 
-- Responsive React and Material UI application shell with a polished login page,
-  permission-aware navigation, desktop sidebar, and mobile drawer.
-- Express API with health probes and centralized errors.
-- MongoDB employee, user, role, and scoped role-assignment models.
-- JWT access tokens and HTTP-only refresh sessions.
-- Shared permission, scope, login, and workday policy definitions.
-- Employee website start/stop sessions with a database-enforced single-running-session rule.
-- Live timecard dashboard with a nine-hour progress view, three attendance-signal
-  cards, session history, and correct 07:00-to-07:00 work-date assignment.
-- Company-scoped biometric/access-card CSV imports and first-in/last-out door
-  workbook imports with file/row idempotency,
-  immutable raw events, validation results, and import history.
-- Permission-to-scope authorization grants for protected company-wide actions.
-- Company- or show-scoped show administration with editable show identity and lifecycle
-  status. Every active show is available to every employee when recording time; employees
-  are never assigned to shows or tasks.
-- Direct-saved employee show-time entries with start/end intervals, a free-text work
-  comment, progress from 10% to 100% in ten-percent steps, work-session linkage,
-  overlap protection, editing, confirmed deletion, date navigation, and daily totals.
-  Historical entries remain readable and editable when their show closes. Timesheets have
-  no approval workflow.
-- Persisted daily reconciliation across biometric, access-card, website-session,
-  and show-time evidence with source precedence, open/closed workday handling,
-  nine-hour calculation, and discrepancy detection.
-- Responsive reconciliation dashboard showing source totals, primary evidence,
-  provisional state, attendance result, and review anomalies.
-- Employee missed-biometric and website start/stop regularisation requests with
-  closed-workday validation, duplicate prevention, cancellation, and status history.
-- Two-step Reporting Manager then HR/Attendance approval, strict direct-report/
-  company/department scope enforcement, self-approval prevention, and
-  immutable decision history.
-- Approved corrections finalise the daily timecard while preserving all imported
-  biometric, access-card, and website evidence.
-- Casual, sick, earned, and unpaid leave requests with full-day or single-day
-  half-day support, weekend exclusion, overlap prevention, cancellation, and
-  private employee reasons.
-- Optional annual paid-leave balances that are enforced when configured and shown
-  explicitly as not configured otherwise; the MVP does not invent entitlements.
-- Department-configurable one- or two-stage leave approval with any-of second-approver
-  pools, snapshotted request routing, and self-approval prevention.
-- Approved full-day leave finalises the effective attendance state while keeping
-  source evidence intact; approved half-day leave reduces the attendance requirement
-  to 270 minutes and retains the worked portion.
-- Responsive personal calendar combining reconciled attendance with pending and
-  approved leave without exposing leave reasons.
-- Scoped Reporting Manager direct-report and System Administrator company calendars
-  with responsive month matrices and private-reason redaction. Team Calendar has no
-  show filter.
-- One auditable company holiday calendar shared by every employee, with
-  archive/reactivate support, leave-range conflict protection, and automatic exclusion
-  from leave days.
-- One-branch MVP baseline: branch selection and employee-location assignment are not
-  exposed in Administration; legacy location records remain readable for compatibility.
-- HR-scoped employee leave-balance administration for annual entitlement, signed
-  adjustment, usage, availability, and notes.
-- Permission-aware Administration workspace for attendance imports, company holidays,
-  employee leave balances, and access control.
-- Scoped employee directory with employee creation, profile/status maintenance,
-  reporting-manager assignment, and immutable employee change events.
-- Searchable, filterable, and paginated System Administrator access directory for login
-  provisioning, password/status controls, scoped role assignment, session revocation,
-  self-lockout protection, and immutable security events.
-- Scoped attendance, leave, regularisation, and timesheet reports with summary metrics,
-  responsive tables, and per-domain CSV export.
-- Permission-aware Employee, Manager, HR & Admin, and Reporting navigation groups.
-- Responsive Shows and Timesheets pages for desktop and mobile.
-- Focused timecard detail view plus operational leave, calendar, approvals, show,
-  timesheet, import, and regularisation pages.
-- Playwright coverage for authenticated desktop and mobile application flows.
-- Seeded Employee, Reporting Manager, Show Manager, HR, Attendance Administrator,
-  and System Administrator permission sets.
-- Development Docker Compose configuration.
-- Kubeadm/containerd-compatible Helm chart aligned with the local cluster.
+The [documentation index](docs/README.md) lists the current handover documents.
+Older plans and supporting references are preserved in
+[the documentation backup](docs/backup/README.md).
 
-Payroll, mobile/geolocation attendance, project hierarchy, configurable shifts, and a
-general approval-policy designer are explicitly outside this MVP.
+## Project layout
 
-The accepted attendance CSV contract is documented in
-[`docs/ATTENDANCE_CSV_FORMAT.md`](docs/ATTENDANCE_CSV_FORMAT.md).
-The repeatable local demo dataset and persona logins are documented in
-[`docs/DEMO_DATA.md`](docs/DEMO_DATA.md).
-The prioritized basic workflow and usability work is tracked in
-[`docs/MVP_STABILIZATION_BACKLOG.md`](docs/MVP_STABILIZATION_BACKLOG.md).
-The show setup and direct-saved employee show-time workflow is documented in
-[`docs/TIMESHEET_WORKFLOW.md`](docs/TIMESHEET_WORKFLOW.md).
-The daily calculation and provisional policy are documented in
-[`docs/RECONCILIATION_POLICY.md`](docs/RECONCILIATION_POLICY.md).
-The attendance correction and approval workflow is documented in
-[`docs/REGULARISATION_WORKFLOW.md`](docs/REGULARISATION_WORKFLOW.md).
-The leave, approval, balance, calendar, and attendance interaction is documented in
-[`docs/LEAVE_CALENDAR_WORKFLOW.md`](docs/LEAVE_CALENDAR_WORKFLOW.md).
-The `approvals.csv` mapping and second-approver pool behavior are documented in
-[`docs/APPROVAL_ROUTE_IMPORT.md`](docs/APPROVAL_ROUTE_IMPORT.md).
-Company holiday and leave-balance administration is documented in
-[`docs/POLICY_ADMINISTRATION.md`](docs/POLICY_ADMINISTRATION.md).
-Manager team availability calendars are documented in
-[`docs/TEAM_CALENDAR_WORKFLOW.md`](docs/TEAM_CALENDAR_WORKFLOW.md).
+| Folder or file                      | Purpose                                                        |
+| ----------------------------------- | -------------------------------------------------------------- |
+| `apps/web`                          | Website, forms, navigation, and browser tests                  |
+| `apps/api`                          | Server, business rules, imports, database models, and tests    |
+| `packages/shared`                   | Shared types, validation rules, and tests                      |
+| `deploy`                            | Helm chart, GitOps templates, and CI/CD configuration          |
+| `scripts`                           | Delivery setup, verification, and local image helpers          |
+| `docs`                              | Current handover documents and a separate backup folder        |
+| `Jenkinsfile`                       | Automated build, checks, image publication, and release update |
+| `compose.yaml`                      | Local MongoDB, API, and website services                       |
+| `.env.example`                      | Environment-variable template with example values              |
+| `package.json`, `package-lock.json` | Workspace commands and locked dependencies                     |
 
-## Release status
+## Local setup
 
-| Item                     | Status                                       |
-| ------------------------ | -------------------------------------------- |
-| Source and Helm version  | `0.11.0`                                     |
-| Git branch               | `main`                                       |
-| Source release state     | Local release candidate, validated           |
-| Docker Compose release   | `0.11.0`, running at `http://localhost:8080` |
-| Local Kubernetes release | `0.9.0`, Helm revision 11, deployed          |
-| Local `0.11.0` images    | Compose images built and healthy             |
-| Container target         | kubeadm/containerd `k8s.io`, `linux/amd64`   |
-| Ingress                  | `http://gnomon.local` through NGINX Ingress  |
+Use Node.js 22, npm 10 or later, Docker, and Docker Compose. Follow the
+[local setup steps](docs/HANDOVER_RUNBOOK.md#7-running-it-on-a-developers-machine)
+for environment settings and initial administrator creation.
 
-## Prerequisites
+The development website uses port 5173. Docker Compose normally uses port 8080;
+the local `compose.override.yaml` changes it to 8081. Confirm the effective port
+with `docker compose port web 8080`.
 
-- Node.js 22 or later
-- npm 10 or later
-- Docker with Compose
+API workspace commands need the correct environment-file path. When using a root
+`.env`, run `export DOTENV_CONFIG_PATH="$PWD/.env"` from the repository root before
+starting the API or seeding an administrator.
 
-## Local development
+## Checks before a release
+
+Run from the repository root:
 
 ```bash
-cp .env.example .env
-npm install
-npm run dev:db
-npm run seed:admin --workspace @gnomon/api
-npm run dev
-```
-
-The web application runs at `http://localhost:5173` and proxies API requests to
-`http://localhost:4000`. Change the example secrets and administrator password
-before running the seed command.
-
-## Verification
-
-```bash
+npm ci
+npm run format:check
 npm run typecheck
 npm test
 npm run build
-npm run format:check
-npm run e2e --workspace @gnomon/web
 ```
 
-## Git workflow
+Browser checks need a separately running test application and test accounts. See
+[the release procedure](docs/HANDOVER_RUNBOOK.md#8-releasing-a-change) for that
+setup and the complete release checks.
 
-This workspace is a Git repository on the `main` branch. The initial tracked
-baseline is commit `aec2463` (`feat: establish gnomon attendance MVP v0.2.0`).
+## Deployment
 
-Each completed implementation slice must be committed separately after its
-relevant type checks, tests, build, formatting, and deployment checks pass. Use
-clear conventional commit messages such as:
+The documented lab uses GitLab → Jenkins → SonarQube → Harbor → GitOps → Argo CD
+→ Kubernetes. Normal releases follow this path. See
+[CI/CD and Kubernetes operations](docs/CI_CD_DEPLOYMENT.md) for the platform setup
+and [the runbook](docs/HANDOVER_RUNBOOK.md#8-releasing-a-change) for release and
+rollback instructions.
 
-```text
-feat: add regularisation request workflow
-fix: prevent overlapping show time entries
-docs: document MongoDB restore procedure
-```
+The package version is `0.11.0`. Verify the live revision from Argo CD and image
+tags; a package version or an old README does not establish what is running.
 
-Generated output, local environment files, test artifacts, private Helm values,
-and credentials must remain untracked. Before every commit, verify:
+## Files to include in the handover
 
-```bash
-git status --short
-git diff --check
-git diff --cached --check
-```
+Include the application source and tests, package/lock files, configuration
+examples, deployment files, scripts, and current documentation. Review any
+uncommitted application work before deciding which revision to hand over.
 
-No Git remote is configured yet. Once a repository URL is available, configure
-and publish `main` with:
+Installed dependencies, build output, test reports, local environment files,
+private notes, and imported employee data are not part of the source handover.
+The working machine retains its runtime files and local data so cleanup does not
+interrupt existing work. Transfer required credentials and business data through
+the team's agreed private process.
 
-```bash
-git remote add origin <repository-url>
-git push --set-upstream origin main
-```
-
-## Docker Compose
-
-Build and run the complete current stack at `http://localhost:8080`:
-
-```bash
-docker compose up --build
-```
-
-The credentials in `compose.yaml` are development-only and must not be reused in
-another environment.
-
-## Kubernetes
-
-The complete local image build, registry, containerd import, and Helm deployment
-workflow is documented in
-[`docs/LOCAL_DOCKER_IMAGES.md`](docs/LOCAL_DOCKER_IMAGES.md).
-
-For the current single-node kubeadm server, build and import the source release
-with one command. The script reads the version from `package.json` and prompts
-for sudo only where Docker/containerd access requires it:
-
-```bash
-./scripts/build-import-local-images.sh
-```
-
-The initial Helm chart is in `deploy/helm/gnomon`. Supply secrets using an
-uncommitted values file. For example:
-
-```yaml
-secrets:
-  accessTokenSecret: 'a-long-random-access-token-secret'
-  refreshTokenSecret: 'a-different-long-random-refresh-secret'
-  mongodbRootPassword: 'a-url-safe-mongodb-password'
-  mongodbUri: 'mongodb://gnomonadmin:a-url-safe-mongodb-password@gnomon-gnomon-mongodb:27017/gnomon?authSource=admin'
-```
-
-Then render or install it:
-
-```bash
-helm lint deploy/helm/gnomon -f private-values.yaml
-helm upgrade --install gnomon deploy/helm/gnomon \
-  --namespace gnomon --create-namespace -f private-values.yaml
-```
-
-Real secrets and private values files must never be committed.
+The dated archive preserves the pre-cleanup documents. Its `local-only` folder
+contains private notes and generated reports, is ignored by Git, and must be left
+out of shared folder copies. All of `docs/backup` is excluded from Docker build
+contexts and formatting checks.

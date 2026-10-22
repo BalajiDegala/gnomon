@@ -42,6 +42,14 @@ export const EmployeeHrProfileDtoSchema = z.object({
 });
 export type EmployeeHrProfileDto = z.infer<typeof EmployeeHrProfileDtoSchema>;
 
+export const EmployeeBiometricProfileDtoSchema = z.object({
+  fullName: z.string(),
+  departmentName: z.string().nullable(),
+  designation: z.string().nullable(),
+  companyName: z.string().nullable(),
+  importedAt: z.string().datetime(),
+});
+
 export const EmployeeDirectoryItemDtoSchema = z.object({
   id: z.string(),
   employeeCode: z.string(),
@@ -51,7 +59,8 @@ export const EmployeeDirectoryItemDtoSchema = z.object({
   email: z.string().email(),
   timezone: z.string(),
   status: EmployeeStatusSchema,
-  profileSource: z.enum(['users_csv', 'door_workbook', 'manual', 'system']),
+  profileSource: z.enum(['users_csv', 'door_workbook', 'biometric_csv', 'manual', 'system']),
+  biometricProfile: EmployeeBiometricProfileDtoSchema.nullable().optional(),
   hrProfile: EmployeeHrProfileDtoSchema.nullable(),
   attendanceIdentity: EmployeeAttendanceIdentityDtoSchema.nullable(),
   reportingManager: EmployeeReferenceDtoSchema.nullable(),

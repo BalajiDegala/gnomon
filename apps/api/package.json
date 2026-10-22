@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsup src/server.ts src/scripts/import-data-folder.ts --format esm --clean --sourcemap",
+    "build": "tsup src/server.ts src/scripts/import-data-folder.ts src/scripts/recover-attendance-change.ts --format esm --clean --sourcemap",
     "dev": "tsx watch src/server.ts",
     "seed:admin": "tsx src/scripts/seed-admin.ts",
     "seed:demo": "cross-env ACCESS_TOKEN_SECRET=demo-seed-access-secret-with-at-least-32-characters REFRESH_TOKEN_SECRET=demo-seed-refresh-secret-with-at-least-32-characters tsx src/scripts/seed-demo-data.ts",

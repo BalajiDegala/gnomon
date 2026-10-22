@@ -6,6 +6,7 @@ import {
   type WorkforceReportDto,
   type WorkforceReportQuery,
 } from '@gnomon/shared';
+import type { InferSchemaType, QueryFilter } from 'mongoose';
 
 import { HttpError } from '../../middleware/errors.js';
 import { Employee } from '../employees/employee.model.js';
@@ -15,8 +16,30 @@ import { DailyTimecard } from '../reconciliation/daily-timecard.model.js';
 import { RegularisationRequest } from '../regularisations/regularisation.model.js';
 import { Show } from '../shows/show.model.js';
 import { TimeEntry } from '../timesheets/time-entry.model.js';
+import {
+  attendanceReportDepartment,
+  attendanceReportEmployees,
+} from './attendance-report-identity.js';
 
 const REPORT_PERMISSIONS = ['attendance:all:read', 'attendance:team:read', 'audit:read'] as const;
+
+// Reconciliation keeps empty daily summaries after imports are removed (and can
+// create them just by viewing a date). They are not recorded attendance evidence.
+// Apply the same rule to rows, counts and month discovery in both reports.
+const recordedAttendanceFilter: QueryFilter<InferSchemaType<typeof DailyTimecard.schema>> = {
+  $or: [
+    { 'sourceSummary.biometric.eventCount': { $gt: 0 } },
+    { 'sourceSummary.accessCard.eventCount': { $gt: 0 } },
+    { 'sourceSummary.website.sessionCount': { $gt: 0 } },
+    { 'sourceSummary.showEntries.entryCount': { $gt: 0 } },
+    { regularisationStatus: { $in: ['pending', 'approved', 'rejected'] } },
+    {
+      'finalisation.finalSource': {
+        $in: ['regularised', 'approved_leave', 'holiday', 'hr_override'],
+      },
+    },
+  ],
+};
 
 export function assertReportDateRange(input: WorkforceReportQuery): void {
   const from = Date.parse(`${input.dateFrom}T00:00:00.000Z`);
@@ -47,7 +70,11 @@ export async function buildWorkforceReport(
   const dateFilter = { $gte: input.dateFrom, $lte: input.dateTo };
 
   const [timecards, leaveRequests, regularisations, timeEntries] = await Promise.all([
-    DailyTimecard.find({ employeeId: { $in: employeeIds }, workDate: dateFilter })
+    DailyTimecard.find({
+      ...recordedAttendanceFilter,
+      employeeId: { $in: employeeIds },
+      workDate: dateFilter,
+    })
       .sort({ workDate: -1 })
       .lean()
       .exec(),
@@ -196,15 +223,22 @@ export async function buildAttendanceDetails(
       firstName: 1,
       lastName: 1,
       status: 1,
+      profileSource: 1,
       hrProfile: 1,
+      biometricProfile: 1,
       attendanceIdentity: 1,
     })
     .sort({ firstName: 1, lastName: 1, employeeCode: 1 })
     .lean()
     .exec();
   const employeeIds = employees.map((employee) => employee._id);
-  const employeeById = new Map(employees.map((employee) => [String(employee._id), employee]));
-  const latestTimecard = await DailyTimecard.findOne({ employeeId: { $in: employeeIds } })
+  // Resolve identity across the scoped directory, including employees with no
+  // timecard in this month. Card-only dates must keep the same HR department.
+  const employeeById = attendanceReportEmployees(employees);
+  const latestTimecard = await DailyTimecard.findOne({
+    ...recordedAttendanceFilter,
+    employeeId: { $in: employeeIds },
+  })
     .select({ workDate: 1 })
     .sort({ workDate: -1 })
     .lean()
@@ -222,7 +256,7 @@ export async function buildAttendanceDetails(
     timesheetDays: number;
     timesheetEntries: number;
   }>([
-    { $match: { employeeId: { $in: employeeIds } } },
+    { $match: { ...recordedAttendanceFilter, employeeId: { $in: employeeIds } } },
     {
       $group: {
         _id: { $substrBytes: ['$workDate', 0, 7] },
@@ -281,6 +315,7 @@ export async function buildAttendanceDetails(
     .toISOString()
     .slice(0, 10);
   const timecards = await DailyTimecard.find({
+    ...recordedAttendanceFilter,
     employeeId: { $in: employeeIds },
     workDate: { $gte: monthStart, $lte: monthEnd },
   })
@@ -297,13 +332,12 @@ export async function buildAttendanceDetails(
     const calculated = timecard.calculated;
     return {
       id: String(timecard._id),
-      employeeId: String(timecard.employeeId),
+      employeeId: String(employee?._id ?? timecard.employeeId),
       employeeCode: employee?.employeeCode ?? 'UNKNOWN',
       employeeDisplayName: employee
         ? (employee.hrProfile?.fullName ?? `${employee.firstName} ${employee.lastName}`.trim())
         : 'Unknown employee',
-      departmentName:
-        employee?.hrProfile?.departmentName ?? employee?.attendanceIdentity?.departmentName ?? null,
+      departmentName: attendanceReportDepartment(employee),
       workDate: timecard.workDate,
       status: calculated?.status ?? 'absent',
       requiresReview: calculated?.requiresReview ?? true,
@@ -356,7 +390,11 @@ export async function buildAttendanceDetails(
     })),
     generatedAt: new Date().toISOString(),
     summary: {
-      scopedEmployees: employees.filter((employee) => employee.status === 'active').length,
+      scopedEmployees: new Set(
+        employees
+          .filter((employee) => employee.status === 'active')
+          .map((employee) => String(employeeById.get(String(employee._id))!._id)),
+      ).size,
       employeesWithRecords: recordedEmployees.size,
       attendanceDays: rows.length,
       completeBiometricDays: rows.filter((row) => row.biometric.status === 'complete').length,

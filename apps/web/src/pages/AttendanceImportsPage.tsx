@@ -1,4 +1,8 @@
-import type { AttendanceImportSource, ImportBatchDto } from '@gnomon/shared';
+import type {
+  AttendanceImportSource,
+  ImportBatchDto,
+  AttendanceChangePreview,
+} from '@gnomon/shared';
 import {
   Alert,
   Box,
@@ -13,6 +17,11 @@ import {
   Select,
   Stack,
   Typography,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
 } from '@mui/material';
 import {
   AlertTriangle,
@@ -25,6 +34,7 @@ import {
   History,
   RefreshCw,
   UploadCloud,
+  Trash2,
 } from 'lucide-react';
 import { useState, type DragEvent } from 'react';
 
@@ -32,6 +42,7 @@ import {
   downloadAttendanceTemplate,
   useAttendanceImports,
   type AttendanceUploadFormat,
+  type AttendanceChangeInput,
 } from '../lib/imports';
 
 interface AttendanceImportsPageProps {
@@ -74,10 +85,55 @@ export function AttendanceImportsPage({ onBack, embedded = false }: AttendanceIm
   const [format, setFormat] = useState<AttendanceUploadFormat>('biometric');
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [mode, setMode] = useState<'add' | 'replace'>('add');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [reason, setReason] = useState('');
+  const [pendingChange, setPendingChange] = useState<{
+    input: AttendanceChangeInput;
+    preview: AttendanceChangePreview;
+  } | null>(null);
+  const busy = imports.isUploading || imports.isPreviewing || imports.isChanging;
   const isDoorWorkbook = format === 'door_workbook';
 
+  const reviewChange = async (input: AttendanceChangeInput) => {
+    try {
+      const preview = await imports.previewChange(input);
+      setReason('');
+      setPendingChange({ input, preview });
+    } catch {
+      /* The mutation error is displayed below. */
+    }
+  };
+
+  const confirmChange = async () => {
+    if (!pendingChange) return;
+    try {
+      await imports.applyChange(pendingChange.input, {
+        previewToken: pendingChange.preview.previewToken,
+        reason,
+      });
+      setPendingChange(null);
+    } catch {
+      /* Keep the preview open when the operation fails. */
+    }
+  };
+
+  const submitUpload = async () => {
+    if (!file) return;
+    if (mode === 'replace') {
+      await reviewChange({ kind: 'replace', format, file, period: { from, to } });
+    } else {
+      try {
+        await imports.upload(format, file);
+      } catch {
+        /* Displayed by uploadError. */
+      }
+    }
+  };
+
   const acceptFile = (candidate?: File) => {
-    if (candidate) setFile(candidate);
+    if (candidate && !busy) setFile(candidate);
   };
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -107,9 +163,8 @@ export function AttendanceImportsPage({ onBack, embedded = false }: AttendanceIm
           Attendance imports
         </Typography>
         <Typography sx={{ maxWidth: 760, color: 'text.secondary', fontSize: 13.5, mt: 0.7 }}>
-          Import biometric and access-card punches as immutable attendance evidence. Duplicate files
-          and rows are detected automatically. Door workbooks also add missing employee profiles and
-          refresh the affected daily timecards.
+          Add attendance punches, replace a source for a work-date range, or delete an import from
+          history. Changes recalculate daily attendance and retain the original evidence for audit.
         </Typography>
       </Box>
 
@@ -118,6 +173,17 @@ export function AttendanceImportsPage({ onBack, embedded = false }: AttendanceIm
       )}
       {imports.uploadError && <Alert severity="error">{imports.uploadError.message}</Alert>}
       {imports.historyError && <Alert severity="error">{imports.historyError.message}</Alert>}
+      {imports.changeError && !pendingChange && (
+        <Alert severity="error">{imports.changeError.message}</Alert>
+      )}
+      {imports.changeResult && (
+        <Alert severity="success">
+          {imports.changeResult.removedEvents} punches removed from active attendance;{' '}
+          {imports.changeResult.reconciledTimecards} daily timecards recalculated.
+          {imports.changeResult.batch &&
+            ` ${imports.changeResult.batch.successfulRows} replacement punches imported.`}
+        </Alert>
+      )}
 
       <Box
         sx={{
@@ -141,6 +207,12 @@ export function AttendanceImportsPage({ onBack, embedded = false }: AttendanceIm
                     ? 'Maximum 10 MB and 250,000 door transactions per workbook.'
                     : 'Maximum 5 MB and 20,000 attendance rows per CSV file.'}
                 </Typography>
+                {format === 'biometric' && (
+                  <Typography sx={{ mt: 0.5, color: 'text.secondary', fontSize: 12 }}>
+                    Missing employees are added from the file's employee code and name. Login access
+                    is managed separately.
+                  </Typography>
+                )}
               </Box>
               {!isDoorWorkbook && (
                 <Button
@@ -153,7 +225,7 @@ export function AttendanceImportsPage({ onBack, embedded = false }: AttendanceIm
               )}
             </Stack>
 
-            <FormControl fullWidth sx={{ mt: 3 }}>
+            <FormControl fullWidth sx={{ mt: 3 }} disabled={busy}>
               <InputLabel id="attendance-source-label">File type</InputLabel>
               <Select
                 labelId="attendance-source-label"
@@ -169,6 +241,49 @@ export function AttendanceImportsPage({ onBack, embedded = false }: AttendanceIm
                 <MenuItem value="door_workbook">Door access workbook</MenuItem>
               </Select>
             </FormControl>
+
+            <FormControl fullWidth sx={{ mt: 2 }} disabled={busy}>
+              <InputLabel id="attendance-action-label">Upload action</InputLabel>
+              <Select
+                labelId="attendance-action-label"
+                label="Upload action"
+                value={mode}
+                onChange={(event) => setMode(event.target.value as 'add' | 'replace')}
+              >
+                <MenuItem value="add">Add new punches</MenuItem>
+                <MenuItem value="replace">Replace attendance for a period</MenuItem>
+              </Select>
+            </FormControl>
+            {mode === 'replace' && (
+              <Stack spacing={2} sx={{ mt: 2 }}>
+                <Alert severity="warning">
+                  Replaces all {format === 'biometric' ? 'biometric' : 'access-card'} punches for
+                  every employee in this work-date range, including punches from other uploads.
+                  Upload the complete corrected data for this source and period. Punches omitted
+                  from the new file will be removed. Other attendance sources are kept.
+                </Alert>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                  <TextField
+                    fullWidth
+                    label="First work date"
+                    type="date"
+                    value={from}
+                    disabled={busy}
+                    slotProps={{ inputLabel: { shrink: true } }}
+                    onChange={(event) => setFrom(event.target.value)}
+                  />
+                  <TextField
+                    fullWidth
+                    label="Last work date"
+                    type="date"
+                    value={to}
+                    disabled={busy}
+                    slotProps={{ inputLabel: { shrink: true } }}
+                    onChange={(event) => setTo(event.target.value)}
+                  />
+                </Stack>
+              </Stack>
+            )}
 
             <Box
               onDragEnter={() => setIsDragging(true)}
@@ -279,26 +394,37 @@ export function AttendanceImportsPage({ onBack, embedded = false }: AttendanceIm
               fullWidth
               size="large"
               variant="contained"
-              disabled={!file || !imports.canImport || imports.isUploading}
-              startIcon={
-                imports.isUploading ? (
-                  <CircularProgress size={17} color="inherit" />
-                ) : (
-                  <DatabaseZap size={18} />
-                )
+              disabled={
+                !file ||
+                !imports.canImport ||
+                busy ||
+                (mode === 'replace' && (!from || !to || from > to))
               }
-              onClick={() => file && void imports.upload(format, file)}
+              startIcon={
+                busy ? <CircularProgress size={17} color="inherit" /> : <DatabaseZap size={18} />
+              }
+              onClick={() => void submitUpload()}
               sx={{ mt: 3, py: 1.35 }}
             >
-              {imports.isUploading
+              {busy
                 ? 'Validating and importing…'
-                : `Import ${uploadFormatLabel(format)}`}
+                : mode === 'replace'
+                  ? 'Preview replacement'
+                  : `Import ${uploadFormatLabel(format)}`}
             </Button>
           </CardContent>
         </Card>
 
         <Stack spacing={2.5}>
-          <ImportResult result={imports.result} />
+          <ImportResult
+            result={
+              imports.changeResult
+                ? imports.changeResult.batch
+                  ? { batch: imports.changeResult.batch, replayed: false }
+                  : undefined
+                : imports.result
+            }
+          />
           <Card sx={{ boxShadow: 'none' }}>
             <CardContent sx={{ p: 3 }}>
               <Stack direction="row" sx={{ alignItems: 'center', gap: 1.25 }}>
@@ -316,7 +442,88 @@ export function AttendanceImportsPage({ onBack, embedded = false }: AttendanceIm
         </Stack>
       </Box>
 
-      <ImportHistory batches={imports.batches} loading={imports.isHistoryLoading} />
+      <ImportHistory
+        batches={imports.batches}
+        loading={imports.isHistoryLoading}
+        canDelete={imports.canImport && !busy}
+        onDelete={(batch) =>
+          void reviewChange({ kind: 'delete', batchId: batch.id, fileName: batch.fileName })
+        }
+      />
+
+      <Dialog
+        open={Boolean(pendingChange)}
+        onClose={() => !imports.isChanging && setPendingChange(null)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          {pendingChange?.input.kind === 'delete'
+            ? 'Delete attendance import?'
+            : 'Replace attendance for this period?'}
+        </DialogTitle>
+        <DialogContent>
+          {pendingChange && (
+            <Stack spacing={2} sx={{ pt: 1 }}>
+              <Typography sx={{ overflowWrap: 'anywhere' }}>
+                {pendingChange.input.kind === 'delete'
+                  ? pendingChange.input.fileName
+                  : pendingChange.input.file.name}
+              </Typography>
+              {pendingChange.input.kind === 'replace' && (
+                <Typography>
+                  {sourceLabel(pendingChange.preview.source)} · {pendingChange.input.period.from} to{' '}
+                  {pendingChange.input.period.to} · all employees
+                </Typography>
+              )}
+              <Alert severity="warning">
+                This removes {pendingChange.preview.existingEvents} active punches affecting{' '}
+                {pendingChange.preview.existingEmployees} employees and{' '}
+                {pendingChange.preview.existingWorkdays} employee workdays.
+                {pendingChange.input.kind === 'replace' &&
+                  ` The new file supplies ${pendingChange.preview.replacementEvents} punch rows.`}
+              </Alert>
+              <Typography variant="body2" color="text.secondary">
+                {pendingChange.input.kind === 'delete'
+                  ? 'Only punches first created by this import are removed. Duplicate rows owned by another import are kept.'
+                  : 'All punches for this source and period are replaced, including rows missing from the corrected file.'}{' '}
+                Daily totals are recalculated. Employee profiles, website sessions, leave and
+                approvals are retained. Removed punches remain in the audit history.
+              </Typography>
+              <TextField
+                autoFocus
+                required
+                label="Reason for this change"
+                value={reason}
+                multiline
+                minRows={2}
+                disabled={imports.isChanging}
+                onChange={(event) => setReason(event.target.value)}
+                helperText="Enter 5–500 characters."
+                slotProps={{ htmlInput: { maxLength: 500 } }}
+              />
+              {imports.changeError && <Alert severity="error">{imports.changeError.message}</Alert>}
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={imports.isChanging} onClick={() => setPendingChange(null)}>
+            Cancel
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            disabled={imports.isChanging || reason.trim().length < 5}
+            onClick={() => void confirmChange()}
+          >
+            {imports.isChanging
+              ? 'Applying change…'
+              : pendingChange?.input.kind === 'delete'
+                ? 'Delete import'
+                : 'Replace attendance'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }
@@ -403,7 +610,17 @@ function ImportResult({ result }: { result: ReturnType<typeof useAttendanceImpor
   );
 }
 
-function ImportHistory({ batches, loading }: { batches: ImportBatchDto[]; loading: boolean }) {
+function ImportHistory({
+  batches,
+  loading,
+  canDelete,
+  onDelete,
+}: {
+  batches: ImportBatchDto[];
+  loading: boolean;
+  canDelete: boolean;
+  onDelete: (batch: ImportBatchDto) => void;
+}) {
   return (
     <Card sx={{ boxShadow: 'none' }}>
       <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
@@ -436,7 +653,7 @@ function ImportHistory({ batches, loading }: { batches: ImportBatchDto[]; loadin
                   display: 'grid',
                   gridTemplateColumns: {
                     xs: '1fr auto',
-                    md: '1.4fr .65fr .65fr .65fr .65fr auto',
+                    md: '1.4fr .65fr .65fr .65fr .65fr auto auto',
                   },
                   gap: 1.5,
                   alignItems: 'center',
@@ -450,6 +667,13 @@ function ImportHistory({ batches, loading }: { batches: ImportBatchDto[]; loadin
                   <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 750 }}>
                     {batch.fileName}
                   </Typography>
+                  {batch.removedAt && (
+                    <Typography
+                      sx={{ color: 'text.secondary', fontSize: 10.5, overflowWrap: 'anywhere' }}
+                    >
+                      {batch.removedRows} punches removed · {batch.removalReason}
+                    </Typography>
+                  )}
                   <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
                     {batch.importType === 'door_workbook'
                       ? 'Door access workbook'
@@ -467,6 +691,18 @@ function ImportHistory({ batches, loading }: { batches: ImportBatchDto[]; loadin
                   label={batch.status}
                   icon={batch.status === 'completed' ? <CheckCircle2 size={13} /> : undefined}
                 />
+                <Button
+                  size="small"
+                  color="error"
+                  startIcon={<Trash2 size={14} />}
+                  disabled={
+                    !canDelete || batch.status === 'processing' || batch.status === 'deleted'
+                  }
+                  aria-label={`Delete import ${batch.fileName}`}
+                  onClick={() => onDelete(batch)}
+                >
+                  Delete
+                </Button>
               </Box>
             ))}
           </Stack>
