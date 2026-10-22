@@ -27,6 +27,10 @@ export interface ImportBatchDocument {
   errorsTruncated: boolean;
   createdAt: Date;
   updatedAt: Date;
+  removedRows: number;
+  removedAt: Date | null;
+  removalReason: string | null;
+  changeId: Types.ObjectId | null;
 }
 
 export type ImportBatchRecord = HydratedDocument<ImportBatchDocument>;
@@ -34,7 +38,7 @@ export type ImportBatchRecord = HydratedDocument<ImportBatchDocument>;
 const importErrorSchema = new Schema<AttendanceImportErrorDto>(
   {
     rowNumber: { type: Number, required: true, min: 1 },
-    employeeCode: { type: String, required: true, default: '' },
+    employeeCode: { type: String, default: '' },
     reason: { type: String, required: true },
   },
   { _id: false },
@@ -62,11 +66,15 @@ const importBatchSchema = new Schema<ImportBatchDocument>(
     reconciledTimecards: { type: Number, required: true, min: 0, default: 0 },
     status: {
       type: String,
-      enum: ['processing', 'completed', 'partial', 'failed'],
+      enum: ['processing', 'completed', 'partial', 'failed', 'deleted'],
       required: true,
       default: 'processing',
     },
     importedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    removedRows: { type: Number, default: 0 },
+    removedAt: { type: Date, default: null },
+    removalReason: { type: String, default: null },
+    changeId: { type: Schema.Types.ObjectId, default: null, index: true },
     errors: { type: [importErrorSchema], default: [] },
     errorsTruncated: { type: Boolean, required: true, default: false },
   },

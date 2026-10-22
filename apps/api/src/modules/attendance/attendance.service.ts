@@ -27,7 +27,7 @@ export async function getAttendanceSignals(
   employeeId: string,
   workDate: string,
 ): Promise<AttendanceSignalsDto> {
-  const events = await AttendanceEvent.find({ employeeId, workDate })
+  const events = await AttendanceEvent.find({ employeeId, workDate, removedAt: null })
     .select({ source: 1, eventType: 1, occurredAt: 1 })
     .sort({ occurredAt: 1 })
     .lean()

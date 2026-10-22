@@ -8,16 +8,28 @@ import type {
   ImportBatchDto,
 } from '@gnomon/shared';
 import { getWorkDate } from '@gnomon/shared';
-import { Types } from 'mongoose';
+import { Types, type QueryFilter } from 'mongoose';
+
+import { HttpError } from '../../middleware/errors.js';
+import { withAttendanceWriteLock } from './attendance-write-lock.js';
 
 import { AttendanceEvent } from '../attendance/attendance-event.model.js';
 import { EmployeeAuditEvent } from '../employees/employee-audit.model.js';
-import { Employee } from '../employees/employee.model.js';
+import { Employee, type EmployeeDocument } from '../employees/employee.model.js';
 import { reconcileDailyTimecard } from '../reconciliation/reconciliation.service.js';
 import { matchWorkbookEmployeeProfiles } from './attendance-employee-matcher.js';
+import {
+  directoryPersonnelIdCandidates,
+  normalizeAttendanceName,
+  normalizePersonnelId,
+} from './attendance-identity.js';
 import { parseAttendanceCsv, type ParsedAttendanceFile } from './attendance-import.parser.js';
 import { parseDoorAttendanceWorkbook } from './door-attendance-workbook.parser.js';
 import { ImportBatch, type ImportBatchRecord } from './import-batch.model.js';
+import {
+  planBiometricEmployees,
+  type BiometricEmployeeProfile,
+} from './biometric-employee-provisioning.js';
 
 const MAX_STORED_ERRORS = 500;
 const RECONCILIATION_CONCURRENCY = 12;
@@ -64,6 +76,9 @@ function eventFingerprint(
 export function toImportBatchDto(batch: ImportBatchRecord): ImportBatchDto {
   return {
     id: String(batch._id),
+    removedRows: batch.removedRows ?? 0,
+    removedAt: batch.removedAt?.toISOString() ?? null,
+    removalReason: batch.removalReason ?? null,
     source: batch.source,
     importType: batch.importType,
     fileName: batch.fileName,
@@ -103,6 +118,34 @@ function importedEmployeeEmail(employeeCode: string): string {
   return `attendance.${slug}.${sha256(employeeCode).slice(0, 10)}@gnomon.invalid`;
 }
 
+async function provisionBiometricEmployees(
+  profiles: BiometricEmployeeProfile[],
+  importedBy: string,
+) {
+  if (profiles.length === 0) return 0;
+  await Employee.createIndexes();
+  for (const profile of profiles) {
+    const { employeeCode, ...metadata } = profile;
+    const [firstName = 'Employee', ...rest] = profile.fullName.split(/\s+/);
+    const employee = await Employee.create({
+      employeeCode,
+      firstName: firstName.slice(0, 80),
+      lastName: (rest.join(' ') || firstName).slice(0, 80),
+      email: importedEmployeeEmail(employeeCode),
+      profileSource: 'biometric_csv',
+      biometricProfile: { ...metadata, importedAt: new Date() },
+      status: 'active',
+    });
+    await EmployeeAuditEvent.create({
+      employeeId: employee._id,
+      actorUserId: new Types.ObjectId(importedBy),
+      action: 'created',
+      changes: { employeeCode, status: 'active', source: 'biometric_csv' },
+    });
+  }
+  return profiles.length;
+}
+
 export async function provisionWorkbookEmployees(
   parsed: ParsedAttendanceFile,
   importedBy: string,
@@ -118,7 +161,7 @@ export async function provisionWorkbookEmployees(
     $or: [
       { employeeCode: { $in: employeeCodes } },
       { 'attendanceIdentity.personnelId': { $in: employeeCodes } },
-      { profileSource: { $in: ['users_csv', 'manual'] } },
+      { profileSource: { $in: ['users_csv', 'biometric_csv', 'manual'] } },
     ],
   })
     .select({
@@ -231,11 +274,130 @@ async function reconcileImportedTimecards(
       }
     },
   );
-  await Promise.all(workers);
+  const results = await Promise.allSettled(workers);
+  const failed = results.find((result) => result.status === 'rejected');
+  if (failed?.status === 'rejected') throw failed.reason;
   return pending.length;
 }
 
-interface AttendanceFileImportInput {
+export async function resolveAttendanceRows(
+  parsed: ParsedAttendanceFile,
+  source: AttendanceImportSource,
+) {
+  const employeeCodes = [...new Set(parsed.rows.map((row) => row.employeeCode))];
+  const personnelIds = [
+    ...new Set(
+      employeeCodes.flatMap((employeeCode) => directoryPersonnelIdCandidates(employeeCode)),
+    ),
+  ];
+  const hasBiometricNames =
+    source === 'biometric' &&
+    parsed.rows.some((row) => Boolean(row.rawPayload.employee_name?.trim()));
+  const employeeOrFilters: QueryFilter<EmployeeDocument>[] = [
+    { employeeCode: { $in: employeeCodes } },
+    { 'attendanceIdentity.personnelId': { $in: [...employeeCodes, ...personnelIds] } },
+  ];
+  if (hasBiometricNames) {
+    employeeOrFilters.push({
+      profileSource: { $in: ['users_csv', 'door_workbook', 'biometric_csv', 'manual', 'system'] },
+    });
+  }
+  const employees = await Employee.find({
+    ...(source === 'biometric' ? {} : { status: 'active' }),
+    $or: employeeOrFilters,
+  })
+    .select({
+      _id: 1,
+      employeeCode: 1,
+      firstName: 1,
+      lastName: 1,
+      attendanceIdentity: 1,
+      hrProfile: 1,
+      biometricProfile: 1,
+      status: 1,
+    })
+    .lean()
+    .exec();
+  if (source === 'biometric') {
+    const { employeeIds, provisionableEmployees, rejectionReasons } = planBiometricEmployees(
+      parsed.rows,
+      employees,
+    );
+    const errors: AttendanceImportErrorDto[] = [...parsed.errors];
+    const acceptedRows = parsed.rows.filter((row) => {
+      if (employeeIds.has(row.employeeCode)) return true;
+      errors.push({
+        rowNumber: row.rowNumber,
+        employeeCode: row.employeeCode,
+        reason:
+          rejectionReasons.get(row.employeeCode) ?? 'No active employee matches this employee code',
+      });
+      return false;
+    });
+    return { employeeIds, acceptedRows, errors, provisionableEmployees };
+  }
+  const employeeIds = new Map<string, Types.ObjectId>();
+  for (const employee of employees) {
+    employeeIds.set(employee.employeeCode, employee._id);
+    if (employee.attendanceIdentity?.personnelId) {
+      employeeIds.set(employee.attendanceIdentity.personnelId, employee._id);
+      const personnelId = normalizePersonnelId(employee.attendanceIdentity.personnelId);
+      if (personnelId) employeeIds.set(personnelId, employee._id);
+    }
+  }
+  for (const employeeCode of employeeCodes) {
+    if (employeeIds.has(employeeCode)) continue;
+    const candidates = new Set(directoryPersonnelIdCandidates(employeeCode));
+    const matches = employees.filter(
+      (employee) =>
+        employee.attendanceIdentity &&
+        candidates.has(normalizePersonnelId(employee.attendanceIdentity.personnelId) ?? ''),
+    );
+    if (matches.length === 1) employeeIds.set(employeeCode, matches[0]!._id);
+  }
+  const employeesByName = new Map<string, Types.ObjectId[]>();
+  for (const employee of employees) {
+    const names = [
+      `${employee.firstName} ${employee.lastName}`,
+      employee.hrProfile?.fullName ?? '',
+    ];
+    for (const name of names) {
+      const normalized = normalizeAttendanceName(name);
+      if (!normalized) continue;
+      const matches = employeesByName.get(normalized) ?? [];
+      if (!matches.some((employeeId) => employeeId.equals(employee._id))) {
+        matches.push(employee._id);
+      }
+      employeesByName.set(normalized, matches);
+    }
+  }
+  for (const row of parsed.rows) {
+    if (employeeIds.has(row.employeeCode)) continue;
+    const biometricName = row.rawPayload.employee_name?.trim();
+    if (!biometricName) continue;
+    const matches = employeesByName.get(normalizeAttendanceName(biometricName)) ?? [];
+    if (matches.length === 1) employeeIds.set(row.employeeCode, matches[0]!);
+  }
+  const errors: AttendanceImportErrorDto[] = [...parsed.errors];
+  const acceptedRows = parsed.rows.filter((row) => {
+    if (employeeIds.has(row.employeeCode)) return true;
+    errors.push({
+      rowNumber: row.rowNumber,
+      employeeCode: row.employeeCode,
+      reason: 'No active employee matches this employee code',
+    });
+    return false;
+  });
+  return {
+    employeeIds,
+    acceptedRows,
+    errors,
+    provisionableEmployees: [] as BiometricEmployeeProfile[],
+  };
+}
+
+export interface AttendanceFileImportInput {
+  changeId?: Types.ObjectId;
   source: AttendanceImportSource;
   importType: AttendanceImportType;
   fileName: string;
@@ -244,7 +406,7 @@ interface AttendanceFileImportInput {
   parse: () => ParsedAttendanceFile | Promise<ParsedAttendanceFile>;
 }
 
-async function importAttendanceFile(
+export async function importAttendanceFile(
   input: AttendanceFileImportInput,
 ): Promise<AttendanceImportResponse> {
   await ensureImportIndexes();
@@ -291,6 +453,7 @@ async function importAttendanceFile(
     try {
       batch = await ImportBatch.create({
         source: input.source,
+        changeId: input.changeId ?? null,
         importType: input.importType,
         fileName: input.fileName.trim().slice(0, 255) || `${input.source}.csv`,
         fileHash,
@@ -309,35 +472,23 @@ async function importAttendanceFile(
 
   try {
     const parsed = await parseFile();
-    const provisionedEmployees = await provisionWorkbookEmployees(parsed, input.importedBy);
-    const employeeCodes = [...new Set(parsed.rows.map((row) => row.employeeCode))];
-    const employees = await Employee.find({
-      status: 'active',
-      $or: [
-        { employeeCode: { $in: employeeCodes } },
-        { 'attendanceIdentity.personnelId': { $in: employeeCodes } },
-      ],
-    })
-      .select({ _id: 1, employeeCode: 1, attendanceIdentity: 1 })
-      .lean()
-      .exec();
-    const employeeIds = new Map<string, Types.ObjectId>();
-    for (const employee of employees) {
-      employeeIds.set(employee.employeeCode, employee._id);
-      if (employee.attendanceIdentity?.personnelId) {
-        employeeIds.set(employee.attendanceIdentity.personnelId, employee._id);
-      }
+    let provisionedEmployees = await provisionWorkbookEmployees(parsed, input.importedBy);
+    let resolved = await resolveAttendanceRows(parsed, input.source);
+    if (resolved.provisionableEmployees.length > 0) {
+      provisionedEmployees += await provisionBiometricEmployees(
+        resolved.provisionableEmployees,
+        input.importedBy,
+      );
+      resolved = await resolveAttendanceRows(parsed, input.source);
     }
-    const errors: AttendanceImportErrorDto[] = [...parsed.errors];
-    const acceptedRows = parsed.rows.filter((row) => {
-      if (employeeIds.has(row.employeeCode)) return true;
-      errors.push({
-        rowNumber: row.rowNumber,
-        employeeCode: row.employeeCode,
-        reason: 'No active employee matches this employee code',
-      });
-      return false;
-    });
+    const { employeeIds, acceptedRows, errors } = resolved;
+    if (input.changeId && errors.length > 0) {
+      throw new HttpError(
+        400,
+        'Every replacement row must be valid and match an active employee',
+        'REPLACEMENT_INVALID',
+      );
+    }
 
     const uniqueRows = new Map<
       string,
@@ -438,14 +589,16 @@ export async function importAttendanceCsv(input: {
   csvText: string;
   importedBy: string;
 }): Promise<AttendanceImportResponse> {
-  return importAttendanceFile({
-    source: input.source,
-    importType: 'csv',
-    fileName: input.fileName,
-    fileContent: input.csvText,
-    importedBy: input.importedBy,
-    parse: () => parseAttendanceCsv(input.csvText, input.source),
-  });
+  return withAttendanceWriteLock(() =>
+    importAttendanceFile({
+      source: input.source,
+      importType: 'csv',
+      fileName: input.fileName,
+      fileContent: input.csvText,
+      importedBy: input.importedBy,
+      parse: () => parseAttendanceCsv(input.csvText, input.source),
+    }),
+  );
 }
 
 export async function importDoorAttendanceWorkbook(input: {
@@ -453,14 +606,16 @@ export async function importDoorAttendanceWorkbook(input: {
   workbookBuffer: Buffer;
   importedBy: string;
 }): Promise<AttendanceImportResponse> {
-  return importAttendanceFile({
-    source: 'access_card',
-    importType: 'door_workbook',
-    fileName: input.fileName,
-    fileContent: input.workbookBuffer,
-    importedBy: input.importedBy,
-    parse: () => parseDoorAttendanceWorkbook(input.workbookBuffer),
-  });
+  return withAttendanceWriteLock(() =>
+    importAttendanceFile({
+      source: 'access_card',
+      importType: 'door_workbook',
+      fileName: input.fileName,
+      fileContent: input.workbookBuffer,
+      importedBy: input.importedBy,
+      parse: () => parseDoorAttendanceWorkbook(input.workbookBuffer),
+    }),
+  );
 }
 
 export async function listImportBatches(limit = 20): Promise<ImportBatchDto[]> {

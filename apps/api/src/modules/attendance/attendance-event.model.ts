@@ -23,6 +23,11 @@ export interface AttendanceEventDocument {
   isSynthetic: boolean;
   correctionRequestId: Types.ObjectId | null;
   createdAt: Date;
+  removedAt: Date | null;
+  removedBy: Types.ObjectId | null;
+  removalReason: string | null;
+  removalChangeId: Types.ObjectId | null;
+  originalFingerprint: string | null;
 }
 
 const attendanceEventSchema = new Schema<AttendanceEventDocument>(
@@ -42,6 +47,11 @@ const attendanceEventSchema = new Schema<AttendanceEventDocument>(
     },
     rawPayload: { type: Schema.Types.Mixed, required: true },
     fingerprint: { type: String, required: true, unique: true },
+    removedAt: { type: Date, default: null },
+    removedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+    removalReason: { type: String, default: null },
+    removalChangeId: { type: Schema.Types.ObjectId, default: null, index: true },
+    originalFingerprint: { type: String, default: null },
     isSynthetic: { type: Boolean, required: true, default: false },
     correctionRequestId: {
       type: Schema.Types.ObjectId,
@@ -54,6 +64,7 @@ const attendanceEventSchema = new Schema<AttendanceEventDocument>(
 
 attendanceEventSchema.index({ employeeId: 1, workDate: 1, source: 1, occurredAt: 1 });
 attendanceEventSchema.index({ importBatchId: 1, occurredAt: 1 });
+attendanceEventSchema.index({ source: 1, workDate: 1, removedAt: 1 });
 
 export const AttendanceEvent = model<AttendanceEventDocument>(
   'AttendanceEvent',

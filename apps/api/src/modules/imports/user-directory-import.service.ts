@@ -1,3 +1,4 @@
+import { withAttendanceWriteLock } from './attendance-write-lock.js';
 import type { UserDirectoryImportResponse } from '@gnomon/shared';
 import { Types } from 'mongoose';
 
@@ -12,13 +13,15 @@ import {
 import { DepartmentApprovalPolicy } from '../policies/department-approval-policy.model.js';
 import { DailyTimecard } from '../reconciliation/daily-timecard.model.js';
 import { reconcileDailyTimecard } from '../reconciliation/reconciliation.service.js';
+import {
+  directoryPersonnelIdCandidates,
+  normalizeAttendanceName,
+  normalizePersonnelId,
+} from './attendance-identity.js';
 import { parseUserDirectoryCsv, type ParsedUserDirectoryRow } from './user-directory.parser.js';
 
 function normalizedName(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/[^a-z0-9]+/g, '');
+  return normalizeAttendanceName(value);
 }
 
 function nameTokens(value: string): string[] {
@@ -160,16 +163,14 @@ function matchRowsToEmployees(rows: ParsedUserDirectoryRow[], employees: Employe
     if (candidates.length === 1) assign(row, candidates[0]);
   }
   for (const row of rows) {
-    if (matches.has(row) || !row.employeeId.startsWith('DDIH')) continue;
-    const suffix = String(Number(row.employeeId.match(/\d+$/)?.[0] ?? 'NaN'));
-    assign(
-      row,
-      employees.find(
-        (employee) =>
-          employee.attendanceIdentity &&
-          String(Number(employee.attendanceIdentity.personnelId)) === suffix,
-      ),
+    if (matches.has(row)) continue;
+    const personnelIds = new Set(directoryPersonnelIdCandidates(row.employeeId));
+    const candidates = employees.filter(
+      (employee) =>
+        employee.attendanceIdentity &&
+        personnelIds.has(normalizePersonnelId(employee.attendanceIdentity.personnelId) ?? ''),
     );
+    if (candidates.length === 1) assign(row, candidates[0]);
   }
 
   const proposals = rows
@@ -205,17 +206,17 @@ function findDoorProfileForRow(
       !employee._id.equals(target._id) &&
       !importedEmployeeIds.has(String(employee._id)),
   );
-  if (row.employeeId.startsWith('DDIH')) {
-    const suffix = String(Number(row.employeeId.match(/\d+$/)?.[0] ?? 'NaN'));
-    const byPersonnelId = candidates.filter(
-      (employee) => String(Number(employee.attendanceIdentity!.personnelId)) === suffix,
-    );
-    if (byPersonnelId.length === 1) return byPersonnelId[0]!;
-  }
   const exact = candidates.filter(
     (employee) => normalizedName(employeeDisplayName(employee)) === normalizedName(row.fullName),
   );
   if (exact.length === 1) return exact[0]!;
+  const personnelIds = new Set(directoryPersonnelIdCandidates(row.employeeId));
+  const byPersonnelId = candidates.filter(
+    (employee) =>
+      employee.attendanceIdentity &&
+      personnelIds.has(normalizePersonnelId(employee.attendanceIdentity.personnelId) ?? ''),
+  );
+  if (byPersonnelId.length === 1) return byPersonnelId[0]!;
   const ranked = candidates
     .map((employee) => ({
       employee,
@@ -247,7 +248,7 @@ async function mergeDoorProfile(source: EmployeeRecord, target: EmployeeRecord):
   );
 }
 
-export async function importUserDirectoryCsv(input: {
+async function importUserDirectoryCsvUnlocked(input: {
   fileName: string;
   csvText: string;
   importedBy: string;
@@ -451,4 +452,10 @@ export async function importUserDirectoryCsv(input: {
     unresolvedApproverNames: [...unresolvedApprovers].sort(),
     errors: parsed.errors,
   };
+}
+
+export async function importUserDirectoryCsv(
+  input: Parameters<typeof importUserDirectoryCsvUnlocked>[0],
+) {
+  return withAttendanceWriteLock(() => importUserDirectoryCsvUnlocked(input));
 }

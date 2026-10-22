@@ -53,6 +53,7 @@ async function toDirectoryItems(
       | 'attendanceIdentity'
       | 'profileSource'
       | 'hrProfile'
+      | 'biometricProfile'
       | 'reportingManagerId'
       | 'locationId'
       | 'updatedAt'
@@ -89,11 +90,19 @@ async function toDirectoryItems(
       firstName: employee.firstName,
       lastName: employee.lastName,
       displayName:
-        employee.hrProfile?.fullName ?? `${employee.firstName} ${employee.lastName}`.trim(),
+        employee.hrProfile?.fullName ??
+        employee.biometricProfile?.fullName ??
+        `${employee.firstName} ${employee.lastName}`.trim(),
       email: employee.hrProfile?.mailId ?? employee.email,
       timezone: employee.timezone,
       status: employee.status,
       profileSource: employee.profileSource,
+      biometricProfile: employee.biometricProfile
+        ? {
+            ...employee.biometricProfile,
+            importedAt: employee.biometricProfile.importedAt.toISOString(),
+          }
+        : null,
       hrProfile: employee.hrProfile
         ? {
             source: employee.hrProfile.source,
@@ -147,7 +156,7 @@ export async function listEmployees(
   const scope = await buildEmployeeScopeFilter(user, ['employee:read']);
   const filters: QueryFilter<EmployeeDocument>[] = [
     scope,
-    { profileSource: { $in: ['users_csv', 'manual'] } },
+    { profileSource: { $in: ['users_csv', 'biometric_csv', 'manual'] } },
   ];
   if (input.status) filters.push({ status: input.status });
   if (input.search) {
@@ -162,6 +171,9 @@ export async function listEmployees(
         { 'hrProfile.fullName': search },
         { 'hrProfile.designation': search },
         { 'hrProfile.departmentName': search },
+        { 'biometricProfile.fullName': search },
+        { 'biometricProfile.designation': search },
+        { 'biometricProfile.departmentName': search },
         { 'hrProfile.leaveApprover1Name': search },
         { 'hrProfile.leaveApprover2Name': search },
       ],

@@ -1,0 +1,8 @@
+# Local deployment: another service on this host already uses port 8080.
+services:
+  api:
+    environment:
+      WEB_ORIGIN: http://localhost:8081
+  web:
+    ports: !override
+      - '8081:8080'

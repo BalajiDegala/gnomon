@@ -64,7 +64,7 @@ export async function listSecurityDirectory(user: AuthUser): Promise<SecurityDir
   await ensureSystemRoles();
   const now = new Date();
   const [employees, users, roles, assignments, shows, locations] = await Promise.all([
-    Employee.find({ profileSource: { $in: ['users_csv', 'manual', 'system'] } })
+    Employee.find({ profileSource: { $in: ['users_csv', 'biometric_csv', 'manual', 'system'] } })
       .sort({ status: 1, 'hrProfile.fullName': 1, firstName: 1, lastName: 1 })
       .limit(500)
       .lean()
@@ -102,10 +102,18 @@ export async function listSecurityDirectory(user: AuthUser): Promise<SecurityDir
         employeeId: String(employee._id),
         employeeCode: employee.employeeCode,
         employeeDisplayName:
-          employee.hrProfile?.fullName ?? `${employee.firstName} ${employee.lastName}`.trim(),
+          employee.hrProfile?.fullName ??
+          employee.biometricProfile?.fullName ??
+          `${employee.firstName} ${employee.lastName}`.trim(),
         employeeEmail: employee.hrProfile?.mailId ?? employee.email,
         employeeStatus: employee.status,
         profileSource: employee.profileSource,
+        biometricProfile: employee.biometricProfile
+          ? {
+              ...employee.biometricProfile,
+              importedAt: employee.biometricProfile.importedAt.toISOString(),
+            }
+          : null,
         hrProfile: employee.hrProfile
           ? {
               source: employee.hrProfile.source,

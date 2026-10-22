@@ -88,12 +88,15 @@ async function importDataFolder(): Promise<void> {
     });
   }
 
-  const workbookPath = path.join(dataDirectory, 'attendance.xls');
+  const workbookFileName = (await existingFile(path.join(dataDirectory, '11.xls')))
+    ? '11.xls'
+    : 'attendance.xls';
+  const workbookPath = path.join(dataDirectory, workbookFileName);
   if (await existingFile(workbookPath)) {
     results.push({
-      file: 'attendance.xls',
+      file: workbookFileName,
       result: await importDoorAttendanceWorkbook({
-        fileName: 'attendance.xls',
+        fileName: workbookFileName,
         workbookBuffer: await readFile(workbookPath),
         importedBy: String(actor._id),
       }),
@@ -118,7 +121,7 @@ async function importDataFolder(): Promise<void> {
 
   if (results.length === 0) {
     throw new Error(
-      `No supported users.csv, approvals.csv, attendance.xls, biometric.csv, or biometrix.csv files found in ${dataDirectory}`,
+      `No supported users.csv, approvals.csv, 11.xls, attendance.xls, biometric.csv, or biometrix.csv files found in ${dataDirectory}`,
     );
   }
   process.stdout.write(`${JSON.stringify({ dataDirectory, results }, null, 2)}\n`);

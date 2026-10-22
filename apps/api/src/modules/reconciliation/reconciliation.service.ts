@@ -396,7 +396,7 @@ export async function reconcileDailyTimecard(
   }
   const [events, sessions, timeEntries, regularisations, approvedLeave, holiday] =
     await Promise.all([
-      AttendanceEvent.find({ employeeId, workDate })
+      AttendanceEvent.find({ employeeId, workDate, removedAt: null })
         .select({ source: 1, eventType: 1, occurredAt: 1 })
         .lean()
         .exec(),

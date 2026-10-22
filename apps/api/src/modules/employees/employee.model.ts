@@ -17,7 +17,14 @@ export interface EmployeeDocument {
     departmentName: string | null;
     lastSeenAt: Date;
   } | null;
-  profileSource: 'users_csv' | 'door_workbook' | 'manual' | 'system';
+  profileSource: 'users_csv' | 'door_workbook' | 'biometric_csv' | 'manual' | 'system';
+  biometricProfile?: {
+    fullName: string;
+    departmentName: string | null;
+    designation: string | null;
+    companyName: string | null;
+    importedAt: Date;
+  } | null;
   hrProfile?: {
     source: 'users_csv';
     userId: string;
@@ -84,11 +91,24 @@ const employeeSchema = new Schema<EmployeeDocument>(
     },
     profileSource: {
       type: String,
-      enum: ['users_csv', 'door_workbook', 'manual', 'system'],
+      enum: ['users_csv', 'door_workbook', 'biometric_csv', 'manual', 'system'],
       required: true,
       default: 'manual',
     },
     hrProfile: { type: hrProfileSchema, default: null },
+    biometricProfile: {
+      type: new Schema(
+        {
+          fullName: { type: String, required: true, trim: true },
+          departmentName: { type: String, default: null, trim: true },
+          designation: { type: String, default: null, trim: true },
+          companyName: { type: String, default: null, trim: true },
+          importedAt: { type: Date, required: true },
+        },
+        { _id: false },
+      ),
+      default: null,
+    },
     status: { type: String, enum: ['active', 'inactive'], default: 'active', required: true },
   },
   { timestamps: true },
