@@ -39,6 +39,14 @@ spec:
           value: gnomon-local
         - name: mongodb.storage
           value: 20Gi
+        - name: backup.enabled
+          value: 'true'
+        - name: backup.storageClassName
+          value: gnomon-local
+        - name: backup.volumeName
+          value: gnomon-mongodb-backups
+        - name: backup.storage
+          value: 50Gi
         - name: ingress.host
           value: gnomon.d2-india.com
         - name: secrets.existingSecret

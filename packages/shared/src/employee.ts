@@ -59,7 +59,14 @@ export const EmployeeDirectoryItemDtoSchema = z.object({
   email: z.string().email(),
   timezone: z.string(),
   status: EmployeeStatusSchema,
-  profileSource: z.enum(['users_csv', 'door_workbook', 'biometric_csv', 'manual', 'system']),
+  profileSource: z.enum([
+    'users_csv',
+    'door_workbook',
+    'biometric_csv',
+    'manual',
+    'system',
+    'ldap',
+  ]),
   biometricProfile: EmployeeBiometricProfileDtoSchema.nullable().optional(),
   hrProfile: EmployeeHrProfileDtoSchema.nullable(),
   attendanceIdentity: EmployeeAttendanceIdentityDtoSchema.nullable(),
@@ -119,7 +126,6 @@ export const CreateEmployeeRequestSchema = z.object({
     .email()
     .transform((value) => value.toLowerCase()),
   timezone: z.string().trim().min(3).max(80).default('Asia/Kolkata'),
-  reportingManagerId: ObjectIdStringSchema.nullable().default(null),
 });
 export type CreateEmployeeRequest = z.infer<typeof CreateEmployeeRequestSchema>;
 
@@ -134,8 +140,11 @@ export const UpdateEmployeeRequestSchema = z
       .transform((value) => value.toLowerCase())
       .optional(),
     timezone: z.string().trim().min(3).max(80).optional(),
-    reportingManagerId: ObjectIdStringSchema.nullable().optional(),
+    // Reporting manager and leave approvers are not editable per person: approvals
+    // follow the department's approval policy.
     status: EmployeeStatusSchema.optional(),
+    departmentName: z.string().trim().min(1).max(120).optional(),
+    designation: z.string().trim().max(120).optional(),
   })
   .refine((value) => Object.keys(value).length > 0, {
     message: 'At least one employee field is required',

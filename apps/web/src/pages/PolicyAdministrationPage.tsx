@@ -146,7 +146,7 @@ export function PolicyAdministrationPage() {
               sx={{ p: 3 }}
             >
               <Stack direction="row" sx={{ alignItems: 'center', gap: 1, mb: 2.5 }}>
-                <CalendarDays size={19} color="#137f8d" />
+                <CalendarDays size={19} color="var(--g-accent)" />
                 <Box>
                   <Typography sx={{ fontSize: 15, fontWeight: 800 }}>Holiday policy</Typography>
                   <Typography sx={{ color: 'text.secondary', fontSize: 11 }}>
@@ -204,7 +204,7 @@ export function PolicyAdministrationPage() {
               sx={{ justifyContent: 'space-between', alignItems: { md: 'center' }, gap: 2 }}
             >
               <Stack direction="row" sx={{ alignItems: 'center', gap: 1.2 }}>
-                <Gauge size={19} color="#137f8d" />
+                <Gauge size={19} color="var(--g-accent)" />
                 <Box>
                   <Typography sx={{ fontSize: 15, fontWeight: 800 }}>
                     Employee leave balances
@@ -281,7 +281,7 @@ export function PolicyAdministrationPage() {
                 }}
               >
                 <Box>
-                  <Settings2 size={24} color="#8b97a8" />
+                  <Settings2 size={24} color="var(--g-faint)" />
                   <Typography sx={{ mt: 0.6, color: 'text.secondary', fontSize: 12 }}>
                     Enter an employee code to configure paid leave.
                   </Typography>
@@ -331,7 +331,8 @@ function HolidayList({
                   gap: 1.25,
                   p: 1.4,
                   borderRadius: 2,
-                  bgcolor: '#f7f9fb',
+                  bgcolor: 'var(--g-base)',
+                  boxShadow: 'var(--g-inset-sm)',
                 }}
               >
                 <Box
@@ -341,11 +342,11 @@ function HolidayList({
                     py: 0.6,
                     textAlign: 'center',
                     borderRadius: 1.5,
-                    bgcolor: '#f1edff',
-                    color: '#6852a8',
+                    bgcolor: 'var(--g-pn-soft)',
+                    color: 'var(--g-pn)',
                   }}
                 >
-                  <Typography sx={{ fontSize: 10, fontWeight: 850 }}>
+                  <Typography sx={{ fontSize: 11, fontWeight: 850 }}>
                     {new Date(`${holiday.date}T00:00:00Z`).toLocaleDateString('en-IN', {
                       day: '2-digit',
                       month: 'short',
@@ -357,7 +358,7 @@ function HolidayList({
                   <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 780 }}>
                     {holiday.name}
                   </Typography>
-                  <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
+                  <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
                     Company-wide
                   </Typography>
                 </Box>
@@ -452,7 +453,7 @@ function BalanceEditor({
       <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 1, mb: 1.5 }}>
         <Box>
           <Typography sx={{ fontSize: 13, fontWeight: 820 }}>{label}</Typography>
-          <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
+          <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
             {balance.pendingDays} pending · {balance.approvedDays} approved
           </Typography>
         </Box>

@@ -19,6 +19,8 @@ export const RegularisationDecisionSchema = z.object({
   step: z.number().int().min(1).max(2),
   decision: z.enum(['approved', 'rejected']),
   actorDisplayName: z.string(),
+  /** Lets an approver find their own step in the history. */
+  actorEmployeeId: z.string().optional(),
   actorRole: z.enum(['reporting_manager', 'hr', 'attendance_admin', 'system_admin']),
   comment: z.string(),
   decidedAt: z.string().datetime(),

@@ -1,4 +1,10 @@
-import type { LeaveDayPart, LeaveRequestDto, LeaveStatus, LeaveType } from '@gnomon/shared';
+import type {
+  LeaveDayPart,
+  LeaveRequestDto,
+  LeaveStatus,
+  LeaveType,
+  LeaveWorkCheckDto,
+} from '@gnomon/shared';
 import {
   Alert,
   Box,
@@ -29,19 +35,22 @@ import {
   type DataTableColumn,
   type SortDirection,
 } from '../components/data-view/DataTable';
+import { ConfirmDialog } from '../components/ConfirmDialog';
+import { CatchUpBanner } from '../components/CatchUpBanner';
 import { FilterBar } from '../components/data-view/FilterBar';
 import { PageHeader } from '../components/data-view/PageHeader';
 import { PageTabs, type PageTab } from '../components/data-view/PageTabs';
 import { useAuth } from '../lib/auth';
 import { readFormDraft, useSessionFormDraft } from '../lib/form-drafts';
 import { useMyLeaves } from '../lib/leaves';
+import { formatMinutes } from '../lib/timesheets';
 import { confirmDiscardChanges, useUnsavedChanges } from '../lib/unsaved-changes';
 import { parseEnumValue, parseShortSearch, useUrlQueryState } from '../lib/url-query-state';
 
 export const leaveTypeLabels: Record<LeaveType, string> = {
-  casual: 'Casual leave',
-  sick: 'Sick leave',
-  earned: 'Earned leave',
+  casual: 'Casual/Sick leave',
+  earned: 'Privilege leave',
+  comp_off: 'Compensatory off',
   unpaid: 'Unpaid leave',
 };
 
@@ -74,7 +83,7 @@ function isLeaveFormDraft(value: unknown): value is LeaveFormDraft {
   return (
     typeof draft.startDate === 'string' &&
     typeof draft.endDate === 'string' &&
-    ['casual', 'sick', 'earned', 'unpaid'].includes(draft.leaveType ?? '') &&
+    ['casual', 'earned', 'comp_off', 'unpaid'].includes(draft.leaveType ?? '') &&
     ['full_day', 'first_half', 'second_half'].includes(draft.dayPart ?? '') &&
     typeof draft.reason === 'string'
   );
@@ -180,7 +189,7 @@ function compareRequests(left: LeaveRequestDto, right: LeaveRequestDto, key: Lea
   return left.submittedAt.localeCompare(right.submittedAt);
 }
 
-export function LeavePage() {
+export function LeavePage({ onOpenCatchUp }: { onOpenCatchUp?: () => void } = {}) {
   const { user } = useAuth();
   const defaultDate = useMemo(nextWorkingDate, []);
   const draftKey = `${user?.employeeId ?? 'anonymous'}:leave-request`;
@@ -326,8 +335,25 @@ export function LeavePage() {
     setPageNumber(1);
   };
 
+  const [workConflicts, setWorkConflicts] = useState<LeaveWorkCheckDto['days']>([]);
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    // Warn when work is already recorded on a leave day (e.g. worked 2 hours, then fell ill).
+    try {
+      const recorded = await leaves.checkRecordedWork(startDate, endDate);
+      if (recorded.length > 0) {
+        setWorkConflicts(recorded);
+        return;
+      }
+    } catch {
+      // The check is advisory; submit normally if it cannot run.
+    }
+    await submitLeave();
+  };
+
+  const submitLeave = async () => {
+    setWorkConflicts([]);
     try {
       const result = await leaves.create({ leaveType, startDate, endDate, dayPart, reason });
       const requestYear = Number(startDate.slice(0, 4));
@@ -363,7 +389,7 @@ export function LeavePage() {
               ? request.startDate
               : `${request.startDate} - ${request.endDate}`}
           </Typography>
-          <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
+          <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
             {leaveTypeLabels[request.leaveType]} - {dayPartLabel(request.dayPart)}
           </Typography>
         </Box>
@@ -454,6 +480,36 @@ export function LeavePage() {
 
   return (
     <Stack spacing={2.5} sx={{ width: '100%', maxWidth: 1440, mx: 'auto' }}>
+      <ConfirmDialog
+        open={workConflicts.length > 0}
+        title="You already worked on this day"
+        confirmLabel="Apply leave anyway"
+        busy={leaves.isUpdating}
+        onCancel={() => setWorkConflicts([])}
+        onConfirm={() => void submitLeave()}
+      >
+        <Typography sx={{ fontSize: 13.5 }}>Work time is already recorded for:</Typography>
+        <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
+          {workConflicts.map((day) => (
+            <li key={day.workDate}>
+              <Typography sx={{ fontSize: 13.5 }}>
+                <b>{day.workDate}</b> — {formatMinutes(day.trackedMinutes)}
+                {day.running ? ' (timer still running)' : ''}
+              </Typography>
+            </li>
+          ))}
+        </Box>
+        <Typography sx={{ fontSize: 13.5 }}>
+          {dayPart === 'full_day'
+            ? 'You are applying for a full day. If you worked part of the day, a half-day leave may fit better.'
+            : 'Check that the half day you chose does not overlap the time you worked.'}
+        </Typography>
+        {workConflicts.some((day) => day.running) && (
+          <Typography sx={{ fontSize: 13.5, color: 'var(--g-pt)' }}>
+            Remember to stop your timecard if you are leaving now.
+          </Typography>
+        )}
+      </ConfirmDialog>
       <PageHeader
         eyebrow="TIME AWAY"
         title="Leave"
@@ -474,6 +530,8 @@ export function LeavePage() {
         <Alert severity="warning">Your account cannot create leave requests.</Alert>
       )}
       {leaves.error && !createOpen && <Alert severity="error">{leaves.error.message}</Alert>}
+
+      <CatchUpBanner onOpen={onOpenCatchUp} />
 
       <BalanceSummary balances={leaves.balances} />
 
@@ -596,8 +654,8 @@ function BalanceSummary({ balances }: { balances: ReturnType<typeof useMyLeaves>
             border: '1px solid',
             borderColor: 'divider',
             borderRadius: '18px',
-            bgcolor: '#fff',
-            boxShadow: '0 10px 26px rgba(20,32,51,.045)',
+            bgcolor: 'var(--g-base)',
+            boxShadow: 'var(--g-raised)',
             '&::after': {
               content: '""',
               position: 'absolute',
@@ -606,11 +664,11 @@ function BalanceSummary({ balances }: { balances: ReturnType<typeof useMyLeaves>
               right: -25,
               top: -24,
               borderRadius: '50%',
-              bgcolor: 'rgba(18,148,161,.07)',
+              bgcolor: 'var(--g-accent-soft)',
             },
           }}
         >
-          <Typography noWrap sx={{ color: 'primary.dark', fontSize: 10.5, fontWeight: 750 }}>
+          <Typography noWrap sx={{ color: 'primary.dark', fontSize: 11.5, fontWeight: 750 }}>
             {leaveTypeLabels[balance.leaveType]}
           </Typography>
           <Typography sx={{ mt: 0.45, fontSize: { xs: 14, sm: 16 }, fontWeight: 850 }}>
@@ -620,7 +678,7 @@ function BalanceSummary({ balances }: { balances: ReturnType<typeof useMyLeaves>
                 : `${balance.availableDays} available`
               : 'As approved'}
           </Typography>
-          <Typography sx={{ mt: 0.2, color: 'text.secondary', fontSize: 9.5 }}>
+          <Typography sx={{ mt: 0.2, color: 'text.secondary', fontSize: 10.5 }}>
             {balance.pendingDays} pending - {balance.approvedDays} approved
           </Typography>
         </Box>
@@ -749,7 +807,14 @@ function CreateLeaveDialog({
               helperText={`${reason.trim().length}/1000 - minimum 5 characters`}
               required
             />
-            <Box sx={{ p: 1.5, bgcolor: '#f4f8f9', borderRadius: 1.5 }}>
+            <Box
+              sx={{
+                p: 1.5,
+                bgcolor: 'var(--g-base)',
+                boxShadow: 'var(--g-inset-sm)',
+                borderRadius: 1.5,
+              }}
+            >
               <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 1 }}>
                 <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
                   Working-day duration
@@ -758,7 +823,7 @@ function CreateLeaveDialog({
                   {requestedDays} day{requestedDays === 1 ? '' : 's'}
                 </Typography>
               </Stack>
-              <Typography sx={{ mt: 0.5, color: 'text.secondary', fontSize: 10.5 }}>
+              <Typography sx={{ mt: 0.5, color: 'text.secondary', fontSize: 11.5 }}>
                 {selectedBalance?.availableDays === null
                   ? 'Entitlement is not configured yet; approval remains available.'
                   : selectedBalance?.availableDays !== undefined
@@ -766,7 +831,7 @@ function CreateLeaveDialog({
                     : 'Loading balance policy...'}
               </Typography>
               {hasHoliday && (
-                <Typography sx={{ mt: 0.45, color: 'primary.dark', fontSize: 10.5 }}>
+                <Typography sx={{ mt: 0.45, color: 'primary.dark', fontSize: 11.5 }}>
                   Company holidays inside this range are excluded automatically.
                 </Typography>
               )}
@@ -906,7 +971,7 @@ function DetailGrid({ values }: { values: Array<[string, string]> }) {
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <Box sx={{ minWidth: 0 }}>
-      <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>{label}</Typography>
+      <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>{label}</Typography>
       <Typography sx={{ mt: 0.25, fontSize: 12.5, fontWeight: 700, overflowWrap: 'anywhere' }}>
         {value}
       </Typography>

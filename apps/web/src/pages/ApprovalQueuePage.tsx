@@ -8,151 +8,318 @@ import {
   Divider,
   Drawer,
   IconButton,
+  InputAdornment,
+  MenuItem,
   Stack,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Tooltip,
   Typography,
 } from '@mui/material';
-import { Check, ChevronRight, ShieldCheck, X } from 'lucide-react';
+import {
+  Check,
+  ChevronRight,
+  ChevronsDownUp,
+  ChevronsUpDown,
+  Download,
+  RotateCcw,
+  Rows3,
+  Rows4,
+  Search,
+  ShieldCheck,
+  X,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
-import {
-  DataTable,
-  type DataTableColumn,
-  type SortDirection,
-} from '../components/data-view/DataTable';
-import { FilterBar } from '../components/data-view/FilterBar';
+import { ColumnPicker } from '../components/data-view/ColumnPicker';
+import { DataGrid, type DataGridColumn } from '../components/data-view/DataGrid';
+import { MultiSelectFilter } from '../components/data-view/MultiSelectFilter';
 import { PageHeader } from '../components/data-view/PageHeader';
-import { PageTabs, type PageTab } from '../components/data-view/PageTabs';
+import { PageTabs } from '../components/data-view/PageTabs';
+import {
+  approvalColumnIds,
+  approvalColumnLabels,
+  approvalFacet,
+  approvalGroupFor,
+  approvalGroupLabels,
+  approvalGroupOptions,
+  buildApprovalExport,
+  decisionLabel,
+  defaultApprovalSort,
+  defaultVisibleApprovalColumns,
+  filterApprovals,
+  leaveRow,
+  nextApprovalSort,
+  orderApprovals,
+  parseApprovalSort,
+  parseVisibleApprovalColumns,
+  regularisationRow,
+  serializeApprovalSort,
+  type ApprovalColumnId,
+  type ApprovalGroupBy,
+  type ApprovalRow,
+  type ApprovalSortRule,
+} from '../lib/approval-view';
+import { useAuth } from '../lib/auth';
+import { useStoredColumnOrder } from '../lib/column-order';
+import { downloadCsv } from '../lib/csv';
 import { useLeaveApprovals } from '../lib/leaves';
 import { useRegularisationApprovals } from '../lib/regularisations';
 import { formatIndiaTime } from '../lib/timecard';
 import { formatMinutes } from '../lib/timesheets';
-import { parseEnumValue, parseShortSearch, useUrlQueryState } from '../lib/url-query-state';
+import {
+  parseEnumValue,
+  parseIsoDate,
+  parseShortSearch,
+  useUrlQueryState,
+} from '../lib/url-query-state';
 import { leaveTypeLabels } from './LeavePage';
 
 type ApprovalTab = 'regularisations' | 'leave';
-type ApprovalSortKey = 'employee' | 'date' | 'submitted' | 'days' | 'stage';
+type ApprovalView = 'pending' | 'decided';
 type SelectedApproval =
   | { kind: 'regularisations'; item: RegularisationRequestDto }
   | { kind: 'leave'; item: LeaveRequestDto };
 
-const approvalTabs = ['regularisations', 'leave'] as const;
-const approvalSortKeys = ['employee', 'date', 'submitted', 'days', 'stage'] as const;
-const sortDirections = ['asc', 'desc'] as const;
-const pageSizes = [10, 25, 50, 100] as const;
+const approvalViews = ['pending', 'decided'] as const;
+const LIST_SEPARATOR = '|';
+const emptyList: readonly string[] = [];
 
-function parseApprovalTab(value: string): ApprovalTab | null {
-  return parseEnumValue(value, approvalTabs);
-}
+const parseApprovalView = (value: string) => parseEnumValue(value, approvalViews);
+const parseGroupBy = (value: string) => parseEnumValue(value, approvalGroupOptions);
+const parseList = (value: string): readonly string[] | null => {
+  const items = value.split(LIST_SEPARATOR).filter(Boolean);
+  return items.length <= 50 && items.every((item) => item.length <= 80) ? items : null;
+};
+const serializeList = (items: readonly string[]) => items.join(LIST_SEPARATOR);
+const parseOptionalDate = (value: string) => (value === '' ? '' : parseIsoDate(value));
+const parseSort = (value: string) => parseApprovalSort(value);
+const serializeSort = (rules: readonly ApprovalSortRule[]) => serializeApprovalSort(rules);
 
-function parseApprovalSort(value: string): ApprovalSortKey | null {
-  return parseEnumValue(value, approvalSortKeys);
-}
+const finalStatusLabels: Record<string, string> = {
+  approved: 'Approved',
+  rejected: 'Rejected',
+  cancelled: 'Cancelled',
+};
 
-function parseSortDirection(value: string): SortDirection | null {
-  return parseEnumValue(value, sortDirections);
-}
-
-function parsePage(value: string): number | null {
-  const page = Number(value);
-  return Number.isInteger(page) && page >= 1 ? page : null;
-}
-
-function parsePageSize(value: string): number | null {
-  const pageSize = Number(value);
-  return pageSizes.includes(pageSize as (typeof pageSizes)[number]) ? pageSize : null;
+function stageColor(status: string): 'warning' | 'info' | 'success' | 'error' | 'default' {
+  if (status === 'pending_manager') return 'warning';
+  if (status === 'pending_hr') return 'info';
+  if (status === 'approved') return 'success';
+  if (status === 'rejected') return 'error';
+  return 'default';
 }
 
 function regularisationStage(request: RegularisationRequestDto): string {
+  const final = finalStatusLabels[request.status];
+  if (final) return final;
   return request.status === 'pending_manager' ? 'Manager review' : 'Final HR review';
 }
 
 function leaveStage(request: LeaveRequestDto): string {
+  const final = finalStatusLabels[request.status];
+  if (final) return final;
   return request.status === 'pending_manager'
     ? `Approver 1 of ${request.approvalSteps}`
     : `Approver 2 of ${request.approvalSteps}`;
 }
 
-function matchesSearch(search: string, values: readonly string[]): boolean {
-  const term = search.trim().toLowerCase();
-  return !term || values.some((value) => value.toLowerCase().includes(term));
+function readStored<T>(key: string, parse: (value: unknown) => T | null, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw === null ? fallback : (parse(JSON.parse(raw)) ?? fallback);
+  } catch {
+    return fallback;
+  }
 }
 
-export function ApprovalQueuePage() {
+function writeStored(key: string, value: unknown): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Preferences are a convenience; ignore blocked storage.
+  }
+}
+
+const fieldSx = { '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: 'var(--g-base)' } };
+const outlinedButtonSx = {
+  border: '1px solid',
+  borderColor: 'divider',
+  borderRadius: '10px',
+  bgcolor: 'var(--g-base)',
+};
+const DENSITY_STORAGE_KEY = 'gnomon:approvals:density';
+const VISIBLE_COLUMNS_STORAGE_KEY = 'gnomon:approvals:visible-columns';
+const COLUMN_ORDER_STORAGE_KEY = 'gnomon:approvals:column-order';
+
+export function ApprovalQueuePage({ kind }: { kind: ApprovalTab }) {
+  const { user } = useAuth();
   const regularisations = useRegularisationApprovals();
   const leave = useLeaveApprovals();
-  const availableTabs = useMemo<ApprovalTab[]>(() => {
-    const tabs: ApprovalTab[] = [];
-    if (regularisations.canApprove) tabs.push('regularisations');
-    if (leave.canApprove) tabs.push('leave');
-    return tabs;
-  }, [leave.canApprove, regularisations.canApprove]);
-  const defaultTab = availableTabs[0] ?? 'regularisations';
-  const [tab, setTab] = useUrlQueryState<ApprovalTab>('tab', defaultTab, parseApprovalTab);
+  const canApprove = kind === 'regularisations' ? regularisations.canApprove : leave.canApprove;
+  const [view, setView] = useUrlQueryState<ApprovalView>('view', 'pending', parseApprovalView);
   const [search, setSearch] = useUrlQueryState('q', '', parseShortSearch);
-  const [sortKey, setSortKey] = useUrlQueryState<ApprovalSortKey>(
+  const [stageFilter, setStageFilter] = useUrlQueryState(
+    'stage',
+    emptyList,
+    parseList,
+    serializeList,
+  );
+  const [categoryFilter, setCategoryFilter] = useUrlQueryState(
+    'type',
+    emptyList,
+    parseList,
+    serializeList,
+  );
+  const [decisionFilter, setDecisionFilter] = useUrlQueryState(
+    'decision',
+    emptyList,
+    parseList,
+    serializeList,
+  );
+  const [dateFrom, setDateFrom] = useUrlQueryState('from', '', parseOptionalDate);
+  const [dateTo, setDateTo] = useUrlQueryState('to', '', parseOptionalDate);
+  const [groupBy, setGroupBy] = useUrlQueryState<ApprovalGroupBy>('group', 'none', parseGroupBy);
+  const defaultSort = useMemo(() => defaultApprovalSort(view), [view]);
+  const [sortRules, setSortRules] = useUrlQueryState<readonly ApprovalSortRule[]>(
     'sort',
-    'submitted',
-    parseApprovalSort,
+    defaultSort,
+    parseSort,
+    serializeSort,
   );
-  const [sortDirection, setSortDirection] = useUrlQueryState<SortDirection>(
-    'order',
-    'asc',
-    parseSortDirection,
+  const [visibleColumns, setVisibleColumns] = useState<ApprovalColumnId[]>(() =>
+    readStored(VISIBLE_COLUMNS_STORAGE_KEY, parseVisibleApprovalColumns, [
+      ...defaultVisibleApprovalColumns,
+    ]),
   );
-  const [pageNumber, setPageNumber] = useUrlQueryState('page', 1, parsePage);
-  const [rowsPerPage, setRowsPerPage] = useUrlQueryState('size', 25, parsePageSize);
+  const columnOrder = useStoredColumnOrder(COLUMN_ORDER_STORAGE_KEY, approvalColumnIds);
+  const [density, setDensity] = useState<'comfortable' | 'compact'>(() =>
+    readStored(
+      DENSITY_STORAGE_KEY,
+      (value) => (value === 'compact' || value === 'comfortable' ? value : null),
+      'comfortable',
+    ),
+  );
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(50);
+  const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(new Set());
   const [selected, setSelected] = useState<SelectedApproval | null>(null);
   const [decisionComment, setDecisionComment] = useState('');
 
-  useEffect(() => {
-    if (availableTabs.length && !availableTabs.includes(tab)) setTab(defaultTab);
-  }, [availableTabs, defaultTab, setTab, tab]);
+  useEffect(() => writeStored(VISIBLE_COLUMNS_STORAGE_KEY, visibleColumns), [visibleColumns]);
+  useEffect(() => writeStored(DENSITY_STORAGE_KEY, density), [density]);
 
-  const tabs = useMemo<ReadonlyArray<PageTab<ApprovalTab>>>(
+  const columnLabels = approvalColumnLabels(kind);
+  const groupLabels = approvalGroupLabels(kind);
+  const sourceRequests =
+    kind === 'regularisations'
+      ? view === 'pending'
+        ? regularisations.requests
+        : regularisations.history
+      : view === 'pending'
+        ? leave.requests
+        : leave.history;
+  const allRows = useMemo<ApprovalRow[]>(
     () =>
-      availableTabs.map((value) => ({
-        value,
-        label: value === 'regularisations' ? 'Regularisation' : 'Leave',
-        count:
-          value === 'regularisations' ? regularisations.requests.length : leave.requests.length,
-      })),
-    [availableTabs, leave.requests.length, regularisations.requests.length],
+      kind === 'regularisations'
+        ? (sourceRequests as RegularisationRequestDto[]).map((request) =>
+            regularisationRow(request, user?.employeeId, formatIndiaTime),
+          )
+        : (sourceRequests as LeaveRequestDto[]).map((request) =>
+            leaveRow(request, user?.employeeId, (type) => leaveTypeLabels[type]),
+          ),
+    [kind, sourceRequests, user?.employeeId],
   );
+  const viewRows = useMemo(
+    () =>
+      orderApprovals(
+        filterApprovals(allRows, {
+          search,
+          stages: stageFilter,
+          categories: categoryFilter,
+          decisions: view === 'decided' ? decisionFilter : [],
+          dateFrom,
+          dateTo,
+        }),
+        sortRules,
+        groupBy,
+      ),
+    [
+      allRows,
+      categoryFilter,
+      dateFrom,
+      dateTo,
+      decisionFilter,
+      groupBy,
+      search,
+      sortRules,
+      stageFilter,
+      view,
+    ],
+  );
+  const groupKeys = useMemo(
+    () =>
+      groupBy === 'none'
+        ? []
+        : [...new Set(viewRows.map((row) => approvalGroupFor(row, groupBy).key))],
+    [groupBy, viewRows],
+  );
+  const stageOptions = useMemo(() => approvalFacet(allRows, (row) => row.stage), [allRows]);
+  const categoryOptions = useMemo(() => approvalFacet(allRows, (row) => row.category), [allRows]);
+  const decisionOptions = useMemo(() => approvalFacet(allRows, decisionLabel), [allRows]);
 
-  const activeError = tab === 'regularisations' ? regularisations.error : leave.error;
-  const activeFilteredCount =
-    tab === 'regularisations'
-      ? regularisations.requests.filter((request) =>
-          matchesSearch(search, [
-            request.employeeDisplayName,
-            request.employeeCode,
-            request.reason,
-            request.source,
-          ]),
-        ).length
-      : leave.requests.filter((request) =>
-          matchesSearch(search, [
-            request.employeeDisplayName,
-            request.employeeCode,
-            request.reason,
-            leaveTypeLabels[request.leaveType],
-          ]),
-        ).length;
-  const totalCount = regularisations.requests.length + leave.requests.length;
+  useEffect(
+    () => setPage(0),
+    [categoryFilter, dateFrom, dateTo, decisionFilter, groupBy, search, stageFilter, kind, view],
+  );
+  useEffect(() => setCollapsedGroups(new Set()), [groupBy]);
 
-  const updateSort = (key: ApprovalSortKey) => {
-    if (key === sortKey) setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    else {
-      setSortKey(key);
-      setSortDirection('asc');
-    }
-    setPageNumber(1);
+  const activeError =
+    view === 'decided'
+      ? kind === 'regularisations'
+        ? regularisations.historyError
+        : leave.historyError
+      : kind === 'regularisations'
+        ? regularisations.error
+        : leave.error;
+  const isLoading =
+    kind === 'regularisations'
+      ? view === 'pending'
+        ? regularisations.isLoading
+        : regularisations.isHistoryLoading
+      : view === 'pending'
+        ? leave.isLoading
+        : leave.isHistoryLoading;
+  const pendingCount =
+    kind === 'regularisations' ? regularisations.requests.length : leave.requests.length;
+
+  const hasFilters =
+    Boolean(search) ||
+    stageFilter.length > 0 ||
+    categoryFilter.length > 0 ||
+    decisionFilter.length > 0 ||
+    Boolean(dateFrom) ||
+    Boolean(dateTo) ||
+    groupBy !== 'none';
+  const clearFilters = () => {
+    setSearch('');
+    setStageFilter([]);
+    setCategoryFilter([]);
+    setDecisionFilter([]);
+    setDateFrom('');
+    setDateTo('');
+    setGroupBy('none');
   };
 
-  const selectApproval = (approval: SelectedApproval) => {
-    setSelected(approval);
+  const selectRow = (row: ApprovalRow) => {
+    const item = sourceRequests.find((request) => request.id === row.id);
+    if (!item) return;
+    setSelected(
+      kind === 'regularisations'
+        ? { kind, item: item as RegularisationRequestDto }
+        : { kind: 'leave', item: item as LeaveRequestDto },
+    );
     setDecisionComment('');
   };
 
@@ -170,92 +337,436 @@ export function ApprovalQueuePage() {
     }
   };
 
+  const formatDateTime = (value: string | null) =>
+    value
+      ? new Date(value).toLocaleString('en-IN', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'Asia/Kolkata',
+        })
+      : null;
+
+  const allColumns: Record<ApprovalColumnId, DataGridColumn<ApprovalRow, ApprovalColumnId>> = {
+    employee: {
+      id: 'employee',
+      label: columnLabels.employee,
+      sortKey: 'employee',
+      minWidth: 210,
+      sticky: true,
+      render: (row) => <EmployeeCell name={row.employeeName} code={row.employeeCode} />,
+    },
+    date: {
+      id: 'date',
+      label: columnLabels.date,
+      sortKey: 'date',
+      minWidth: kind === 'leave' ? 180 : 120,
+      render: (row) => <CellText>{row.dateLabel}</CellText>,
+    },
+    category: {
+      id: 'category',
+      label: columnLabels.category,
+      sortKey: 'category',
+      minWidth: 130,
+      render: (row) => <CellText>{row.category}</CellText>,
+    },
+    detail: {
+      id: 'detail',
+      label: columnLabels.detail,
+      sortKey: 'detail',
+      minWidth: kind === 'leave' ? 120 : 170,
+      render: (row) => <CellText>{row.detail}</CellText>,
+    },
+    amount: {
+      id: 'amount',
+      label: columnLabels.amount,
+      sortKey: 'amount',
+      width: 110,
+      align: 'right',
+      render: (row) => <CellText>{row.amountLabel}</CellText>,
+    },
+    reason: {
+      id: 'reason',
+      label: columnLabels.reason,
+      sortKey: 'reason',
+      minWidth: 240,
+      render: (row) => (
+        <Tooltip title={row.reason} enterDelay={500}>
+          <Typography noWrap sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+            {row.reason}
+          </Typography>
+        </Tooltip>
+      ),
+    },
+    stage: {
+      id: 'stage',
+      label: columnLabels.stage,
+      sortKey: 'stage',
+      minWidth: 150,
+      render: (row) => (
+        <Chip size="small" variant="outlined" color={stageColor(row.status)} label={row.stage} />
+      ),
+    },
+    submitted: {
+      id: 'submitted',
+      label: columnLabels.submitted,
+      sortKey: 'submitted',
+      minWidth: 170,
+      render: (row) => <CellText>{formatDateTime(row.submittedAt)}</CellText>,
+    },
+    decision: {
+      id: 'decision',
+      label: columnLabels.decision,
+      sortKey: 'decision',
+      minWidth: 140,
+      render: (row) =>
+        row.myDecision ? (
+          <Chip
+            size="small"
+            variant="outlined"
+            color={row.myDecision === 'approved' ? 'success' : 'error'}
+            label={decisionLabel(row)}
+          />
+        ) : (
+          <CellText>{null}</CellText>
+        ),
+    },
+    decidedAt: {
+      id: 'decidedAt',
+      label: columnLabels.decidedAt,
+      sortKey: 'decidedAt',
+      minWidth: 170,
+      render: (row) => <CellText>{formatDateTime(row.myDecidedAt)}</CellText>,
+    },
+  };
+  // "Your decision" columns only make sense once you have decided.
+  const hiddenInView = (id: ApprovalColumnId) =>
+    view === 'pending' && (id === 'decision' || id === 'decidedAt');
+  const groupedColumn: Partial<Record<ApprovalGroupBy, ApprovalColumnId>> = {
+    employee: 'employee',
+    stage: 'stage',
+    category: 'category',
+    decision: 'decision',
+  };
+  const orderedIds = columnOrder.order.filter(
+    (id) => visibleColumns.includes(id) && !hiddenInView(id) && groupedColumn[groupBy] !== id,
+  );
+  const gridColumns: DataGridColumn<ApprovalRow, ApprovalColumnId>[] = [
+    ...(orderedIds.length ? orderedIds : (['employee'] as const)).map((id) => allColumns[id]),
+    {
+      id: 'review',
+      label: 'Review',
+      align: 'right',
+      width: 80,
+      render: (row) => (
+        <Tooltip title="Review request">
+          <IconButton size="small" aria-label="Review request" onClick={() => selectRow(row)}>
+            <ChevronRight size={17} />
+          </IconButton>
+        </Tooltip>
+      ),
+    },
+  ];
+
+  const exportCsv = () => {
+    const ids = columnOrder.order.filter((id) => visibleColumns.includes(id) && !hiddenInView(id));
+    const csv = buildApprovalExport(viewRows, kind, ids, groupBy);
+    const name = ['approvals', kind, view, groupBy !== 'none' ? `by-${groupBy}` : null]
+      .filter(Boolean)
+      .join('-');
+    downloadCsv(`${name}.csv`, csv.headers, csv.rows);
+  };
+
+  const pickerColumns = columnOrder.order
+    .filter((id) => !hiddenInView(id))
+    .map((id) => ({ id, label: columnLabels[id] }));
+
   return (
-    <Stack spacing={2.5} sx={{ width: '100%', maxWidth: 1440, mx: 'auto' }}>
+    <Stack spacing={2.5} sx={{ width: '100%', maxWidth: 1800, mx: 'auto' }}>
       <PageHeader
-        eyebrow="MANAGER WORKSPACE"
-        title="Approvals"
-        meta={`${totalCount} requests awaiting your decision`}
+        eyebrow="APPROVALS"
+        title={kind === 'leave' ? 'Leave approvals' : 'Regularisation approvals'}
+        meta={`${pendingCount} ${pendingCount === 1 ? 'request' : 'requests'} awaiting your decision`}
+        action={
+          canApprove ? (
+            <Button
+              variant="outlined"
+              color="inherit"
+              startIcon={<Download size={16} />}
+              onClick={exportCsv}
+              disabled={!viewRows.length}
+              sx={outlinedButtonSx}
+            >
+              Export CSV
+            </Button>
+          ) : undefined
+        }
       />
 
       {activeError && !selected && <Alert severity="error">{activeError.message}</Alert>}
-      {!availableTabs.length && (
-        <Alert severity="info">Your account does not have an approval permission.</Alert>
-      )}
-      {regularisations.canApprove && (
+      {!canApprove && (
         <Alert severity="info">
-          Attendance corrections use two approvals: Step 1 reporting-manager review, followed by
-          Step 2 final HR or Attendance Admin review. Access-card entry and exit corrections from
-          the imported door data follow this workflow.
+          Your account cannot approve {kind === 'leave' ? 'leave' : 'regularisation'} requests.
         </Alert>
       )}
 
-      {availableTabs.length > 0 && (
+      {canApprove && (
         <>
           <Box>
             <PageTabs
-              value={tab}
-              tabs={tabs}
+              value={view}
+              tabs={[
+                {
+                  value: 'pending',
+                  label: 'Waiting for me',
+                  count:
+                    kind === 'regularisations'
+                      ? regularisations.requests.length
+                      : leave.requests.length,
+                },
+                {
+                  value: 'decided',
+                  label: 'Decided by me',
+                  count:
+                    kind === 'regularisations'
+                      ? regularisations.history.length
+                      : leave.history.length,
+                },
+              ]}
               onChange={(value) => {
-                setTab(value);
-                setSearch('');
-                setSortKey('submitted');
-                setSortDirection('asc');
-                setPageNumber(1);
+                setView(value);
+                setStageFilter([]);
+                setDecisionFilter([]);
+                setSortRules(defaultApprovalSort(value));
                 setSelected(null);
               }}
-              ariaLabel="Approval workflow"
-            />
-            <FilterBar
-              search={search}
-              onSearchChange={(value) => {
-                setSearch(value);
-                setPageNumber(1);
-              }}
-              searchLabel="Search approvals"
-              resultCount={activeFilteredCount}
-              resultLabel={activeFilteredCount === 1 ? 'request' : 'requests'}
-              hasActiveFilters={Boolean(search)}
-              onClear={() => {
-                setSearch('');
-                setPageNumber(1);
-              }}
+              ariaLabel="Approval status"
             />
           </Box>
 
-          {tab === 'regularisations' ? (
-            <RegularisationQueue
-              requests={regularisations.requests}
-              search={search}
-              sortKey={sortKey}
-              sortDirection={sortDirection}
-              page={pageNumber - 1}
-              rowsPerPage={rowsPerPage}
-              isLoading={regularisations.isLoading}
-              onSort={updateSort}
-              onPageChange={(page) => setPageNumber(page + 1)}
-              onRowsPerPageChange={(size) => {
-                setRowsPerPage(size);
-                setPageNumber(1);
+          <Stack direction="row" sx={{ gap: 1.25, flexWrap: 'wrap', alignItems: 'center' }}>
+            <TextField
+              size="small"
+              placeholder="Search employee, reason…"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              sx={{ width: { xs: '100%', sm: 240 }, ...fieldSx }}
+              slotProps={{
+                htmlInput: { 'aria-label': 'Search approvals' },
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search size={15} />
+                    </InputAdornment>
+                  ),
+                  endAdornment: search ? (
+                    <InputAdornment position="end">
+                      <IconButton
+                        size="small"
+                        aria-label="Clear search"
+                        onClick={() => setSearch('')}
+                      >
+                        <X size={14} />
+                      </IconButton>
+                    </InputAdornment>
+                  ) : undefined,
+                },
               }}
-              onSelect={(item) => selectApproval({ kind: 'regularisations', item })}
             />
-          ) : (
-            <LeaveQueue
-              requests={leave.requests}
-              search={search}
-              sortKey={sortKey}
-              sortDirection={sortDirection}
-              page={pageNumber - 1}
-              rowsPerPage={rowsPerPage}
-              isLoading={leave.isLoading}
-              onSort={updateSort}
-              onPageChange={(page) => setPageNumber(page + 1)}
-              onRowsPerPageChange={(size) => {
-                setRowsPerPage(size);
-                setPageNumber(1);
+            <TextField
+              type="date"
+              size="small"
+              label="From"
+              value={dateFrom}
+              onChange={(event) => setDateFrom(event.target.value)}
+              slotProps={{ inputLabel: { shrink: true } }}
+              sx={{ width: 155, ...fieldSx }}
+            />
+            <TextField
+              type="date"
+              size="small"
+              label="To"
+              value={dateTo}
+              onChange={(event) => setDateTo(event.target.value)}
+              slotProps={{ inputLabel: { shrink: true } }}
+              sx={{ width: 155, ...fieldSx }}
+            />
+            <MultiSelectFilter
+              label={columnLabels.category}
+              values={categoryFilter}
+              options={categoryOptions}
+              onChange={setCategoryFilter}
+              width={160}
+              sx={fieldSx}
+            />
+            <MultiSelectFilter
+              label="Stage"
+              values={stageFilter}
+              options={stageOptions}
+              onChange={setStageFilter}
+              width={160}
+              sx={fieldSx}
+            />
+            {view === 'decided' && (
+              <MultiSelectFilter
+                label="Your decision"
+                values={decisionFilter}
+                options={decisionOptions}
+                onChange={setDecisionFilter}
+                width={160}
+                sx={fieldSx}
+              />
+            )}
+            <TextField
+              select
+              size="small"
+              label="Group by"
+              value={groupBy}
+              onChange={(event) => setGroupBy(event.target.value as ApprovalGroupBy)}
+              sx={{ width: 160, ...fieldSx }}
+            >
+              {approvalGroupOptions
+                .filter((option) => view === 'decided' || option !== 'decision')
+                .map((option) => (
+                  <MenuItem key={option} value={option}>
+                    {groupLabels[option]}
+                  </MenuItem>
+                ))}
+            </TextField>
+            {groupBy !== 'none' && (
+              <Tooltip
+                title={
+                  collapsedGroups.size === groupKeys.length
+                    ? 'Expand all groups'
+                    : 'Collapse all groups'
+                }
+              >
+                <IconButton
+                  aria-label={
+                    collapsedGroups.size === groupKeys.length
+                      ? 'Expand all groups'
+                      : 'Collapse all groups'
+                  }
+                  onClick={() =>
+                    setCollapsedGroups(
+                      collapsedGroups.size === groupKeys.length ? new Set() : new Set(groupKeys),
+                    )
+                  }
+                  sx={outlinedButtonSx}
+                >
+                  {collapsedGroups.size === groupKeys.length ? (
+                    <ChevronsUpDown size={17} />
+                  ) : (
+                    <ChevronsDownUp size={17} />
+                  )}
+                </IconButton>
+              </Tooltip>
+            )}
+            <ColumnPicker
+              columns={pickerColumns}
+              visible={visibleColumns.filter((id) => !hiddenInView(id))}
+              onChange={(next) =>
+                setVisibleColumns([...next, ...visibleColumns.filter((id) => hiddenInView(id))])
+              }
+              onReset={() => {
+                setVisibleColumns([...defaultVisibleApprovalColumns]);
+                columnOrder.reset();
               }}
-              onSelect={(item) => selectApproval({ kind: 'leave', item })}
+            />
+            <ToggleButtonGroup
+              exclusive
+              size="small"
+              value={density}
+              onChange={(_event, value: 'comfortable' | 'compact' | null) =>
+                value && setDensity(value)
+              }
+              aria-label="Row density"
+              sx={{
+                bgcolor: 'var(--g-base)',
+                '& .MuiToggleButton-root': { borderRadius: '10px', px: 1 },
+              }}
+            >
+              <ToggleButton value="comfortable" aria-label="Comfortable rows">
+                <Rows3 size={16} />
+              </ToggleButton>
+              <ToggleButton value="compact" aria-label="Compact rows">
+                <Rows4 size={16} />
+              </ToggleButton>
+            </ToggleButtonGroup>
+            {serializeApprovalSort(sortRules) !== serializeApprovalSort(defaultSort) && (
+              <Button
+                size="small"
+                color="inherit"
+                startIcon={<RotateCcw size={14} />}
+                onClick={() => setSortRules(defaultSort)}
+              >
+                Reset sort
+              </Button>
+            )}
+            <Box sx={{ flex: 1 }} />
+            {hasFilters && (
+              <Button
+                color="inherit"
+                size="small"
+                startIcon={<X size={14} />}
+                onClick={clearFilters}
+              >
+                Clear
+              </Button>
+            )}
+            <Chip
+              size="small"
+              label={`${viewRows.length.toLocaleString('en-IN')} ${viewRows.length === 1 ? 'request' : 'requests'}`}
+              sx={{ fontWeight: 750, bgcolor: 'var(--g-accent-soft)', color: 'primary.dark' }}
+            />
+          </Stack>
+
+          {isLoading ? (
+            <Box sx={{ minHeight: 320, display: 'grid', placeItems: 'center' }}>
+              <CircularProgress aria-label="Loading approvals" />
+            </Box>
+          ) : (
+            <DataGrid
+              ariaLabel={
+                kind === 'regularisations' ? 'Regularisation approvals' : 'Leave approvals'
+              }
+              rows={viewRows}
+              columns={gridColumns}
+              getRowId={(row) => row.id}
+              sort={sortRules}
+              onSort={(key, additive) => setSortRules(nextApprovalSort(sortRules, key, additive))}
+              page={page}
+              rowsPerPage={rowsPerPage}
+              onPageChange={setPage}
+              onRowsPerPageChange={(value) => {
+                setRowsPerPage(value);
+                setPage(0);
+              }}
+              density={density}
+              emptyTitle={view === 'pending' ? 'Queue is clear' : 'No decisions yet'}
+              emptyMessage={
+                view === 'pending'
+                  ? 'New requests inside your approval scope will appear here.'
+                  : 'Requests you approve or reject will appear here.'
+              }
+              getRowGroup={groupBy === 'none' ? undefined : (row) => approvalGroupFor(row, groupBy)}
+              collapsedGroups={collapsedGroups}
+              onToggleGroup={(key) =>
+                setCollapsedGroups((current) => {
+                  const next = new Set(current);
+                  if (next.has(key)) next.delete(key);
+                  else next.add(key);
+                  return next;
+                })
+              }
+              rowNoun={{ one: 'request', other: 'requests' }}
+              onRowClick={selectRow}
+              onColumnMove={(columnId, targetId, place) => {
+                if (columnId === 'review' || targetId === 'review') return;
+                columnOrder.move(columnId, targetId, place);
+              }}
             />
           )}
         </>
@@ -273,293 +784,22 @@ export function ApprovalQueuePage() {
         }}
         onApprove={() => void decide('approved')}
         onReject={() => void decide('rejected')}
+        readOnly={
+          view === 'decided' || (selected !== null && !selected.item.status.startsWith('pending_'))
+        }
       />
     </Stack>
   );
 }
 
-interface QueueProps {
-  search: string;
-  sortKey: ApprovalSortKey;
-  sortDirection: SortDirection;
-  page: number;
-  rowsPerPage: number;
-  isLoading: boolean;
-  onSort: (key: ApprovalSortKey) => void;
-  onPageChange: (page: number) => void;
-  onRowsPerPageChange: (size: number) => void;
-}
-
-function RegularisationQueue({
-  requests,
-  search,
-  sortKey,
-  sortDirection,
-  page,
-  rowsPerPage,
-  isLoading,
-  onSort,
-  onPageChange,
-  onRowsPerPageChange,
-  onSelect,
-}: QueueProps & {
-  requests: RegularisationRequestDto[];
-  onSelect: (request: RegularisationRequestDto) => void;
-}) {
-  const rows = useMemo(() => {
-    const direction = sortDirection === 'asc' ? 1 : -1;
-    return requests
-      .filter((request) =>
-        matchesSearch(search, [
-          request.employeeDisplayName,
-          request.employeeCode,
-          request.reason,
-          request.source,
-        ]),
-      )
-      .slice()
-      .sort((left, right) => {
-        const comparison =
-          sortKey === 'employee'
-            ? left.employeeDisplayName.localeCompare(right.employeeDisplayName)
-            : sortKey === 'date'
-              ? left.workDate.localeCompare(right.workDate)
-              : sortKey === 'stage'
-                ? left.status.localeCompare(right.status)
-                : left.submittedAt.localeCompare(right.submittedAt);
-        return comparison * direction || left.id.localeCompare(right.id);
-      });
-  }, [requests, search, sortDirection, sortKey]);
-  const columns: ReadonlyArray<DataTableColumn<RegularisationRequestDto, ApprovalSortKey>> = [
-    {
-      id: 'employee',
-      label: 'Employee',
-      sortKey: 'employee',
-      minWidth: 210,
-      render: (request) => (
-        <EmployeeCell name={request.employeeDisplayName} code={request.employeeCode} />
-      ),
-    },
-    {
-      id: 'date',
-      label: 'Work date',
-      sortKey: 'date',
-      width: 120,
-      render: (request) => request.workDate,
-    },
-    {
-      id: 'source',
-      label: 'Source',
-      hideBelow: 'sm',
-      width: 140,
-      render: (request) =>
-        request.source === 'biometric'
-          ? 'Biometric'
-          : request.source === 'access_card'
-            ? 'Access card'
-            : 'Website',
-    },
-    {
-      id: 'correction',
-      label: 'Corrected time',
-      hideBelow: 'md',
-      minWidth: 180,
-      render: (request) =>
-        `${formatIndiaTime(request.requestedStart)} – ${formatIndiaTime(request.requestedEnd)}`,
-    },
-    {
-      id: 'reason',
-      label: 'Reason',
-      hideBelow: 'md',
-      minWidth: 240,
-      render: (request) => (
-        <Typography noWrap sx={{ maxWidth: 320, fontSize: 12 }}>
-          {request.reason}
-        </Typography>
-      ),
-    },
-    {
-      id: 'stage',
-      label: 'Stage',
-      sortKey: 'stage',
-      width: 145,
-      render: (request) => (
-        <Chip
-          size="small"
-          variant="outlined"
-          color={request.status === 'pending_manager' ? 'warning' : 'info'}
-          label={regularisationStage(request)}
-        />
-      ),
-    },
-    detailsColumn(onSelect),
-  ];
-  return (
-    <DataTable
-      ariaLabel="Regularisation approvals"
-      rows={rows}
-      columns={columns}
-      getRowId={(request) => request.id}
-      sortKey={sortKey}
-      sortDirection={sortDirection}
-      onSort={onSort}
-      page={page}
-      rowsPerPage={rowsPerPage}
-      onPageChange={onPageChange}
-      onRowsPerPageChange={onRowsPerPageChange}
-      onRowClick={onSelect}
-      isLoading={isLoading}
-      emptyTitle="Queue is clear"
-      emptyMessage="New regularisation requests inside your scope will appear here."
-    />
+function CellText({ children }: { children: string | null | undefined }) {
+  return children ? (
+    <Typography noWrap sx={{ fontSize: 12.5 }}>
+      {children}
+    </Typography>
+  ) : (
+    <Typography sx={{ color: 'text.disabled', fontSize: 12.5 }}>—</Typography>
   );
-}
-
-function LeaveQueue({
-  requests,
-  search,
-  sortKey,
-  sortDirection,
-  page,
-  rowsPerPage,
-  isLoading,
-  onSort,
-  onPageChange,
-  onRowsPerPageChange,
-  onSelect,
-}: QueueProps & {
-  requests: LeaveRequestDto[];
-  onSelect: (request: LeaveRequestDto) => void;
-}) {
-  const rows = useMemo(() => {
-    const direction = sortDirection === 'asc' ? 1 : -1;
-    return requests
-      .filter((request) =>
-        matchesSearch(search, [
-          request.employeeDisplayName,
-          request.employeeCode,
-          request.reason,
-          leaveTypeLabels[request.leaveType],
-        ]),
-      )
-      .slice()
-      .sort((left, right) => {
-        const comparison =
-          sortKey === 'employee'
-            ? left.employeeDisplayName.localeCompare(right.employeeDisplayName)
-            : sortKey === 'date'
-              ? left.startDate.localeCompare(right.startDate)
-              : sortKey === 'days'
-                ? left.requestedDays - right.requestedDays
-                : left.submittedAt.localeCompare(right.submittedAt);
-        return comparison * direction || left.id.localeCompare(right.id);
-      });
-  }, [requests, search, sortDirection, sortKey]);
-  const columns: ReadonlyArray<DataTableColumn<LeaveRequestDto, ApprovalSortKey>> = [
-    {
-      id: 'employee',
-      label: 'Employee',
-      sortKey: 'employee',
-      minWidth: 210,
-      render: (request) => (
-        <EmployeeCell name={request.employeeDisplayName} code={request.employeeCode} />
-      ),
-    },
-    {
-      id: 'dates',
-      label: 'Dates',
-      sortKey: 'date',
-      minWidth: 175,
-      render: (request) =>
-        request.startDate === request.endDate
-          ? request.startDate
-          : `${request.startDate} – ${request.endDate}`,
-    },
-    {
-      id: 'type',
-      label: 'Type',
-      hideBelow: 'sm',
-      width: 130,
-      render: (request) => leaveTypeLabels[request.leaveType],
-    },
-    {
-      id: 'days',
-      label: 'Days',
-      sortKey: 'days',
-      align: 'right',
-      hideBelow: 'sm',
-      width: 90,
-      render: (request) => request.requestedDays,
-    },
-    {
-      id: 'reason',
-      label: 'Reason',
-      hideBelow: 'md',
-      minWidth: 260,
-      render: (request) => (
-        <Typography noWrap sx={{ maxWidth: 360, fontSize: 12 }}>
-          {request.reason}
-        </Typography>
-      ),
-    },
-    {
-      id: 'stage',
-      label: 'Stage',
-      sortKey: 'stage',
-      width: 140,
-      render: (request) => (
-        <Chip
-          size="small"
-          variant="outlined"
-          color={request.status === 'pending_manager' ? 'warning' : 'info'}
-          label={leaveStage(request)}
-        />
-      ),
-    },
-    detailsColumn(onSelect),
-  ];
-  return (
-    <DataTable
-      ariaLabel="Leave approvals"
-      rows={rows}
-      columns={columns}
-      getRowId={(request) => request.id}
-      sortKey={sortKey}
-      sortDirection={sortDirection}
-      onSort={onSort}
-      page={page}
-      rowsPerPage={rowsPerPage}
-      onPageChange={onPageChange}
-      onRowsPerPageChange={onRowsPerPageChange}
-      onRowClick={onSelect}
-      isLoading={isLoading}
-      emptyTitle="No leave decisions waiting"
-      emptyMessage="New leave requests inside your reporting scope will appear here."
-    />
-  );
-}
-
-function detailsColumn<Row>(onSelect: (row: Row) => void): DataTableColumn<Row, ApprovalSortKey> {
-  return {
-    id: 'details',
-    label: 'Review',
-    align: 'right',
-    width: 72,
-    render: (row) => (
-      <Tooltip title="Review request">
-        <IconButton
-          size="small"
-          aria-label="Review request"
-          onClick={(event) => {
-            event.stopPropagation();
-            onSelect(row);
-          }}
-        >
-          <ChevronRight size={17} />
-        </IconButton>
-      </Tooltip>
-    ),
-  };
 }
 
 function EmployeeCell({ name, code }: { name: string; code: string }) {
@@ -572,7 +812,7 @@ function PrimarySecondary({ primary, secondary }: { primary: string; secondary: 
       <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 750 }}>
         {primary}
       </Typography>
-      <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>{secondary}</Typography>
+      <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>{secondary}</Typography>
     </Box>
   );
 }
@@ -586,7 +826,9 @@ function ApprovalReviewDrawer({
   onClose,
   onApprove,
   onReject,
+  readOnly = false,
 }: {
+  readOnly?: boolean;
   selected: SelectedApproval | null;
   comment: string;
   isUpdating: boolean;
@@ -631,42 +873,46 @@ function ApprovalReviewDrawer({
           <Stack spacing={2.5} sx={{ flex: 1, minHeight: 0, overflowY: 'auto', p: 2.5 }}>
             {error && <Alert severity="error">{error}</Alert>}
             <ApprovalDetails selected={selected} />
-            <Divider />
-            <TextField
-              multiline
-              minRows={3}
-              label="Decision comment"
-              placeholder="Optional for approval; required for rejection."
-              value={comment}
-              onChange={(event) => onCommentChange(event.target.value)}
-              slotProps={{ htmlInput: { maxLength: 1_000 } }}
-            />
+            {!readOnly && <Divider />}
+            {!readOnly && (
+              <TextField
+                multiline
+                minRows={3}
+                label="Decision comment"
+                placeholder="Optional for approval; required for rejection."
+                value={comment}
+                onChange={(event) => onCommentChange(event.target.value)}
+                slotProps={{ htmlInput: { maxLength: 1_000 } }}
+              />
+            )}
           </Stack>
         )}
 
-        <Divider />
-        <Stack direction="row" spacing={1} sx={{ p: 2 }}>
-          <Button
-            fullWidth
-            color="error"
-            variant="outlined"
-            disabled={!selected || comment.trim().length < 3 || isUpdating}
-            startIcon={<X size={16} />}
-            onClick={onReject}
-          >
-            Reject
-          </Button>
-          <Button
-            fullWidth
-            color="success"
-            variant="contained"
-            disabled={!selected || isUpdating}
-            startIcon={isUpdating ? <CircularProgress size={15} /> : <Check size={16} />}
-            onClick={onApprove}
-          >
-            Approve
-          </Button>
-        </Stack>
+        {!readOnly && <Divider />}
+        {!readOnly && (
+          <Stack direction="row" spacing={1} sx={{ p: 2 }}>
+            <Button
+              fullWidth
+              color="error"
+              variant="outlined"
+              disabled={!selected || comment.trim().length < 3 || isUpdating}
+              startIcon={<X size={16} />}
+              onClick={onReject}
+            >
+              Reject
+            </Button>
+            <Button
+              fullWidth
+              color="success"
+              variant="contained"
+              disabled={!selected || isUpdating}
+              startIcon={isUpdating ? <CircularProgress size={15} /> : <Check size={16} />}
+              onClick={onApprove}
+            >
+              Approve
+            </Button>
+          </Stack>
+        )}
       </Stack>
     </Drawer>
   );
@@ -699,8 +945,8 @@ function ApprovalDetails({ selected }: { selected: SelectedApproval }) {
         <Detail label="Employee reason" value={request.reason} />
         {request.decisions.length > 0 && (
           <Box>
-            <Typography sx={{ mb: 0.75, color: 'text.secondary', fontSize: 10.5 }}>
-              Previous decisions
+            <Typography sx={{ mb: 0.75, color: 'text.secondary', fontSize: 11.5 }}>
+              Decisions
             </Typography>
             {request.decisions.map((decision) => (
               <Typography key={decision.decidedAt} sx={{ fontSize: 11.5 }}>
@@ -732,8 +978,8 @@ function ApprovalDetails({ selected }: { selected: SelectedApproval }) {
       <Detail label="Private employee reason" value={request.reason} />
       {request.decisions.length > 0 && (
         <Box>
-          <Typography sx={{ mb: 0.75, color: 'text.secondary', fontSize: 10.5 }}>
-            Previous decisions
+          <Typography sx={{ mb: 0.75, color: 'text.secondary', fontSize: 11.5 }}>
+            Decisions
           </Typography>
           {request.decisions.map((decision) => (
             <Typography key={`${decision.step}-${decision.decidedAt}`} sx={{ fontSize: 11.5 }}>
@@ -760,7 +1006,7 @@ function DetailGrid({ values }: { values: Array<[string, string]> }) {
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <Box>
-      <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>{label}</Typography>
+      <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>{label}</Typography>
       <Typography sx={{ mt: 0.25, fontSize: 12.5, fontWeight: 700 }}>{value}</Typography>
     </Box>
   );

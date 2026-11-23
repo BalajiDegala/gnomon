@@ -12,44 +12,70 @@ const baseline = {
 } as const;
 
 describe('managed calendar availability', () => {
-  it('treats current and future working days as available planning capacity', () => {
-    expect(resolveManagedCalendarAvailability(baseline)).toBe('available');
+  it('mirrors the recorded attendance status exactly', () => {
+    expect(resolveManagedCalendarAvailability({ ...baseline, attendanceStatus: 'present' })).toBe(
+      'present',
+    );
+    expect(resolveManagedCalendarAvailability({ ...baseline, attendanceStatus: 'partial' })).toBe(
+      'partial',
+    );
+    expect(resolveManagedCalendarAvailability({ ...baseline, attendanceStatus: 'absent' })).toBe(
+      'absent',
+    );
+    expect(resolveManagedCalendarAvailability({ ...baseline, attendanceStatus: 'leave' })).toBe(
+      'leave',
+    );
     expect(
-      resolveManagedCalendarAvailability({ ...baseline, date: '2026-07-30', weekday: 4 }),
-    ).toBe('available');
+      resolveManagedCalendarAvailability({
+        ...baseline,
+        attendanceStatus: 'pending_regularisation',
+      }),
+    ).toBe('pending');
   });
 
-  it('distinguishes missing past evidence from an explicit absence', () => {
+  it('lets recorded attendance win over leave, matching Attendance details', () => {
+    expect(
+      resolveManagedCalendarAvailability({
+        ...baseline,
+        attendanceStatus: 'absent',
+        leave: { status: 'pending_manager', dayPart: 'full_day' },
+      }),
+    ).toBe('absent');
+  });
+
+  it('treats today without a record as LOP, future days as upcoming, past days as no record', () => {
+    expect(resolveManagedCalendarAvailability(baseline)).toBe('absent');
+    expect(
+      resolveManagedCalendarAvailability({ ...baseline, date: '2026-07-30', weekday: 4 }),
+    ).toBe('upcoming');
     expect(
       resolveManagedCalendarAvailability({ ...baseline, date: '2026-07-28', weekday: 2 }),
     ).toBe('no_record');
-    expect(resolveManagedCalendarAvailability({ ...baseline, attendanceStatus: 'absent' })).toBe(
-      'unavailable',
-    );
   });
 
-  it('maps approved full and half-day leave without requiring a private reason', () => {
+  it('uses leave for days that have no attendance record yet', () => {
+    const future = { ...baseline, date: '2026-07-30', weekday: 4 };
     expect(
       resolveManagedCalendarAvailability({
-        ...baseline,
+        ...future,
         leave: { status: 'approved', dayPart: 'full_day' },
       }),
-    ).toBe('unavailable');
+    ).toBe('leave');
     expect(
       resolveManagedCalendarAvailability({
-        ...baseline,
+        ...future,
         leave: { status: 'approved', dayPart: 'first_half' },
       }),
     ).toBe('partial');
-  });
-
-  it('prioritizes pending leave and non-working days', () => {
     expect(
       resolveManagedCalendarAvailability({
-        ...baseline,
-        leave: { status: 'pending_manager', dayPart: 'full_day' },
+        ...future,
+        leave: { status: 'pending_hr', dayPart: 'full_day' },
       }),
     ).toBe('pending');
+  });
+
+  it('marks weekends and holidays as off', () => {
     expect(
       resolveManagedCalendarAvailability({ ...baseline, weekday: 7, attendanceStatus: 'present' }),
     ).toBe('non_working');

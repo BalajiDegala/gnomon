@@ -1,5 +1,7 @@
 import type {
   ApprovalRouteImportResponse,
+  LeaveBalanceImportResponse,
+  TimecardDataImportResponse,
   ApprovalPreferencesDto,
   UpdateDepartmentApprovalPolicyRequest,
   UserDirectoryImportResponse,
@@ -82,7 +84,8 @@ export function useApprovalPreferences() {
     isLoading: query.isLoading,
     error: query.error ?? update.error ?? upload.error ?? approvalRouteUpload.error,
     isSaving: update.isPending,
-    savingPolicyId: update.variables?.policyId ?? null,
+    // `variables` keep the last request after it finishes; only report it while saving.
+    savingPolicyId: update.isPending ? (update.variables?.policyId ?? null) : null,
     update: (policyId: string, input: UpdateDepartmentApprovalPolicyRequest) =>
       update.mutateAsync({ policyId, input }),
     isUploading: upload.isPending,
@@ -91,5 +94,75 @@ export function useApprovalPreferences() {
     isUploadingApprovalRoutes: approvalRouteUpload.isPending,
     approvalRouteImportResult: approvalRouteUpload.data,
     uploadApprovalRoutes: (file: File) => approvalRouteUpload.mutateAsync(file),
+  };
+}
+
+export function useLeaveBalanceImport() {
+  const { request, user } = useAuth();
+  const queryClient = useQueryClient();
+  const canImport = user?.permissions.includes('imports:create') ?? false;
+  const upload = useMutation({
+    mutationFn: async (file: File) =>
+      request<LeaveBalanceImportResponse>('/api/v1/imports/leave-balances/workbook', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/octet-stream',
+          'x-file-name': encodeURIComponent(file.name),
+        },
+        body: await file.arrayBuffer(),
+      }),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['leaves'] }),
+        queryClient.invalidateQueries({ queryKey: ['administration', 'leave-balances'] }),
+      ]);
+    },
+  });
+  return {
+    canImport,
+    isUploading: upload.isPending,
+    error: upload.error,
+    result: upload.data,
+    upload: (file: File) => upload.mutateAsync(file),
+  };
+}
+
+export function useTimecardDataImport() {
+  const { request, user } = useAuth();
+  const queryClient = useQueryClient();
+  const canImport = user?.permissions.includes('imports:create') ?? false;
+  const upload = useMutation({
+    mutationFn: async (file: File) =>
+      request<TimecardDataImportResponse>('/api/v1/imports/timecards/json', {
+        method: 'POST',
+        // Plain text: the API's generic JSON body parser is limited to 1 MB.
+        headers: {
+          'content-type': 'text/plain; charset=utf-8',
+          'x-file-name': encodeURIComponent(file.name),
+        },
+        body: await file.text(),
+      }),
+    onSuccess: async () => {
+      await Promise.all(
+        [
+          ['timecard'],
+          ['timesheet-options'],
+          ['timesheet-day'],
+          ['timesheet-range'],
+          ['team-timesheets'],
+          ['attendance-details'],
+          ['calendar'],
+          ['managed-calendar'],
+          ['shows'],
+        ].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+      );
+    },
+  });
+  return {
+    canImport,
+    isUploading: upload.isPending,
+    error: upload.error,
+    result: upload.data,
+    upload: (file: File) => upload.mutateAsync(file),
   };
 }

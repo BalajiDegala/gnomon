@@ -25,7 +25,7 @@ import { reconcileDailyTimecard } from '../reconciliation/reconciliation.service
 import { listEmployeeIdsAtLocation } from './holiday-applicability.service.js';
 import { Holiday, type HolidayDocument } from './holiday.model.js';
 
-const paidLeaveTypes = ['casual', 'sick', 'earned'] as const;
+const paidLeaveTypes = ['casual', 'earned', 'comp_off'] as const;
 let indexesReady: Promise<unknown> | null = null;
 
 function ensureIndexes(): Promise<unknown> {

@@ -42,7 +42,6 @@ export function useAttendanceImports() {
         'attendance-details',
         'calendar',
         'managed-calendar',
-        'reports',
         'employees',
         'security',
       ].map((key) => queryClient.invalidateQueries({ queryKey: [key] })),

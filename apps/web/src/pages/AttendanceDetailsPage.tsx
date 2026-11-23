@@ -1,130 +1,194 @@
-import type { AttendanceDetailsRow } from '@gnomon/shared';
+import { attendanceStatusLabels, type AttendanceDetailsRow } from '@gnomon/shared';
 import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
+  ButtonBase,
   Checkbox,
   Chip,
   CircularProgress,
+  Divider,
+  IconButton,
+  InputAdornment,
   ListItemText,
+  ListSubheader,
   Menu,
   MenuItem,
   Stack,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import {
-  CalendarClock,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ChevronsDownUp,
+  ChevronsUpDown,
   Columns3,
-  Fingerprint,
-  ScanLine,
-  TimerReset,
-  UsersRound,
+  Download,
+  Maximize2,
+  Minimize2,
+  Plus,
+  Rows3,
+  Rows4,
+  Search,
+  X,
 } from 'lucide-react';
-import { useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
-import { DataTable, type DataTableColumn } from '../components/data-view/DataTable';
-import { FilterBar } from '../components/data-view/FilterBar';
+import { DataGrid, type DataGridColumn } from '../components/data-view/DataGrid';
 import { MonthPicker } from '../components/data-view/MonthPicker';
-import { PageHeader } from '../components/data-view/PageHeader';
 import { mergeAttendanceRows, useAttendanceDetails } from '../lib/attendance-details';
+import {
+  attendanceColumnIds,
+  attendanceGroupOptions,
+  attendanceSourceFilters,
+  attendanceStatusFilters,
+  attendanceStatusOrder,
+  buildAttendanceExport,
+  dayWorkModes,
+  countByStatus,
+  defaultSort,
+  filterRowsExceptStatus,
+  formatMinutes,
+  formatTime,
+  groupFor,
+  groupLabels,
+  humanize,
+  initialDirection,
+  nextSort,
+  orderRows,
+  parseSort,
+  serializeSort,
+  workModeFilters,
+  type AttendanceColumnId,
+  type AttendanceGroupBy,
+  type AttendanceSortKey,
+  type AttendanceSourceFilter,
+  type AttendanceStatus,
+  type AttendanceStatusFilter,
+  type SortRule,
+  type WorkModeFilter,
+} from '../lib/attendance-view';
+import { useStoredColumnOrder } from '../lib/column-order';
+import { downloadCsv } from '../lib/csv';
+import { fullscreenShortcutLabel, useFullscreenMode } from '../lib/use-fullscreen-mode';
+import {
+  parseEnumValue,
+  parseShortSearch,
+  parseYearMonth,
+  useUrlQueryState,
+} from '../lib/url-query-state';
 
-type AttendanceSortKey =
-  | 'employee'
-  | 'department'
-  | 'date'
-  | 'biometricIn'
-  | 'biometricOut'
-  | 'biometricDuration'
-  | 'accessEntry'
-  | 'accessExit'
-  | 'accessDuration'
-  | 'website'
-  | 'timesheets'
-  | 'payable'
-  | 'status';
-type AttendanceSourceFilter = 'all' | 'biometric' | 'accessCard' | 'website' | 'timesheets';
-type AttendanceGroup = 'none' | 'employee' | 'department';
-type AttendanceColumnId =
-  | 'employee'
-  | 'department'
-  | 'date'
-  | 'biometricIn'
-  | 'biometricOut'
-  | 'biometricSummary'
-  | 'accessEntry'
-  | 'accessExit'
-  | 'accessSummary'
-  | 'website'
-  | 'timesheets'
-  | 'payable'
-  | 'status';
+/* ---------------------------------------------------------- preferences */
 
-const COLUMN_STORAGE_KEY = 'gnomon:attendance-details:visible-columns';
+const COLUMN_STORAGE_KEY = 'gnomon:attendance-details:visible-columns:v2';
+const DENSITY_STORAGE_KEY = 'gnomon:attendance-details:density';
+const COLUMN_ORDER_STORAGE_KEY = 'gnomon:attendance-details:column-order';
 const defaultVisibleColumns: AttendanceColumnId[] = [
   'employee',
   'department',
   'date',
+  'shift',
+  'workMode',
   'biometricIn',
   'biometricOut',
   'accessEntry',
   'accessExit',
   'status',
 ];
-const columnOptions: Array<{ id: AttendanceColumnId; label: string }> = [
-  { id: 'employee', label: 'Employee' },
-  { id: 'department', label: 'Department' },
-  { id: 'date', label: 'Work date' },
-  { id: 'biometricIn', label: 'Biometric entry' },
-  { id: 'biometricOut', label: 'Biometric exit' },
-  { id: 'biometricSummary', label: 'Biometric duration / punches' },
-  { id: 'accessEntry', label: 'Access-card entry' },
-  { id: 'accessExit', label: 'Access-card exit' },
-  { id: 'accessSummary', label: 'Access-card duration / events' },
-  { id: 'website', label: 'Website timecard' },
-  { id: 'timesheets', label: 'Show timesheets' },
-  { id: 'payable', label: 'Payable time' },
-  { id: 'status', label: 'Attendance status' },
-];
-const validColumnIds = new Set(columnOptions.map((column) => column.id));
+const columnLabels: Record<AttendanceColumnId, string> = {
+  employee: 'Employee',
+  department: 'Department',
+  date: 'Work date',
+  shift: 'Shift',
+  workMode: 'Work mode',
+  biometricIn: 'Biometric entry',
+  biometricOut: 'Biometric exit',
+  biometricSummary: 'Biometric summary',
+  accessEntry: 'Access-card entry',
+  accessExit: 'Access-card exit',
+  accessSummary: 'Access-card summary',
+  website: 'Website timecard',
+  timesheets: 'Show timesheets',
+  payable: 'Payable time',
+  status: 'Attendance',
+};
+const sortLabels: Record<AttendanceSortKey, string> = {
+  employee: 'Employee',
+  department: 'Department',
+  date: 'Work date',
+  shift: 'Shift',
+  workMode: 'Work mode',
+  biometricIn: 'Biometric entry',
+  biometricOut: 'Biometric exit',
+  biometricDuration: 'Biometric duration',
+  accessEntry: 'Access-card entry',
+  accessExit: 'Access-card exit',
+  accessDuration: 'Access-card duration',
+  website: 'Website time',
+  timesheets: 'Show time',
+  payable: 'Payable time',
+  status: 'Attendance',
+};
+const sourceLabels: Record<AttendanceSourceFilter, string> = {
+  all: 'All evidence',
+  biometric: 'Has biometric punches',
+  accessCard: 'Has access-card events',
+  website: 'Has website sessions',
+  timesheets: 'Has show timesheets',
+  noEvidence: 'No evidence yet',
+};
+const workModeLabels: Record<WorkModeFilter, string> = {
+  all: 'All modes',
+  office: 'Office (WFO)',
+  home: 'Home (WFH)',
+  undeclared: 'Not declared',
+};
 
-function initialVisibleColumns(): Set<AttendanceColumnId> {
+const statusTones: Record<AttendanceStatus, { bg: string; fg: string; dot: string }> = {
+  absent: { bg: 'var(--g-ab-soft)', fg: 'var(--g-ab)', dot: 'var(--g-ab)' },
+  partial: { bg: 'var(--g-pt-soft)', fg: 'var(--g-pt)', dot: 'var(--g-pt)' },
+  present: { bg: 'var(--g-pr-soft)', fg: 'var(--g-pr)', dot: 'var(--g-pr)' },
+  pending_regularisation: { bg: 'var(--g-pn-soft)', fg: 'var(--g-pn)', dot: 'var(--g-pn)' },
+  leave: { bg: 'var(--g-lv-soft)', fg: 'var(--g-lv)', dot: 'var(--g-lv)' },
+  holiday: { bg: 'var(--g-off-soft)', fg: 'var(--g-off)', dot: 'var(--g-off)' },
+  weekend: { bg: 'var(--g-nr-soft)', fg: 'var(--g-nr)', dot: 'var(--g-nr)' },
+};
+
+function readStored<T>(key: string, parse: (value: unknown) => T | null, fallback: T): T {
   try {
-    const stored = JSON.parse(localStorage.getItem(COLUMN_STORAGE_KEY) ?? '[]') as unknown;
-    if (Array.isArray(stored)) {
-      const valid = stored.filter(
-        (value): value is AttendanceColumnId =>
-          typeof value === 'string' && validColumnIds.has(value as AttendanceColumnId),
-      );
-      if (valid.length > 0) return new Set(valid);
-    }
+    const raw = localStorage.getItem(key);
+    if (raw === null) return fallback;
+    return parse(JSON.parse(raw)) ?? fallback;
   } catch {
-    // Invalid browser preferences fall back to the clean default view.
+    return fallback;
   }
-  return new Set(defaultVisibleColumns);
 }
 
-function formatMinutes(minutes: number): string {
-  if (!minutes) return '0h 00m';
-  return `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, '0')}m`;
+function writeStored(key: string, value: unknown): void {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Preferences are a convenience; ignore blocked storage.
+  }
 }
 
-function formatTime(value: string | null): string {
-  if (!value) return '—';
-  return new Intl.DateTimeFormat('en-IN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-    timeZone: 'Asia/Kolkata',
-  }).format(new Date(value));
-}
+const parseColumns = (value: unknown): AttendanceColumnId[] | null => {
+  if (!Array.isArray(value)) return null;
+  const valid = attendanceColumnIds.filter((id) => value.includes(id));
+  return valid.length > 0 ? valid : null;
+};
 
-function label(value: string): string {
-  return value.replaceAll('_', ' ').replace(/\b\w/g, (character) => character.toUpperCase());
-}
+const parseStatusFilter = (value: string) => parseEnumValue(value, attendanceStatusFilters);
+const parseWorkModeFilter = (value: string) => parseEnumValue(value, workModeFilters);
+const parseSourceFilter = (value: string) => parseEnumValue(value, attendanceSourceFilters);
+const parseGroupBy = (value: string) => parseEnumValue(value, attendanceGroupOptions);
+const parseSortRules = (value: string) => parseSort(value);
+const serializeSortRules = (rules: readonly SortRule[]) => serializeSort(rules);
 
 function monthLabel(month: string): string {
   if (!month) return 'Latest recorded month';
@@ -135,374 +199,854 @@ function monthLabel(month: string): string {
   }).format(new Date(`${month}-01T00:00:00.000Z`));
 }
 
-function EvidenceTime({ value, detail }: { value: string | null; detail: string }) {
+/* --------------------------------------------------------- cell renderers */
+
+function StatusBadge({ status }: { status: AttendanceStatus }) {
+  const tone = statusTones[status];
   return (
-    <Box sx={{ minWidth: 112 }}>
-      <Typography sx={{ fontSize: 12.5, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>
-        {formatTime(value)}
-      </Typography>
-      <Typography sx={{ color: 'text.secondary', fontSize: 10 }}>{detail}</Typography>
+    <Box
+      component="span"
+      sx={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 0.6,
+        px: 1,
+        py: 0.3,
+        borderRadius: '999px',
+        bgcolor: tone.bg,
+        color: tone.fg,
+        fontSize: 11.5,
+        fontWeight: 750,
+        whiteSpace: 'nowrap',
+      }}
+    >
+      <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: tone.dot }} />
+      {attendanceStatusLabels[status]}
     </Box>
   );
 }
 
-function EvidenceSummary({
-  minutes,
-  count,
-  countLabel,
-  status,
+function TwoLine({ primary, secondary }: { primary: ReactNode; secondary?: ReactNode }) {
+  return (
+    <Box sx={{ minWidth: 0 }}>
+      <Typography
+        noWrap
+        sx={{ fontSize: 12.5, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}
+      >
+        {primary}
+      </Typography>
+      {secondary && (
+        <Typography noWrap sx={{ color: 'text.secondary', fontSize: 11.5 }}>
+          {secondary}
+        </Typography>
+      )}
+    </Box>
+  );
+}
+
+function EmptyCell() {
+  return (
+    <Typography aria-label="None" sx={{ color: 'text.disabled', fontSize: 12.5 }}>
+      —
+    </Typography>
+  );
+}
+
+function EvidenceTime({ value, status }: { value: string | null; status: string }) {
+  if (!value) return <EmptyCell />;
+  return (
+    <TwoLine
+      primary={formatTime(value)}
+      secondary={status === 'complete' ? undefined : humanize(status)}
+    />
+  );
+}
+
+function WorkModeBadge({ row }: { row: AttendanceDetailsRow }) {
+  const modes = dayWorkModes(row);
+  if (!modes.length) return <EmptyCell />;
+  return (
+    <Box
+      component="span"
+      sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, whiteSpace: 'nowrap' }}
+      title={modes.length > 1 ? 'Started at the office, continued from home' : undefined}
+    >
+      {modes.map((mode, index) => (
+        <Fragment key={mode}>
+          {index > 0 && (
+            <Box component="span" sx={{ color: 'var(--g-muted)', fontSize: 12 }}>
+              →
+            </Box>
+          )}
+          <Box
+            component="span"
+            sx={{
+              px: 0.9,
+              py: 0.25,
+              borderRadius: '6px',
+              fontSize: 11,
+              fontWeight: 800,
+              letterSpacing: 0.3,
+              ...(mode === 'home'
+                ? { bgcolor: 'var(--g-lv-soft)', color: 'var(--g-lv)' }
+                : { bgcolor: 'var(--g-pr-soft)', color: 'var(--g-pr)' }),
+            }}
+          >
+            {mode === 'home' ? 'WFH' : 'WFO'}
+          </Box>
+        </Fragment>
+      ))}
+    </Box>
+  );
+}
+
+/* --------------------------------------------------------------- toolbar */
+
+function ToolbarSelect<T extends string>({
+  label,
+  value,
+  options,
+  labels,
+  onChange,
+  width = 170,
 }: {
-  minutes: number;
-  count: number;
-  countLabel: string;
-  status: string;
+  label: string;
+  value: T;
+  options: readonly T[];
+  labels: Record<T, string>;
+  onChange: (value: T) => void;
+  width?: number;
 }) {
   return (
-    <Box sx={{ minWidth: 145 }}>
-      <Typography sx={{ fontSize: 12.5, fontWeight: 800 }}>{formatMinutes(minutes)}</Typography>
-      <Typography sx={{ color: 'text.secondary', fontSize: 10 }}>
-        {count} {countLabel} · {label(status)}
-      </Typography>
-    </Box>
+    <TextField
+      select
+      size="small"
+      label={label}
+      value={value}
+      onChange={(event) => onChange(event.target.value as T)}
+      sx={{ width, '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: 'var(--g-base)' } }}
+    >
+      {options.map((option) => (
+        <MenuItem key={option} value={option}>
+          {labels[option]}
+        </MenuItem>
+      ))}
+    </TextField>
   );
 }
 
-function AttendanceStatus({ row }: { row: AttendanceDetailsRow }) {
-  const tone =
-    row.status === 'present'
-      ? { background: '#e6f7ef', color: '#19764d' }
-      : row.status === 'partial'
-        ? { background: '#fff4df', color: '#9a621b' }
-        : row.status === 'weekend' || row.status === 'holiday'
-          ? { background: '#f1edff', color: '#6852a8' }
-          : { background: '#fdebec', color: '#ad3f48' };
+function SortControl({
+  rules,
+  onChange,
+}: {
+  rules: readonly SortRule[];
+  onChange: (rules: SortRule[]) => void;
+}) {
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+  const unused = (Object.keys(sortLabels) as AttendanceSortKey[]).filter(
+    (key) => !rules.some((rule) => rule.key === key),
+  );
   return (
-    <Stack spacing={0.5} sx={{ alignItems: 'flex-start' }}>
-      <Chip size="small" label={label(row.status)} sx={{ ...tone, fontWeight: 750 }} />
-      {row.requiresReview && (
-        <Typography sx={{ color: 'warning.dark', fontSize: 9.5 }}>Review required</Typography>
+    <>
+      <Button
+        variant="outlined"
+        color="inherit"
+        startIcon={<ArrowUpDown size={15} />}
+        onClick={(event) => setAnchor(event.currentTarget)}
+        sx={{
+          borderColor: 'divider',
+          borderRadius: '10px',
+          bgcolor: 'var(--g-base)',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        Sort
+        <Typography
+          component="span"
+          noWrap
+          sx={{ ml: 0.75, maxWidth: 130, color: 'text.secondary', fontSize: 12 }}
+        >
+          {rules.map((rule) => sortLabels[rule.key]).join(', ')}
+        </Typography>
+      </Button>
+      <Menu
+        anchorEl={anchor}
+        open={Boolean(anchor)}
+        onClose={() => setAnchor(null)}
+        slotProps={{ paper: { sx: { width: 340, p: 1 } } }}
+      >
+        <Typography sx={{ px: 1, pb: 1, color: 'text.secondary', fontSize: 11.5 }}>
+          Up to three levels. Tip: Shift+click a column header to add a level.
+        </Typography>
+        {rules.map((rule, index) => (
+          <Stack
+            key={rule.key}
+            direction="row"
+            sx={{ alignItems: 'center', gap: 1, px: 1, py: 0.5 }}
+          >
+            <Typography sx={{ width: 44, color: 'text.secondary', fontSize: 11 }}>
+              {index === 0 ? 'Sort by' : 'then'}
+            </Typography>
+            <TextField
+              select
+              size="small"
+              value={rule.key}
+              onChange={(event) =>
+                onChange(
+                  rules.map((current) =>
+                    current.key === rule.key
+                      ? {
+                          key: event.target.value as AttendanceSortKey,
+                          direction: initialDirection(event.target.value as AttendanceSortKey),
+                        }
+                      : current,
+                  ),
+                )
+              }
+              sx={{ flex: 1 }}
+            >
+              {[rule.key, ...unused].map((key) => (
+                <MenuItem key={key} value={key}>
+                  {sortLabels[key]}
+                </MenuItem>
+              ))}
+            </TextField>
+            <Tooltip title={rule.direction === 'asc' ? 'Ascending' : 'Descending'}>
+              <IconButton
+                size="small"
+                aria-label={`Reverse ${sortLabels[rule.key]} order`}
+                onClick={() =>
+                  onChange(
+                    rules.map((current) =>
+                      current.key === rule.key
+                        ? { ...current, direction: current.direction === 'asc' ? 'desc' : 'asc' }
+                        : current,
+                    ),
+                  )
+                }
+              >
+                {rule.direction === 'asc' ? <ArrowUp size={16} /> : <ArrowDown size={16} />}
+              </IconButton>
+            </Tooltip>
+            <IconButton
+              size="small"
+              aria-label={`Remove ${sortLabels[rule.key]} sort`}
+              disabled={rules.length === 1}
+              onClick={() => onChange(rules.filter((current) => current.key !== rule.key))}
+            >
+              <X size={15} />
+            </IconButton>
+          </Stack>
+        ))}
+        <Stack direction="row" sx={{ justifyContent: 'space-between', px: 1, pt: 1 }}>
+          <Button
+            size="small"
+            startIcon={<Plus size={14} />}
+            disabled={rules.length >= 3 || unused.length === 0}
+            onClick={() =>
+              onChange([...rules, { key: unused[0]!, direction: initialDirection(unused[0]!) }])
+            }
+          >
+            Add level
+          </Button>
+          <Button size="small" color="inherit" onClick={() => onChange([...defaultSort])}>
+            Reset
+          </Button>
+        </Stack>
+      </Menu>
+    </>
+  );
+}
+
+function ColumnControl({
+  visible,
+  onChange,
+  onResetOrder,
+}: {
+  visible: readonly AttendanceColumnId[];
+  onChange: (columns: AttendanceColumnId[]) => void;
+  onResetOrder: () => void;
+}) {
+  const [anchor, setAnchor] = useState<HTMLElement | null>(null);
+  const toggle = (id: AttendanceColumnId) => {
+    const next = visible.includes(id)
+      ? visible.filter((column) => column !== id)
+      : attendanceColumnIds.filter((column) => column === id || visible.includes(column));
+    if (next.length > 0) onChange(next);
+  };
+  const sections: Array<[string, AttendanceColumnId[]]> = [
+    ['Who & when', ['employee', 'department', 'date', 'shift', 'workMode']],
+    ['Biometric', ['biometricIn', 'biometricOut', 'biometricSummary']],
+    ['Access card', ['accessEntry', 'accessExit', 'accessSummary']],
+    ['Website & time', ['website', 'timesheets', 'payable']],
+    ['Result', ['status']],
+  ];
+  return (
+    <>
+      <Button
+        variant="outlined"
+        color="inherit"
+        startIcon={<Columns3 size={15} />}
+        onClick={(event) => setAnchor(event.currentTarget)}
+        sx={{
+          borderColor: 'divider',
+          borderRadius: '10px',
+          bgcolor: 'var(--g-base)',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        Columns
+        <Typography component="span" sx={{ ml: 0.75, color: 'text.secondary', fontSize: 12 }}>
+          {visible.length}/{attendanceColumnIds.length}
+        </Typography>
+      </Button>
+      <Menu
+        anchorEl={anchor}
+        open={Boolean(anchor)}
+        onClose={() => setAnchor(null)}
+        slotProps={{ paper: { sx: { width: 280, maxHeight: 520 } } }}
+      >
+        {sections.flatMap(([title, ids]) => [
+          <ListSubheader key={title} sx={{ lineHeight: '32px', fontSize: 11, fontWeight: 800 }}>
+            {title}
+          </ListSubheader>,
+          ...ids.map((id) => (
+            <MenuItem key={id} dense onClick={() => toggle(id)}>
+              <Checkbox
+                size="small"
+                checked={visible.includes(id)}
+                disabled={visible.includes(id) && visible.length === 1}
+                sx={{ p: 0.5, mr: 1 }}
+              />
+              <ListItemText primary={columnLabels[id]} />
+            </MenuItem>
+          )),
+        ])}
+        <Divider />
+        <Typography sx={{ px: 2, pt: 1, color: 'text.secondary', fontSize: 11.5 }}>
+          Drag column headers to change their order. Export uses the same order.
+        </Typography>
+        <Stack direction="row" sx={{ justifyContent: 'space-between', px: 1, pt: 0.5 }}>
+          <Button size="small" onClick={() => onChange([...attendanceColumnIds])}>
+            Show all
+          </Button>
+          <Button
+            size="small"
+            color="inherit"
+            onClick={() => {
+              onChange([...defaultVisibleColumns]);
+              onResetOrder();
+            }}
+          >
+            Reset
+          </Button>
+        </Stack>
+      </Menu>
+    </>
+  );
+}
+
+function StatusChips({
+  counts,
+  total,
+  value,
+  onChange,
+}: {
+  counts: Record<AttendanceStatus, number>;
+  total: number;
+  value: AttendanceStatusFilter;
+  onChange: (value: AttendanceStatusFilter) => void;
+}) {
+  const statuses = attendanceStatusOrder.filter(
+    (status) => counts[status] > 0 || ['absent', 'partial', 'present'].includes(status),
+  );
+  const chip = (key: AttendanceStatusFilter, label: string, count: number, dot?: string) => {
+    const selected = value === key;
+    return (
+      <ButtonBase
+        key={key}
+        onClick={() => onChange(selected && key !== 'all' ? 'all' : key)}
+        aria-pressed={selected}
+        sx={{
+          gap: 0.8,
+          px: 1.25,
+          py: 0.7,
+          borderRadius: '10px',
+          border: '1px solid',
+          borderColor: selected ? 'primary.main' : 'divider',
+          bgcolor: 'var(--g-base)',
+          boxShadow: selected ? 'var(--g-inset-sm)' : 'var(--g-raised-sm)',
+          transition: 'all 120ms ease',
+          '&:hover': { color: 'var(--g-fg)' },
+        }}
+      >
+        {dot && <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: dot }} />}
+        <Typography sx={{ fontSize: 12.5, fontWeight: 700 }}>{label}</Typography>
+        <Typography
+          sx={{
+            fontSize: 12,
+            fontWeight: 800,
+            color: selected ? 'primary.dark' : 'text.secondary',
+            fontVariantNumeric: 'tabular-nums',
+          }}
+        >
+          {count.toLocaleString('en-IN')}
+        </Typography>
+      </ButtonBase>
+    );
+  };
+  return (
+    <Stack
+      direction="row"
+      sx={{ gap: 1, flexWrap: 'wrap' }}
+      role="group"
+      aria-label="Filter by attendance status"
+    >
+      {chip('all', 'All days', total)}
+      {statuses.map((status) =>
+        chip(status, attendanceStatusLabels[status], counts[status], statusTones[status].dot),
       )}
     </Stack>
   );
 }
 
-function compareNullable(
-  left: string | number | null,
-  right: string | number | null,
-  direction: 1 | -1,
-): number {
-  if (left === null && right === null) return 0;
-  if (left === null) return 1;
-  if (right === null) return -1;
-  if (typeof left === 'number' && typeof right === 'number') return (left - right) * direction;
+function Stat({ label, value }: { label: string; value: number }) {
   return (
-    String(left).localeCompare(String(right), undefined, {
-      numeric: true,
-      sensitivity: 'base',
-    }) * direction
+    <Box
+      sx={{
+        px: 1.75,
+        py: 0.25,
+        '&:not(:first-of-type)': { borderLeft: '1px solid', borderColor: 'divider' },
+      }}
+    >
+      <Typography
+        sx={{ fontSize: 17, fontWeight: 850, fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}
+      >
+        {value.toLocaleString('en-IN')}
+      </Typography>
+      <Typography sx={{ color: 'text.secondary', fontSize: 11.5, whiteSpace: 'nowrap' }}>
+        {label}
+      </Typography>
+    </Box>
   );
 }
 
-function sortValue(row: AttendanceDetailsRow, key: AttendanceSortKey): string | number | null {
-  if (key === 'employee') return `${row.employeeDisplayName} ${row.employeeCode}`;
-  if (key === 'department') return row.departmentName;
-  if (key === 'date') return row.workDate;
-  if (key === 'biometricIn') return row.biometric.firstAt;
-  if (key === 'biometricOut') return row.biometric.lastAt;
-  if (key === 'biometricDuration') return row.biometric.workedMinutes;
-  if (key === 'accessEntry') return row.accessCard.firstAt;
-  if (key === 'accessExit') return row.accessCard.lastAt;
-  if (key === 'accessDuration') return row.accessCard.workedMinutes;
-  if (key === 'website') return row.website.workedMinutes;
-  if (key === 'timesheets') return row.timesheets.totalMinutes;
-  if (key === 'payable') return row.payableMinutes;
-  return row.status;
-}
+/* ----------------------------------------------------------------- page */
 
 export function AttendanceDetailsPage() {
-  const [month, setMonth] = useState('');
-  const [search, setSearch] = useState('');
-  const [sourceFilter, setSourceFilter] = useState<AttendanceSourceFilter>('all');
-  const [groupBy, setGroupBy] = useState<AttendanceGroup>('none');
+  const [month, setMonth] = useUrlQueryState('month', '', parseYearMonth);
+  const [search, setSearch] = useUrlQueryState('q', '', parseShortSearch);
+  const [statusFilter, setStatusFilter] = useUrlQueryState<AttendanceStatusFilter>(
+    'status',
+    'all',
+    parseStatusFilter,
+  );
+  const [workModeFilter, setWorkModeFilter] = useUrlQueryState<WorkModeFilter>(
+    'mode',
+    'all',
+    parseWorkModeFilter,
+  );
+  const [sourceFilter, setSourceFilter] = useUrlQueryState<AttendanceSourceFilter>(
+    'source',
+    'all',
+    parseSourceFilter,
+  );
+  const [groupBy, setGroupBy] = useUrlQueryState<AttendanceGroupBy>('group', 'none', parseGroupBy);
+  const [sortRules, setSortRules] = useUrlQueryState<readonly SortRule[]>(
+    'sort',
+    defaultSort,
+    parseSortRules,
+    serializeSortRules,
+  );
+  const [visibleColumns, setVisibleColumns] = useState<AttendanceColumnId[]>(() =>
+    readStored(COLUMN_STORAGE_KEY, parseColumns, defaultVisibleColumns),
+  );
+  const columnOrder = useStoredColumnOrder(COLUMN_ORDER_STORAGE_KEY, attendanceColumnIds);
+  const [density, setDensity] = useState<'comfortable' | 'compact'>(() =>
+    readStored(
+      DENSITY_STORAGE_KEY,
+      (value) => (value === 'compact' || value === 'comfortable' ? value : null),
+      'comfortable',
+    ),
+  );
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(25);
-  const [sortKey, setSortKey] = useState<AttendanceSortKey>('date');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  const [visibleColumnIds, setVisibleColumnIds] = useState(initialVisibleColumns);
-  const [columnMenuAnchor, setColumnMenuAnchor] = useState<HTMLElement | null>(null);
+  const [rowsPerPage, setRowsPerPage] = useState(50);
+  const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(new Set());
+  const { fullscreen, toggle: toggleFullscreen } = useFullscreenMode();
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const details = useAttendanceDetails(month);
   const attendance = details.attendance;
   const selectedMonth = month || attendance?.month || '';
   const biometricMonth = attendance?.availableMonths.find((item) => item.biometricEvents > 0);
+
+  useEffect(() => writeStored(COLUMN_STORAGE_KEY, visibleColumns), [visibleColumns]);
+  useEffect(() => writeStored(DENSITY_STORAGE_KEY, density), [density]);
+
+  /* Data pipeline: merge duplicate identities → filter → count → order. */
   const mergedRows = useMemo(() => mergeAttendanceRows(attendance?.rows ?? []), [attendance?.rows]);
-  const mergedSummary = useMemo(
+  const rowsBeforeStatus = useMemo(
+    () =>
+      filterRowsExceptStatus(mergedRows, {
+        search,
+        workMode: workModeFilter,
+        source: sourceFilter,
+      }),
+    [mergedRows, search, sourceFilter, workModeFilter],
+  );
+  const statusCounts = useMemo(() => countByStatus(rowsBeforeStatus), [rowsBeforeStatus]);
+  const viewRows = useMemo(
+    () =>
+      orderRows(
+        statusFilter === 'all'
+          ? rowsBeforeStatus
+          : rowsBeforeStatus.filter((row) => row.status === statusFilter),
+        sortRules,
+        groupBy,
+      ),
+    [groupBy, rowsBeforeStatus, sortRules, statusFilter],
+  );
+  const stats = useMemo(
     () => ({
-      employeesWithRecords: new Set(mergedRows.map((row) => row.employeeId)).size,
-      attendanceDays: mergedRows.length,
-      completeBiometricDays: mergedRows.filter((row) => row.biometric.status === 'complete').length,
-      completeAccessCardDays: mergedRows.filter((row) => row.accessCard.status === 'complete')
-        .length,
-      websiteSessionDays: mergedRows.filter((row) => row.website.sessionCount > 0).length,
+      employees: new Set(mergedRows.map((row) => row.employeeId)).size,
+      days: mergedRows.length,
+      biometric: mergedRows.filter((row) => row.biometric.status === 'complete').length,
+      access: mergedRows.filter((row) => row.accessCard.status === 'complete').length,
+      website: mergedRows.filter((row) => row.website.sessionCount > 0).length,
     }),
     [mergedRows],
   );
 
-  useEffect(() => {
-    localStorage.setItem(COLUMN_STORAGE_KEY, JSON.stringify([...visibleColumnIds]));
-  }, [visibleColumnIds]);
+  useEffect(() => setPage(0), [groupBy, month, search, sourceFilter, statusFilter, workModeFilter]);
+  useEffect(() => setCollapsedGroups(new Set()), [groupBy]);
 
-  const filteredRows = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    const rows = mergedRows.filter((row) => {
-      const matchesSource =
-        sourceFilter === 'all' ||
-        (sourceFilter === 'biometric' && row.biometric.eventCount > 0) ||
-        (sourceFilter === 'accessCard' && row.accessCard.eventCount > 0) ||
-        (sourceFilter === 'website' && row.website.sessionCount > 0) ||
-        (sourceFilter === 'timesheets' && row.timesheets.entryCount > 0);
-      const matchesSearch =
-        !term ||
-        [
-          row.employeeCode,
-          row.employeeDisplayName,
-          row.departmentName ?? '',
-          row.workDate,
-          row.status,
-        ]
-          .join(' ')
-          .toLowerCase()
-          .includes(term);
-      return matchesSource && matchesSearch;
+  /* Full screen: a fixed overlay over the app, plus native full screen when allowed. */
+
+  function exportCsv() {
+    const csv = buildAttendanceExport(
+      viewRows,
+      gridColumns.map((column) => column.id as AttendanceColumnId),
+      groupBy,
+    );
+    const parts = [
+      'attendance-details',
+      selectedMonth || 'latest',
+      statusFilter !== 'all'
+        ? attendanceStatusLabels[statusFilter].toLowerCase().replaceAll(' ', '-')
+        : null,
+      workModeFilter !== 'all' ? workModeFilter : null,
+      groupBy !== 'none' ? `by-${groupBy}` : null,
+    ].filter(Boolean);
+    downloadCsv(`${parts.join('-')}.csv`, csv.headers, csv.rows);
+  }
+
+  const groupKeys = useMemo(
+    () =>
+      groupBy === 'none' ? [] : [...new Set(viewRows.map((row) => groupFor(row, groupBy).key))],
+    [groupBy, viewRows],
+  );
+  const toggleGroup = (key: string) =>
+    setCollapsedGroups((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
     });
-    const direction = sortDirection === 'asc' ? 1 : -1;
-    return [...rows].sort((left, right) => {
-      const leftGroup =
-        groupBy === 'employee'
-          ? `${left.employeeDisplayName} ${left.employeeCode}`
-          : groupBy === 'department'
-            ? (left.departmentName ?? 'Unassigned')
-            : '';
-      const rightGroup =
-        groupBy === 'employee'
-          ? `${right.employeeDisplayName} ${right.employeeCode}`
-          : groupBy === 'department'
-            ? (right.departmentName ?? 'Unassigned')
-            : '';
-      const groupComparison = leftGroup.localeCompare(rightGroup, undefined, {
-        numeric: true,
-        sensitivity: 'base',
-      });
-      if (groupComparison) return groupComparison;
-      return (
-        compareNullable(sortValue(left, sortKey), sortValue(right, sortKey), direction) ||
-        left.employeeDisplayName.localeCompare(right.employeeDisplayName) ||
-        left.workDate.localeCompare(right.workDate)
-      );
-    });
-  }, [groupBy, mergedRows, search, sortDirection, sortKey, sourceFilter]);
 
-  useEffect(() => setPage(0), [groupBy, month, search, sourceFilter]);
-  useEffect(() => {
-    const lastPage = Math.max(0, Math.ceil(filteredRows.length / rowsPerPage) - 1);
-    if (page > lastPage) setPage(lastPage);
-  }, [filteredRows.length, page, rowsPerPage]);
-
-  const updateSort = (next: AttendanceSortKey) => {
-    if (sortKey === next) setSortDirection((value) => (value === 'asc' ? 'desc' : 'asc'));
-    else {
-      setSortKey(next);
-      setSortDirection('asc');
-    }
-  };
-
-  const allColumns: ReadonlyArray<
-    DataTableColumn<AttendanceDetailsRow, AttendanceSortKey> & { id: AttendanceColumnId }
-  > = [
-    {
+  const allColumns: Record<
+    AttendanceColumnId,
+    DataGridColumn<AttendanceDetailsRow, AttendanceSortKey>
+  > = {
+    employee: {
       id: 'employee',
       label: 'Employee',
       sortKey: 'employee',
-      minWidth: 190,
-      render: (row) => (
-        <Box>
-          <Typography sx={{ fontSize: 12.5, fontWeight: 800 }}>
-            {row.employeeDisplayName}
-          </Typography>
-          <Typography sx={{ color: 'text.secondary', fontSize: 10 }}>{row.employeeCode}</Typography>
-        </Box>
-      ),
+      minWidth: 220,
+      sticky: true,
+      render: (row) => <TwoLine primary={row.employeeDisplayName} secondary={row.employeeCode} />,
     },
-    {
+    department: {
       id: 'department',
       label: 'Department',
       sortKey: 'department',
-      minWidth: 145,
-      render: (row) => row.departmentName ?? 'Unassigned',
+      minWidth: 150,
+      render: (row) =>
+        row.departmentName ?? (
+          <Typography sx={{ color: 'text.disabled', fontSize: 12.5 }}>Unassigned</Typography>
+        ),
     },
-    {
+    date: {
       id: 'date',
       label: 'Work date',
       sortKey: 'date',
-      width: 112,
-      render: (row) => row.workDate,
+      width: 132,
+      render: (row) => (
+        <Typography sx={{ fontSize: 12.5, fontVariantNumeric: 'tabular-nums' }}>
+          {row.workDate}
+        </Typography>
+      ),
     },
-    {
+    shift: {
+      id: 'shift',
+      label: 'Shift',
+      sortKey: 'shift',
+      minWidth: 140,
+      render: (row) =>
+        row.workContext.shiftName ? (
+          <TwoLine
+            primary={row.workContext.shiftName}
+            secondary={
+              row.workContext.shiftStartTime && row.workContext.shiftEndTime
+                ? `${row.workContext.shiftStartTime} – ${row.workContext.shiftEndTime}`
+                : undefined
+            }
+          />
+        ) : (
+          <EmptyCell />
+        ),
+    },
+    workMode: {
+      id: 'workMode',
+      label: 'Mode',
+      sortKey: 'workMode',
+      width: 90,
+      render: (row) => <WorkModeBadge row={row} />,
+    },
+    biometricIn: {
       id: 'biometricIn',
-      label: 'Biometric entry',
+      label: 'Bio in',
       sortKey: 'biometricIn',
-      minWidth: 125,
-      render: (row) => (
-        <EvidenceTime value={row.biometric.firstAt} detail={label(row.biometric.status)} />
-      ),
+      width: 112,
+      render: (row) => <EvidenceTime value={row.biometric.firstAt} status={row.biometric.status} />,
     },
-    {
+    biometricOut: {
       id: 'biometricOut',
-      label: 'Biometric exit',
+      label: 'Bio out',
       sortKey: 'biometricOut',
-      minWidth: 125,
-      render: (row) => (
-        <EvidenceTime value={row.biometric.lastAt} detail={label(row.biometric.status)} />
-      ),
+      width: 112,
+      render: (row) => <EvidenceTime value={row.biometric.lastAt} status={row.biometric.status} />,
     },
-    {
+    biometricSummary: {
       id: 'biometricSummary',
-      label: 'Biometric summary',
+      label: 'Bio total',
       sortKey: 'biometricDuration',
-      minWidth: 150,
-      render: (row) => (
-        <EvidenceSummary
-          minutes={row.biometric.workedMinutes}
-          count={row.biometric.eventCount}
-          countLabel={row.biometric.eventCount === 1 ? 'punch' : 'punches'}
-          status={row.biometric.status}
-        />
-      ),
+      width: 130,
+      render: (row) =>
+        row.biometric.eventCount ? (
+          <TwoLine
+            primary={formatMinutes(row.biometric.workedMinutes)}
+            secondary={`${row.biometric.eventCount} punch${row.biometric.eventCount === 1 ? '' : 'es'}`}
+          />
+        ) : (
+          <EmptyCell />
+        ),
     },
-    {
+    accessEntry: {
       id: 'accessEntry',
-      label: 'Access-card entry',
+      label: 'Card in',
       sortKey: 'accessEntry',
-      minWidth: 125,
+      width: 112,
       render: (row) => (
-        <EvidenceTime value={row.accessCard.firstAt} detail={label(row.accessCard.status)} />
+        <EvidenceTime value={row.accessCard.firstAt} status={row.accessCard.status} />
       ),
     },
-    {
+    accessExit: {
       id: 'accessExit',
-      label: 'Access-card exit',
+      label: 'Card out',
       sortKey: 'accessExit',
-      minWidth: 125,
+      width: 112,
       render: (row) => (
-        <EvidenceTime value={row.accessCard.lastAt} detail={label(row.accessCard.status)} />
+        <EvidenceTime value={row.accessCard.lastAt} status={row.accessCard.status} />
       ),
     },
-    {
+    accessSummary: {
       id: 'accessSummary',
-      label: 'Access-card summary',
+      label: 'Card total',
       sortKey: 'accessDuration',
-      minWidth: 150,
-      render: (row) => (
-        <EvidenceSummary
-          minutes={row.accessCard.workedMinutes}
-          count={row.accessCard.eventCount}
-          countLabel={row.accessCard.eventCount === 1 ? 'event' : 'events'}
-          status={row.accessCard.status}
-        />
-      ),
+      width: 130,
+      render: (row) =>
+        row.accessCard.eventCount ? (
+          <TwoLine
+            primary={formatMinutes(row.accessCard.workedMinutes)}
+            secondary={`${row.accessCard.eventCount} event${row.accessCard.eventCount === 1 ? '' : 's'}`}
+          />
+        ) : (
+          <EmptyCell />
+        ),
     },
-    {
+    website: {
       id: 'website',
-      label: 'Website timecard',
+      label: 'Website',
       sortKey: 'website',
-      minWidth: 155,
-      render: (row) => (
-        <EvidenceSummary
-          minutes={row.website.workedMinutes}
-          count={row.website.sessionCount}
-          countLabel={row.website.sessionCount === 1 ? 'session' : 'sessions'}
-          status={row.website.status}
-        />
-      ),
+      width: 140,
+      render: (row) =>
+        row.website.sessionCount ? (
+          <TwoLine
+            primary={formatMinutes(row.website.workedMinutes)}
+            secondary={`${row.website.sessionCount} session${row.website.sessionCount === 1 ? '' : 's'} · ${humanize(row.website.status)}`}
+          />
+        ) : (
+          <EmptyCell />
+        ),
     },
-    {
+    timesheets: {
       id: 'timesheets',
-      label: 'Show timesheets',
+      label: 'Show time',
       sortKey: 'timesheets',
-      minWidth: 150,
+      width: 140,
+      render: (row) =>
+        row.timesheets.entryCount ? (
+          <TwoLine
+            primary={formatMinutes(row.timesheets.totalMinutes)}
+            secondary={`${row.timesheets.entryCount} entries · ${row.timesheets.averageProgress}%`}
+          />
+        ) : (
+          <EmptyCell />
+        ),
+    },
+    payable: {
+      id: 'payable',
+      label: 'Payable',
+      sortKey: 'payable',
+      width: 110,
+      align: 'right',
       render: (row) => (
-        <Box>
-          <Typography sx={{ fontSize: 12.5, fontWeight: 800 }}>
-            {formatMinutes(row.timesheets.totalMinutes)}
-          </Typography>
-          <Typography sx={{ color: 'text.secondary', fontSize: 10 }}>
-            {row.timesheets.entryCount} entries · {row.timesheets.averageProgress}% avg
-          </Typography>
-        </Box>
+        <Typography sx={{ fontSize: 12.5, fontWeight: 750, fontVariantNumeric: 'tabular-nums' }}>
+          {formatMinutes(row.payableMinutes)}
+        </Typography>
       ),
     },
-    {
-      id: 'payable',
-      label: 'Payable time',
-      sortKey: 'payable',
-      minWidth: 115,
-      render: (row) => formatMinutes(row.payableMinutes),
-    },
-    {
+    status: {
       id: 'status',
       label: 'Attendance',
       sortKey: 'status',
-      minWidth: 135,
-      render: (row) => <AttendanceStatus row={row} />,
+      minWidth: 150,
+      render: (row) => (
+        <Stack direction="row" sx={{ alignItems: 'center', gap: 0.75 }}>
+          <StatusBadge status={row.status} />
+          {row.requiresReview && (
+            <Tooltip title={row.anomalies.map(humanize).join(', ') || 'Review required'}>
+              <Box
+                component="span"
+                sx={{ color: 'warning.dark', fontSize: 11.5, fontWeight: 750, cursor: 'help' }}
+              >
+                Review
+              </Box>
+            </Tooltip>
+          )}
+        </Stack>
+      ),
     },
-  ];
-  const selectedColumns = allColumns.filter(
-    (column) =>
-      visibleColumnIds.has(column.id) &&
-      !(groupBy === 'employee' && column.id === 'employee') &&
-      !(groupBy === 'department' && column.id === 'department'),
-  );
-  const columns =
-    selectedColumns.length > 0
-      ? selectedColumns
-      : allColumns.filter((column) => column.id === 'date');
-  const rowGroup =
-    groupBy === 'employee'
-      ? (row: AttendanceDetailsRow) => ({
-          key: row.employeeId,
-          label: row.employeeDisplayName,
-          secondary: row.employeeCode,
-        })
-      : groupBy === 'department'
-        ? (row: AttendanceDetailsRow) => ({
-            key: row.departmentName ?? 'unassigned',
-            label: row.departmentName ?? 'Unassigned department',
-          })
-        : undefined;
+  };
+  const columns = columnOrder.order
+    .filter(
+      (id) =>
+        visibleColumns.includes(id) &&
+        !(groupBy === 'employee' && id === 'employee') &&
+        !(groupBy === 'department' && id === 'department') &&
+        !(groupBy === 'date' && id === 'date'),
+    )
+    .map((id) => allColumns[id]);
+  const gridColumns = columns.length > 0 ? columns : [allColumns.date];
 
-  const toggleColumn = (columnId: AttendanceColumnId) => {
-    setVisibleColumnIds((current) => {
-      const next = new Set(current);
-      if (next.has(columnId)) {
-        if (next.size > 1) next.delete(columnId);
-      } else next.add(columnId);
-      return next;
-    });
+  const hasFilters =
+    Boolean(search) ||
+    statusFilter !== 'all' ||
+    workModeFilter !== 'all' ||
+    sourceFilter !== 'all' ||
+    groupBy !== 'none';
+  const clearFilters = () => {
+    setSearch('');
+    setStatusFilter('all');
+    setWorkModeFilter('all');
+    setSourceFilter('all');
+    setGroupBy('none');
   };
 
   return (
-    <Stack spacing={2.5} sx={{ width: '100%', maxWidth: 1800, mx: 'auto' }}>
-      <PageHeader
-        eyebrow="ATTENDANCE EVIDENCE"
-        title="Attendance details"
-        meta="Biometric and access-card entry/exit evidence for all scoped employees"
-        action={<MonthPicker label="Attendance month" value={selectedMonth} onChange={setMonth} />}
-      />
+    <Box
+      ref={containerRef}
+      sx={
+        fullscreen
+          ? {
+              position: 'fixed',
+              inset: 0,
+              zIndex: 1250,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 1.5,
+              p: { xs: 1.5, md: 2.5 },
+              bgcolor: 'var(--g-base)',
+              boxShadow: 'var(--g-inset-sm)',
+              overflow: 'hidden',
+            }
+          : {
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+              width: '100%',
+              maxWidth: 1800,
+              mx: 'auto',
+            }
+      }
+    >
+      {/* Header */}
+      <Stack
+        direction={{ xs: 'column', md: 'row' }}
+        sx={{ alignItems: { md: 'center' }, justifyContent: 'space-between', gap: 2 }}
+      >
+        <Box sx={{ minWidth: 0 }}>
+          <Typography
+            component="h1"
+            sx={{ fontSize: fullscreen ? 20 : 24, fontWeight: 850, letterSpacing: '-0.03em' }}
+          >
+            Attendance details
+          </Typography>
+          <Typography sx={{ color: 'text.secondary', fontSize: 12.5, mt: 0.25 }}>
+            {monthLabel(selectedMonth)} · every working day starts as LOP until biometric,
+            access-card or timecard evidence arrives
+          </Typography>
+        </Box>
+        <Stack direction="row" sx={{ alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+          <MonthPicker label="Month" value={selectedMonth} onChange={setMonth} />
+          <Button
+            variant="contained"
+            startIcon={<Download size={16} />}
+            disabled={!attendance || viewRows.length === 0}
+            onClick={exportCsv}
+            sx={{ borderRadius: '10px', boxShadow: 'none', whiteSpace: 'nowrap' }}
+          >
+            Export CSV
+          </Button>
+          <Tooltip
+            title={
+              fullscreen
+                ? `Exit full screen (Esc or ${fullscreenShortcutLabel()})`
+                : `Full screen (${fullscreenShortcutLabel()})`
+            }
+          >
+            <IconButton
+              aria-label={fullscreen ? 'Exit full screen' : 'Full screen'}
+              onClick={toggleFullscreen}
+              sx={{
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: '10px',
+                bgcolor: 'var(--g-base)',
+              }}
+            >
+              {fullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+            </IconButton>
+          </Tooltip>
+        </Stack>
+      </Stack>
 
       {!details.canRead && (
         <Alert severity="warning">Your account cannot read team attendance.</Alert>
       )}
       {details.error && <Alert severity="error">{details.error.message}</Alert>}
-      {attendance &&
+      {!fullscreen &&
+        attendance &&
         !month &&
         attendance.latestRecordedMonth &&
         selectedMonth !== attendance.latestRecordedMonth && (
@@ -511,10 +1055,11 @@ export function AttendanceDetailsPage() {
             The newest recorded activity is {monthLabel(attendance.latestRecordedMonth)}.
           </Alert>
         )}
-      {attendance &&
+      {!fullscreen &&
+        attendance &&
         biometricMonth &&
         selectedMonth !== biometricMonth.month &&
-        attendance.summary.completeBiometricDays === 0 && (
+        stats.biometric === 0 && (
           <Alert
             severity="warning"
             action={
@@ -524,9 +1069,6 @@ export function AttendanceDetailsPage() {
                 onClick={() => {
                   setMonth(biometricMonth.month);
                   setSourceFilter('biometric');
-                  setSearch('');
-                  setSortKey('date');
-                  setSortDirection('asc');
                 }}
               >
                 View biometric data
@@ -545,158 +1087,249 @@ export function AttendanceDetailsPage() {
         </Box>
       ) : attendance ? (
         <>
-          <Box
+          <Stack
+            direction="row"
             sx={{
-              display: 'grid',
-              gridTemplateColumns: { xs: 'repeat(2, 1fr)', md: 'repeat(5, minmax(0, 1fr))' },
+              alignItems: 'center',
+              justifyContent: 'space-between',
               gap: 1.5,
+              flexWrap: 'wrap',
             }}
           >
-            <SummaryCard
-              icon={UsersRound}
-              label="Employees"
-              value={mergedSummary.employeesWithRecords}
+            <StatusChips
+              counts={statusCounts}
+              total={rowsBeforeStatus.length}
+              value={statusFilter}
+              onChange={setStatusFilter}
             />
-            <SummaryCard
-              icon={CalendarClock}
-              label="Attendance days"
-              value={mergedSummary.attendanceDays}
-            />
-            <SummaryCard
-              icon={Fingerprint}
-              label="Biometric complete"
-              value={mergedSummary.completeBiometricDays}
-            />
-            <SummaryCard
-              icon={ScanLine}
-              label="Access complete"
-              value={mergedSummary.completeAccessCardDays}
-            />
-            <SummaryCard
-              icon={TimerReset}
-              label="Website sessions"
-              value={mergedSummary.websiteSessionDays}
-            />
-          </Box>
+            {!fullscreen && (
+              <Stack
+                direction="row"
+                sx={{
+                  display: { xs: 'none', lg: 'flex' },
+                  py: 0.75,
+                  border: '1px solid',
+                  borderColor: 'divider',
+                  borderRadius: '12px',
+                  bgcolor: 'var(--g-base)',
+                }}
+              >
+                <Stat label="Employees" value={stats.employees} />
+                <Stat label="Attendance days" value={stats.days} />
+                <Stat label="Biometric complete" value={stats.biometric} />
+                <Stat label="Card complete" value={stats.access} />
+                <Stat label="Website days" value={stats.website} />
+              </Stack>
+            )}
+          </Stack>
 
-          <Box>
-            <FilterBar
-              search={search}
-              onSearchChange={setSearch}
-              searchLabel="Search employee, department, code, date, or status"
-              resultCount={filteredRows.length}
-              resultLabel={filteredRows.length === 1 ? 'attendance day' : 'attendance days'}
-              hasActiveFilters={Boolean(search) || sourceFilter !== 'all' || groupBy !== 'none'}
-              onClear={() => {
-                setSearch('');
-                setSourceFilter('all');
-                setGroupBy('none');
+          {/* Toolbar */}
+          <Stack
+            direction="row"
+            sx={{
+              alignItems: 'center',
+              gap: 1,
+              flexWrap: 'wrap',
+              p: 1.25,
+              border: '1px solid',
+              borderColor: 'divider',
+              borderRadius: '14px',
+              bgcolor: 'var(--g-base)',
+              boxShadow: 'var(--g-inset-sm)',
+            }}
+          >
+            <TextField
+              size="small"
+              placeholder="Search name, code, department, shift…"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              sx={{
+                width: { xs: '100%', sm: 240 },
+                '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: 'var(--g-base)' },
+              }}
+              slotProps={{
+                htmlInput: { maxLength: 100, 'aria-label': 'Search attendance' },
+                input: {
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search size={16} />
+                    </InputAdornment>
+                  ),
+                  endAdornment: search ? (
+                    <InputAdornment position="end">
+                      <IconButton
+                        size="small"
+                        aria-label="Clear search"
+                        onClick={() => setSearch('')}
+                      >
+                        <X size={14} />
+                      </IconButton>
+                    </InputAdornment>
+                  ) : undefined,
+                },
+              }}
+            />
+            <ToolbarSelect
+              label="Evidence"
+              value={sourceFilter}
+              options={attendanceSourceFilters}
+              labels={sourceLabels}
+              onChange={setSourceFilter}
+              width={175}
+            />
+            <ToolbarSelect
+              label="Work mode"
+              value={workModeFilter}
+              options={workModeFilters}
+              labels={workModeLabels}
+              onChange={setWorkModeFilter}
+              width={150}
+            />
+            <ToolbarSelect
+              label="Group by"
+              value={groupBy}
+              options={attendanceGroupOptions}
+              labels={groupLabels}
+              onChange={setGroupBy}
+              width={165}
+            />
+            {groupBy !== 'none' && (
+              <Tooltip
+                title={
+                  collapsedGroups.size === groupKeys.length
+                    ? 'Expand all groups'
+                    : 'Collapse all groups'
+                }
+              >
+                <IconButton
+                  aria-label={
+                    collapsedGroups.size === groupKeys.length
+                      ? 'Expand all groups'
+                      : 'Collapse all groups'
+                  }
+                  onClick={() =>
+                    setCollapsedGroups(
+                      collapsedGroups.size === groupKeys.length ? new Set() : new Set(groupKeys),
+                    )
+                  }
+                  sx={{
+                    border: '1px solid',
+                    borderColor: 'divider',
+                    borderRadius: '10px',
+                    bgcolor: 'var(--g-base)',
+                  }}
+                >
+                  {collapsedGroups.size === groupKeys.length ? (
+                    <ChevronsUpDown size={17} />
+                  ) : (
+                    <ChevronsDownUp size={17} />
+                  )}
+                </IconButton>
+              </Tooltip>
+            )}
+            <SortControl rules={sortRules} onChange={(rules) => setSortRules(rules)} />
+            <ColumnControl
+              visible={visibleColumns}
+              onChange={setVisibleColumns}
+              onResetOrder={columnOrder.reset}
+            />
+            <ToggleButtonGroup
+              exclusive
+              size="small"
+              value={density}
+              onChange={(_event, value: 'comfortable' | 'compact' | null) =>
+                value && setDensity(value)
+              }
+              aria-label="Row density"
+              sx={{
+                bgcolor: 'var(--g-base)',
+                '& .MuiToggleButton-root': { borderRadius: '10px', px: 1 },
               }}
             >
-              <TextField
-                select
-                size="small"
-                label="Attendance source"
-                value={sourceFilter}
-                onChange={(event) => setSourceFilter(event.target.value as AttendanceSourceFilter)}
-                sx={{ minWidth: 190 }}
-              >
-                <MenuItem value="all">All sources</MenuItem>
-                <MenuItem value="biometric">Biometric punches</MenuItem>
-                <MenuItem value="accessCard">Access-card events</MenuItem>
-                <MenuItem value="website">Website sessions</MenuItem>
-                <MenuItem value="timesheets">Show timesheets</MenuItem>
-              </TextField>
-              <TextField
-                select
-                size="small"
-                label="Group by"
-                value={groupBy}
-                onChange={(event) => setGroupBy(event.target.value as AttendanceGroup)}
-                sx={{ minWidth: 170 }}
-              >
-                <MenuItem value="none">No grouping</MenuItem>
-                <MenuItem value="employee">User / employee</MenuItem>
-                <MenuItem value="department">Department</MenuItem>
-              </TextField>
+              <ToggleButton value="comfortable" aria-label="Comfortable rows">
+                <Tooltip title="Comfortable rows">
+                  <Rows3 size={16} />
+                </Tooltip>
+              </ToggleButton>
+              <ToggleButton value="compact" aria-label="Compact rows">
+                <Tooltip title="Compact rows">
+                  <Rows4 size={16} />
+                </Tooltip>
+              </ToggleButton>
+            </ToggleButtonGroup>
+            <Box sx={{ flex: 1 }} />
+            {hasFilters && (
               <Button
-                variant="outlined"
-                startIcon={<Columns3 size={16} />}
-                onClick={(event: MouseEvent<HTMLButtonElement>) =>
-                  setColumnMenuAnchor(event.currentTarget)
-                }
-                sx={{ minHeight: 40, whiteSpace: 'nowrap' }}
+                color="inherit"
+                size="small"
+                startIcon={<X size={14} />}
+                onClick={clearFilters}
               >
-                Columns ({visibleColumnIds.size})
+                Clear
               </Button>
-              <Menu
-                anchorEl={columnMenuAnchor}
-                open={Boolean(columnMenuAnchor)}
-                onClose={() => setColumnMenuAnchor(null)}
-                slotProps={{ paper: { sx: { maxHeight: 480, minWidth: 290 } } }}
-              >
-                {columnOptions.map((column) => (
-                  <MenuItem key={column.id} onClick={() => toggleColumn(column.id)} dense>
-                    <Checkbox
-                      size="small"
-                      checked={visibleColumnIds.has(column.id)}
-                      disabled={visibleColumnIds.has(column.id) && visibleColumnIds.size === 1}
-                    />
-                    <ListItemText primary={column.label} />
-                  </MenuItem>
-                ))}
-              </Menu>
-            </FilterBar>
-            <DataTable
-              ariaLabel="All employee attendance source details"
-              rows={filteredRows}
-              columns={columns}
-              getRowId={(row) => row.id}
-              getRowGroup={rowGroup}
-              sortKey={sortKey}
-              sortDirection={sortDirection}
-              onSort={updateSort}
-              page={page}
-              rowsPerPage={rowsPerPage}
-              onPageChange={setPage}
-              onRowsPerPageChange={(value) => {
-                setRowsPerPage(value);
-                setPage(0);
-              }}
-              emptyTitle={`No attendance in ${monthLabel(attendance.month)}`}
-              emptyMessage="Choose a recorded month or upload attendance data for this period."
+            )}
+            <Chip
+              size="small"
+              label={`${viewRows.length.toLocaleString('en-IN')} ${viewRows.length === 1 ? 'day' : 'days'}`}
+              sx={{ fontWeight: 750, bgcolor: 'var(--g-accent-soft)', color: 'primary.dark' }}
             />
-          </Box>
+          </Stack>
+
+          <DataGrid
+            ariaLabel="All employee attendance source details"
+            rows={viewRows}
+            columns={gridColumns}
+            getRowId={(row) => row.id}
+            sort={sortRules}
+            onSort={(key, additive) => setSortRules(nextSort(sortRules, key, additive))}
+            page={page}
+            rowsPerPage={rowsPerPage}
+            onPageChange={setPage}
+            onRowsPerPageChange={(value) => {
+              setRowsPerPage(value);
+              setPage(0);
+            }}
+            density={density}
+            fill={fullscreen}
+            height="calc(100vh - 380px)"
+            emptyTitle={`No attendance in ${monthLabel(attendance.month)}`}
+            emptyMessage={
+              hasFilters
+                ? 'No days match these filters. Clear them to see everything.'
+                : 'Choose another month or upload attendance data for this period.'
+            }
+            getRowGroup={groupBy === 'none' ? undefined : (row) => groupFor(row, groupBy)}
+            collapsedGroups={collapsedGroups}
+            onToggleGroup={toggleGroup}
+            renderGroupSummary={(rows) => <GroupSummary rows={rows} />}
+            onColumnMove={columnOrder.move}
+          />
         </>
       ) : null}
-    </Stack>
+    </Box>
   );
 }
 
-function SummaryCard({
-  icon: Icon,
-  label: cardLabel,
-  value,
-}: {
-  icon: typeof UsersRound;
-  label: string;
-  value: number;
-}) {
+function GroupSummary({ rows }: { rows: readonly AttendanceDetailsRow[] }) {
+  const counts = countByStatus(rows);
+  const payable = rows.reduce((total, row) => total + row.payableMinutes, 0);
   return (
-    <Card sx={{ boxShadow: 'none' }}>
-      <CardContent sx={{ p: 2.25 }}>
-        <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
-          <Box>
-            <Typography sx={{ fontSize: 24, fontWeight: 850 }}>
-              {value.toLocaleString('en-IN')}
+    <Stack direction="row" sx={{ alignItems: 'center', gap: 1.25, ml: 0.5 }}>
+      {attendanceStatusOrder
+        .filter((status) => counts[status] > 0)
+        .map((status) => (
+          <Stack key={status} direction="row" sx={{ alignItems: 'center', gap: 0.5 }}>
+            <Box
+              sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: statusTones[status].dot }}
+            />
+            <Typography sx={{ fontSize: 11, color: 'text.secondary', whiteSpace: 'nowrap' }}>
+              {attendanceStatusLabels[status]} {counts[status]}
             </Typography>
-            <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>{cardLabel}</Typography>
-          </Box>
-          <Box sx={{ p: 1, borderRadius: 2, bgcolor: '#e9f6f8', color: 'primary.dark' }}>
-            <Icon size={18} />
-          </Box>
-        </Stack>
-      </CardContent>
-    </Card>
+          </Stack>
+        ))}
+      <Typography sx={{ fontSize: 11, color: 'text.secondary', whiteSpace: 'nowrap' }}>
+        · Payable {formatMinutes(payable)}
+      </Typography>
+    </Stack>
   );
 }

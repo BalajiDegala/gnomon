@@ -332,7 +332,7 @@ export function SecurityAdministrationSection() {
           <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 800 }}>
             {employee.employeeDisplayName}
           </Typography>
-          <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
+          <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
             {employee.employeeCode}
           </Typography>
         </Box>
@@ -367,7 +367,7 @@ export function SecurityAdministrationSection() {
               employee.attendanceIdentity?.departmentName ??
               'Manual profile'}
           </Typography>
-          <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
+          <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
             {employee.attendanceIdentity?.cardNumber
               ? `Card ${employee.attendanceIdentity.cardNumber}`
               : 'No card supplied'}
@@ -452,7 +452,7 @@ export function SecurityAdministrationSection() {
               borderTop: '1px solid',
               borderBottom: '1px solid',
               borderColor: 'divider',
-              bgcolor: '#fff',
+              bgcolor: 'var(--g-base)',
             }}
           >
             <Metric value={employees.length} label="Employees" icon={UsersRound} />
@@ -760,7 +760,7 @@ function RolesPanel({
                 <Typography sx={{ fontSize: 12.5, fontWeight: 800 }}>
                   {assignment.roleName}
                 </Typography>
-                <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
+                <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
                   {assignment.scopeType.replaceAll('_', ' ')}
                   {assignment.scopeIds.length
                     ? ` | ${scopeLabels(assignment.scopeIds, directory)}`
@@ -898,7 +898,7 @@ function scopeLabels(
 function DetailValue({ label, value }: { label: string; value: string }) {
   return (
     <Box sx={{ minWidth: 0 }}>
-      <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>{label}</Typography>
+      <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>{label}</Typography>
       <Typography noWrap sx={{ mt: 0.25, fontSize: 12.5, fontWeight: 750 }}>
         {value}
       </Typography>
@@ -917,10 +917,10 @@ function Metric({
 }) {
   return (
     <Stack direction="row" sx={{ alignItems: 'center', gap: 1.25, minWidth: 0 }}>
-      <Icon size={18} color="#087b88" />
+      <Icon size={18} color="var(--g-accent)" />
       <Box sx={{ minWidth: 0 }}>
         <Typography sx={{ fontSize: 18, fontWeight: 850 }}>{value}</Typography>
-        <Typography noWrap sx={{ color: 'text.secondary', fontSize: 10.5 }}>
+        <Typography noWrap sx={{ color: 'text.secondary', fontSize: 11.5 }}>
           {label}
         </Typography>
       </Box>

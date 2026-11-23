@@ -18,11 +18,10 @@ export function PageTabs<T extends string>({ value, tabs, onChange, ariaLabel }:
     <Box
       sx={{
         px: { xs: 0.5, sm: 1 },
-        border: '1px solid',
-        borderColor: 'divider',
+        border: '1px solid var(--g-border)',
         borderRadius: '16px 16px 0 0',
-        bgcolor: 'rgba(255,255,255,.94)',
-        boxShadow: '0 10px 26px rgba(20,32,51,.035)',
+        bgcolor: 'var(--g-base)',
+        boxShadow: 'var(--g-raised-sm)',
       }}
     >
       <Tabs
@@ -36,7 +35,7 @@ export function PageTabs<T extends string>({ value, tabs, onChange, ariaLabel }:
           '& .MuiTabs-indicator': {
             height: 3,
             borderRadius: '3px 3px 0 0',
-            background: 'linear-gradient(90deg, #10a5b3, #4fcbd5)',
+            background: 'var(--g-accent)',
           },
         }}
       >

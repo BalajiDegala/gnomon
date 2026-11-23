@@ -64,7 +64,9 @@ export async function listSecurityDirectory(user: AuthUser): Promise<SecurityDir
   await ensureSystemRoles();
   const now = new Date();
   const [employees, users, roles, assignments, shows, locations] = await Promise.all([
-    Employee.find({ profileSource: { $in: ['users_csv', 'biometric_csv', 'manual', 'system'] } })
+    Employee.find({
+      profileSource: { $in: ['users_csv', 'biometric_csv', 'manual', 'system', 'ldap'] },
+    })
       .sort({ status: 1, 'hrProfile.fullName': 1, firstName: 1, lastName: 1 })
       .limit(500)
       .lean()

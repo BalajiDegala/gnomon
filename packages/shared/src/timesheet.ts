@@ -27,8 +27,8 @@ export const TimeEntryDtoSchema = z.object({
   showCode: z.string(),
   showName: z.string(),
   workSessionId: z.string().nullable(),
-  startedAt: z.string().datetime(),
-  endedAt: z.string().datetime(),
+  startedAt: z.string().datetime().nullable(),
+  endedAt: z.string().datetime().nullable(),
   durationMinutes: z.number().int().positive(),
   comment: z.string(),
   percentage: z.number().int().min(10).max(100).multipleOf(10),
@@ -61,18 +61,17 @@ export const UpdateShowRequestSchema = CreateShowRequestSchema.extend({
 });
 export type UpdateShowRequest = z.infer<typeof UpdateShowRequestSchema>;
 
-export const CreateTimeEntryRequestSchema = z
-  .object({
-    showId: ObjectIdStringSchema,
-    startedAt: z.string().datetime(),
-    endedAt: z.string().datetime(),
-    comment: z.string().trim().min(1).max(500),
-    percentage: z.number().int().min(10).max(100).multipleOf(10),
-  })
-  .refine((value) => new Date(value.endedAt) > new Date(value.startedAt), {
-    path: ['endedAt'],
-    message: 'End time must be after start time',
-  });
+export const CreateTimeEntryRequestSchema = z.object({
+  workDate: z.string().date(),
+  showId: ObjectIdStringSchema,
+  hours: z
+    .number()
+    .positive('Hours must be more than 0')
+    .max(24, 'Hours cannot exceed 24')
+    .refine((value) => Number.isInteger(value * 4), 'Use quarter-hour steps (e.g. 1.25, 2.5)'),
+  comment: z.string().trim().min(1).max(500),
+  percentage: z.number().int().min(10).max(100).multipleOf(10),
+});
 export type CreateTimeEntryRequest = z.infer<typeof CreateTimeEntryRequestSchema>;
 export const UpdateTimeEntryRequestSchema = CreateTimeEntryRequestSchema;
 export type UpdateTimeEntryRequest = z.infer<typeof UpdateTimeEntryRequestSchema>;
@@ -80,3 +79,35 @@ export type UpdateTimeEntryRequest = z.infer<typeof UpdateTimeEntryRequestSchema
 export const TimesheetDateQuerySchema = z.object({
   workDate: z.string().date().optional(),
 });
+
+/** Own entries across a date range (at most 93 days), for the week/month views. */
+export const TimesheetRangeQuerySchema = z
+  .object({ from: z.string().date(), to: z.string().date() })
+  .refine((value) => value.from <= value.to, { message: 'from must be on or before to' })
+  .refine(
+    (value) => (new Date(value.to).getTime() - new Date(value.from).getTime()) / 86_400_000 <= 92,
+    { message: 'The range cannot exceed 93 days' },
+  );
+
+export const TimecardDataImportIssueSchema = z.object({
+  rowNumber: z.number().int().positive(),
+  login: z.string(),
+  reason: z.string(),
+});
+export type TimecardDataImportIssue = z.infer<typeof TimecardDataImportIssueSchema>;
+
+/** Result of importing timecard records exported from another timecard application. */
+export const TimecardDataImportResponseSchema = z.object({
+  fileName: z.string(),
+  totalRecords: z.number().int().nonnegative(),
+  importedRecords: z.number().int().nonnegative(),
+  sessionsCreated: z.number().int().nonnegative(),
+  sessionsUpdated: z.number().int().nonnegative(),
+  /** Records still "Working" in the source: imported as unfinished days needing regularisation. */
+  openSessions: z.number().int().nonnegative(),
+  timesheetEntries: z.number().int().nonnegative(),
+  showsCreated: z.array(z.string()),
+  unmatchedLogins: z.array(z.string()),
+  errors: z.array(TimecardDataImportIssueSchema),
+});
+export type TimecardDataImportResponse = z.infer<typeof TimecardDataImportResponseSchema>;

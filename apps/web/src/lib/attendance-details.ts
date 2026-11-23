@@ -140,10 +140,15 @@ function mergeRows(rows: AttendanceDetailsRow[]): AttendanceDetailsRow {
       (current, row) => mergeInterval(current, row.accessCard, ACCESS_CARD_STATUSES),
       rows[0]!.accessCard,
     );
-  const website = bestRow(
+  const websiteRow = bestRow(
     rows,
     (row) => row.website.sessionCount * 100_000 + row.website.workedMinutes,
-  ).website;
+  );
+  const website = websiteRow.website;
+  // Shift and work mode are declared on the website timecard.
+  const workContext = websiteRow.workContext.workMode
+    ? websiteRow.workContext
+    : (rows.find((row) => row.workContext.workMode)?.workContext ?? websiteRow.workContext);
   const timesheets = bestRow(
     rows,
     (row) => row.timesheets.entryCount * 100_000 + row.timesheets.totalMinutes,
@@ -161,6 +166,7 @@ function mergeRows(rows: AttendanceDetailsRow[]): AttendanceDetailsRow {
     timesheets,
     payableMinutes: Math.max(...rows.map((row) => row.payableMinutes)),
     anomalies,
+    workContext,
   };
 }
 

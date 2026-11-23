@@ -46,6 +46,21 @@ export function parseApprovalRoutesCsv(csvText: string): ParsedApprovalRoutes {
     };
   }
 
+  // users.csv and approvals.csv are easy to mix up in Site preferences; say so plainly.
+  const header = (records[0] ?? []).map((cell) => cell.toLowerCase().replace(/[^a-z0-9]/g, ''));
+  if (header.includes('empid') && header.includes('mailid')) {
+    return {
+      rows: [],
+      errors: [
+        {
+          rowNumber: 1,
+          reason:
+            'This is the user directory (users.csv). Upload it under "User directory CSV"; this upload expects approvals.csv',
+        },
+      ],
+    };
+  }
+
   const rows: ParsedApprovalRouteRow[] = [];
   const errors: ParsedApprovalRoutes['errors'] = [];
   let section: ParsedApprovalRouteRow['section'] | null = null;

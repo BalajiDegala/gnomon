@@ -393,19 +393,28 @@ describe.skipIf(!uri)('attendance deletion and replacement with MongoDB', () => 
         ?.sourceSummary?.biometric?.eventCount,
     ).toBe(0);
     const details = await buildAttendanceDetails(reportUser, { month: '2026-06' });
-    expect(details.rows).toHaveLength(2);
-    expect(details.rows.every((row) => row.employeeCode === 'TEST001')).toBe(true);
-    expect(details.summary.employeesWithRecords).toBe(1);
+    // The omitted employee keeps no punches; that working day is reported as LOP.
+    expect(details.rows).toHaveLength(3);
+    expect(
+      details.rows.filter((row) => row.employeeCode === 'TEST001').map((row) => row.workDate),
+    ).toEqual(['2026-06-02', '2026-06-01']);
+    expect(details.rows.find((row) => row.employeeCode === 'TEST002')).toMatchObject({
+      workDate: '2026-06-01',
+      status: 'absent',
+      biometric: { eventCount: 0 },
+    });
+    expect(details.summary.employeesWithRecords).toBe(2);
   });
 
-  it('removes empty summaries from report rows, counts and month discovery after the last source is deleted', async () => {
+  it('keeps evidence-free working days as LOP rows after the last source is deleted', async () => {
     const bio = await upload();
     const door = await upload(csv(), 'access_card');
     const employee = await Employee.findOne({ employeeCode: 'TEST001' }).orFail();
     await reconciliation.reconcileDailyTimecard(String(employee._id), '2026-07-01');
     const initial = await buildAttendanceDetails(reportUser, {});
-    expect(initial.latestRecordedMonth).toBe('2026-06');
-    expect(initial.availableMonths.map((month) => month.month)).toEqual(['2026-06']);
+    // Reconciling a working day without evidence creates its LOP row.
+    expect(initial.latestRecordedMonth).toBe('2026-07');
+    expect(initial.availableMonths.map((month) => month.month)).toEqual(['2026-07', '2026-06']);
     await deleteAttendanceImport(
       bio.batch.id,
       actorId,
@@ -421,25 +430,43 @@ describe.skipIf(!uri)('attendance deletion and replacement with MongoDB', () => 
       confirmation(await previewImportDeletion(door.batch.id)),
     );
     const empty = await buildAttendanceDetails(reportUser, { month: '2026-06' });
-    expect(empty.rows).toEqual([]);
+    // No evidence remains, so the day is LOP rather than disappearing.
+    expect(empty.rows).toHaveLength(1);
+    expect(empty.rows[0]).toMatchObject({
+      employeeCode: 'TEST001',
+      workDate: '2026-06-01',
+      status: 'absent',
+      biometric: { eventCount: 0 },
+      accessCard: { eventCount: 0 },
+    });
     expect(empty.summary).toMatchObject({
       scopedEmployees: 2,
-      employeesWithRecords: 0,
-      attendanceDays: 0,
+      employeesWithRecords: 1,
+      attendanceDays: 1,
+      completeBiometricDays: 0,
+      completeAccessCardDays: 0,
     });
-    expect(empty.latestRecordedMonth).toBeNull();
-    expect(empty.availableMonths).toEqual([]);
+    const june = empty.availableMonths.find((month) => month.month === '2026-06');
+    expect(june).toMatchObject({ attendanceDays: 1, biometricEvents: 0, accessCardEvents: 0 });
     const workforce = await buildWorkforceReport(reportUser, {
       dateFrom: period.from,
       dateTo: period.to,
     });
-    expect(workforce.attendance).toEqual([]);
-    expect(workforce.summary.attendanceRecords).toBe(0);
+    expect(workforce.attendance).toEqual([
+      expect.objectContaining({
+        employeeCode: 'TEST001',
+        workDate: '2026-06-01',
+        status: 'absent',
+      }),
+    ]);
+    expect(workforce.summary).toMatchObject({ attendanceRecords: 1, presentDays: 0 });
     expect(await DailyTimecard.countDocuments()).toBe(2);
     await upload();
     const restored = await buildAttendanceDetails(reportUser, { month: '2026-06' });
     expect(restored.rows).toHaveLength(1);
-    expect(restored.availableMonths[0]?.biometricEvents).toBe(2);
+    expect(
+      restored.availableMonths.find((month) => month.month === '2026-06')?.biometricEvents,
+    ).toBe(2);
   });
 
   it('continues to report website attendance after all imported punches are removed', async () => {

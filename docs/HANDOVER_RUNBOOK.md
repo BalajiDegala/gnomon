@@ -368,12 +368,44 @@ git diff --check
 git status --short
 ```
 
-For browser changes, also run `npm run e2e --workspace @gnomon/web` against an
-isolated test environment. Playwright expects a separately running application;
-some tests skip without their login variables. Check for skipped tests before
-claiming the workflow passed. The fixture seeder requires `NODE_ENV=test` and a
-database name ending in `_test`. See the test files and
-[Leave workflow](backup/2026-10-12/docs/LEAVE_CALENDAR_WORKFLOW.md#verification) for the required setup.
+For browser changes, also run the Playwright suite against an isolated test
+environment. It expects a separately running application, and tests skip without
+their login variables. Only the 6 "covered once on desktop" skips are expected;
+check for any others before claiming the workflow passed.
+
+1. Export the environment (all passwords at least 12 characters):
+
+   ```bash
+   export NODE_ENV=test COOKIE_SECURE=false PORT=4000
+   export MONGODB_URI=mongodb://localhost:27017/gnomon_e2e_test   # must end in _test
+   export ACCESS_TOKEN_SECRET=<32+ chars> REFRESH_TOKEN_SECRET=<different 32+ chars>
+   export WEB_ORIGIN=http://127.0.0.1:5173
+   export ADMIN_EMAIL=e2eadmin@example.test ADMIN_PASSWORD=<password>
+   export E2E_EMAIL=$ADMIN_EMAIL E2E_PASSWORD=$ADMIN_PASSWORD
+   export E2E_EMPLOYEE_EMAIL=e2eemployee@example.test E2E_EMPLOYEE_PASSWORD=<password>
+   export E2E_MANAGER_EMAIL=e2emanager@example.test E2E_MANAGER_PASSWORD=<password>
+   export E2E_HR_EMAIL=e2ehr@example.test E2E_HR_PASSWORD=<password>
+   ```
+
+2. Seed a fresh database with all three seeders. The demo data provides people
+   such as Asha Rao that the refresh test searches for.
+
+   ```bash
+   cd apps/api
+   npx tsx src/scripts/seed-admin.ts
+   npx tsx test/seed-regularisation-e2e.ts
+   DEMO_SEED_ADMIN_EMAIL=$ADMIN_EMAIL DEMO_PASSWORD=<password> npx tsx src/scripts/seed-demo-data.ts
+   ```
+
+3. Start the API (`npx tsx src/server.ts` in `apps/api`), then serve the **production
+   build** of the web app; the dev server loads pages too slowly for the longer tests:
+
+   ```bash
+   cd apps/web && npm run build && npx vite preview --host 127.0.0.1 --port 5173
+   ```
+
+4. Run `npm run e2e --workspace @gnomon/web`. Re-seed (step 2) before each full
+   run: the workflow tests create requests for fixed dates and fail on leftovers.
 
 ### Check the shared deployment
 

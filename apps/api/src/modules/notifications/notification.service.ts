@@ -118,7 +118,7 @@ export async function notifyLeaveApprovalRequired(
       dedupeKey: `leave:${String(input.requestId)}:approval:${stage}:${String(recipientEmployeeId)}`,
       title: `Leave approval ${stage === 1 ? 'required' : 'moved to stage 2'}`,
       message: `${input.employeeDisplayName} requested ${input.requestedDays} day${input.requestedDays === 1 ? '' : 's'} from ${input.startDate} to ${input.endDate}.`,
-      href: '/approvals',
+      href: '/leave-approvals',
     })),
   );
 }

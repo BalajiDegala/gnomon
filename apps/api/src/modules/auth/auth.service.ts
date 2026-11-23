@@ -6,6 +6,8 @@ import { env } from '../../config/env.js';
 import { HttpError } from '../../middleware/errors.js';
 import { Employee } from '../employees/employee.model.js';
 import { Role, RoleAssignment } from '../roles/role.model.js';
+import { activeLdapSettings, authenticateWithLdap } from '../settings/ldap.service.js';
+import { resolveLdapAccount } from './ldap-accounts.service.js';
 import { User, type UserRecord } from './user.model.js';
 
 const encoder = new TextEncoder();
@@ -61,11 +63,74 @@ export function verifyRefreshToken(token: string): Promise<TokenIdentity> {
   return verifyToken(token, 'refresh');
 }
 
-export async function authenticateUser(email: string, password: string): Promise<UserRecord> {
-  const user = await User.findOne({ email, status: 'active' }).select('+passwordHash').exec();
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 
+/**
+ * Resolves a login User ID to an account. The directory User ID (users.csv)
+ * wins; accounts without one, such as the seeded administrator, sign in with
+ * the part of their email before the @. Ambiguous matches never sign in.
+ */
+async function findUserByLoginId(userId: string): Promise<UserRecord | null> {
+  const employees = await Employee.find({ 'hrProfile.userId': userId, status: 'active' })
+    .select({ _id: 1 })
+    .limit(2)
+    .lean()
+    .exec();
+  if (employees.length === 1) {
+    return User.findOne({ employeeId: employees[0]!._id, status: 'active' })
+      .select('+passwordHash')
+      .exec();
+  }
+  if (employees.length > 1) return null;
+
+  const users = await User.find({
+    email: new RegExp(`^${escapeRegExp(userId)}@`),
+    status: 'active',
+  })
+    .select('+passwordHash')
+    .limit(2)
+    .exec();
+  return users.length === 1 ? users[0]! : null;
+}
+
+/**
+ * Signs a person in. With directory (AD/LDAP) sign-in on, the directory is
+ * asked first: a match signs in with the directory password and is linked to
+ * (or creates) the Gnomon account. People the directory does not know, such as
+ * the built-in administrator, keep signing in with their local password.
+ */
+export async function authenticateUser(userId: string, password: string): Promise<UserRecord> {
+  const ldap = await activeLdapSettings();
+  let directoryUnavailable = false;
+  if (ldap) {
+    const outcome = await authenticateWithLdap(ldap, userId, password);
+    if (outcome.status === 'ok') {
+      const account = await resolveLdapAccount(outcome.profile, ldap);
+      account.lastLoginAt = new Date();
+      await account.save();
+      return account;
+    }
+    if (outcome.status === 'invalid_password') {
+      throw new HttpError(401, 'Invalid user ID or password', 'INVALID_CREDENTIALS');
+    }
+    directoryUnavailable = outcome.status === 'unavailable';
+  }
+
+  const user = await findUserByLoginId(userId);
+  if (user?.authSource === 'ldap') {
+    // Directory accounts only accept the directory password.
+    throw directoryUnavailable
+      ? new HttpError(
+          503,
+          'The company directory is not reachable right now. Please try again shortly.',
+          'LDAP_UNAVAILABLE',
+        )
+      : new HttpError(401, 'Invalid user ID or password', 'INVALID_CREDENTIALS');
+  }
   if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
-    throw new HttpError(401, 'Invalid email or password', 'INVALID_CREDENTIALS');
+    throw new HttpError(401, 'Invalid user ID or password', 'INVALID_CREDENTIALS');
   }
 
   user.lastLoginAt = new Date();

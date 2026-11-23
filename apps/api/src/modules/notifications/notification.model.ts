@@ -5,7 +5,7 @@ export interface NotificationDocument {
   _id: Types.ObjectId;
   recipientEmployeeId: Types.ObjectId;
   kind: NotificationKind;
-  entityType: 'leave';
+  entityType: 'leave' | 'user';
   entityId: Types.ObjectId;
   dedupeKey: string;
   title: string;
@@ -21,10 +21,10 @@ const notificationSchema = new Schema<NotificationDocument>(
     recipientEmployeeId: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
     kind: {
       type: String,
-      enum: ['leave_approval_required', 'leave_approved', 'leave_rejected'],
+      enum: ['leave_approval_required', 'leave_approved', 'leave_rejected', 'user_provisioned'],
       required: true,
     },
-    entityType: { type: String, enum: ['leave'], required: true },
+    entityType: { type: String, enum: ['leave', 'user'], required: true },
     entityId: { type: Schema.Types.ObjectId, required: true },
     dedupeKey: { type: String, required: true, unique: true },
     title: { type: String, required: true, trim: true, maxlength: 160 },

@@ -20,9 +20,7 @@ function ensureTimesheetIndexes(): Promise<unknown> {
   return indexesReady;
 }
 
-export interface TimeEntryWindow {
-  startedAt: Date;
-  endedAt: Date;
+export interface TimeEntryHours {
   workDate: string;
   durationMinutes: number;
 }
@@ -38,53 +36,33 @@ function toTimeEntryDto(
     showCode: show?.code ?? 'UNKNOWN',
     showName: show?.name ?? 'Unknown show',
     workSessionId: entry.workSessionId ? String(entry.workSessionId) : null,
-    startedAt: entry.startedAt.toISOString(),
-    endedAt: entry.endedAt.toISOString(),
+    startedAt: entry.startedAt ? entry.startedAt.toISOString() : null,
+    endedAt: entry.endedAt ? entry.endedAt.toISOString() : null,
     durationMinutes: entry.durationMinutes,
     comment: entry.comment,
     percentage: entry.percentage,
   };
 }
 
-export function validateTimeEntryWindow(
-  startedAtValue: string,
-  endedAtValue: string,
+export function validateTimeEntryHours(
+  workDate: string,
+  hours: number,
   now = new Date(),
-): TimeEntryWindow {
-  const startedAt = new Date(startedAtValue);
-  const endedAt = new Date(endedAtValue);
-  const elapsedMilliseconds = endedAt.getTime() - startedAt.getTime();
-
-  if (
-    Number.isNaN(startedAt.getTime()) ||
-    Number.isNaN(endedAt.getTime()) ||
-    elapsedMilliseconds <= 0
-  ) {
-    throw new HttpError(400, 'End time must be after start time', 'INVALID_TIME_ENTRY_WINDOW');
+): TimeEntryHours {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(workDate)) {
+    throw new HttpError(400, 'Invalid work date', 'INVALID_WORK_DATE');
   }
-  if (elapsedMilliseconds > 24 * 60 * 60_000) {
+  if (workDate > getWorkDate(now)) {
+    throw new HttpError(400, 'Show time cannot be logged for a future date', 'FUTURE_TIME_ENTRY');
+  }
+  const durationMinutes = Math.round(hours * 60);
+  if (!Number.isFinite(hours) || durationMinutes < 1) {
+    throw new HttpError(400, 'Hours must be more than 0', 'INVALID_TIME_ENTRY_HOURS');
+  }
+  if (durationMinutes > 24 * 60) {
     throw new HttpError(400, 'A time entry cannot exceed 24 hours', 'TIME_ENTRY_TOO_LONG');
   }
-  if (endedAt.getTime() > now.getTime() + 5 * 60_000) {
-    throw new HttpError(400, 'Show time cannot end in the future', 'FUTURE_TIME_ENTRY');
-  }
-
-  const workDate = getWorkDate(startedAt);
-  const endWorkDate = getWorkDate(new Date(endedAt.getTime() - 1));
-  if (endWorkDate !== workDate) {
-    throw new HttpError(
-      400,
-      'A time entry must stay inside one 07:00-to-07:00 workday',
-      'TIME_ENTRY_CROSSES_WORKDAY',
-    );
-  }
-
-  return {
-    startedAt,
-    endedAt,
-    workDate,
-    durationMinutes: Math.max(1, Math.round(elapsedMilliseconds / 60_000)),
-  };
+  return { workDate, durationMinutes };
 }
 
 export async function getTimesheetOptions(): Promise<TimesheetOption[]> {
@@ -93,9 +71,26 @@ export async function getTimesheetOptions(): Promise<TimesheetOption[]> {
   return shows.map((show) => ({ id: String(show._id), code: show.code, name: show.name }));
 }
 
+export async function listTimeEntries(
+  employeeId: string,
+  from: string,
+  to: string,
+): Promise<TimeEntryDto[]> {
+  await ensureTimesheetIndexes();
+  const entries = await TimeEntry.find({ employeeId, workDate: { $gte: from, $lte: to } })
+    .sort({ workDate: -1, createdAt: 1 })
+    .lean()
+    .exec();
+  const shows = await Show.find({ _id: { $in: entries.map((entry) => entry.showId) } })
+    .lean()
+    .exec();
+  const showById = new Map(shows.map((show) => [String(show._id), show]));
+  return entries.map((entry) => toTimeEntryDto(entry, showById.get(String(entry.showId))));
+}
+
 async function buildTimesheetDay(employeeId: string, workDate: string): Promise<TimesheetDayDto> {
   const entries = await TimeEntry.find({ employeeId, workDate })
-    .sort({ startedAt: 1 })
+    .sort({ createdAt: 1 })
     .lean()
     .exec();
   const shows = await Show.find({ _id: { $in: entries.map((entry) => entry.showId) } })
@@ -130,7 +125,7 @@ export async function getTimesheetDay(
 async function resolveEntryRelations(
   employeeId: string,
   showId: string,
-  window: TimeEntryWindow,
+  entryHours: TimeEntryHours,
   excludedEntryId?: string,
   allowedInactiveShowId?: string,
 ) {
@@ -138,26 +133,30 @@ async function resolveEntryRelations(
     allowedInactiveShowId === showId
       ? Show.findById(showId)
       : Show.findOne({ _id: showId, status: 'active' });
-  const [show, overlap, workSession] = await Promise.all([
+  const [show, otherEntries, workSession] = await Promise.all([
     showQuery.lean().exec(),
-    TimeEntry.exists({
+    TimeEntry.find({
       employeeId,
+      workDate: entryHours.workDate,
       ...(excludedEntryId ? { _id: { $ne: excludedEntryId } } : {}),
-      startedAt: { $lt: window.endedAt },
-      endedAt: { $gt: window.startedAt },
-    }),
-    WorkSession.findOne({
-      employeeId,
-      startedAt: { $lte: window.startedAt },
-      $or: [{ stoppedAt: { $gte: window.endedAt } }, { status: 'running', stoppedAt: null }],
     })
+      .select({ durationMinutes: 1 })
+      .lean()
+      .exec(),
+    WorkSession.findOne({ employeeId, workDate: entryHours.workDate })
+      .sort({ startedAt: 1 })
       .select({ _id: 1 })
       .lean()
       .exec(),
   ]);
   if (!show) throw new HttpError(404, 'Show not found or inactive', 'SHOW_NOT_FOUND');
-  if (overlap) {
-    throw new HttpError(409, 'This show time overlaps another entry', 'TIME_ENTRY_OVERLAP');
+  const loggedMinutes = otherEntries.reduce((total, entry) => total + entry.durationMinutes, 0);
+  if (loggedMinutes + entryHours.durationMinutes > 24 * 60) {
+    throw new HttpError(
+      400,
+      'Total show time for a day cannot exceed 24 hours',
+      'TIME_ENTRY_DAY_LIMIT',
+    );
   }
   return { show, workSession };
 }
@@ -168,22 +167,22 @@ export async function createTimeEntry(
   now = new Date(),
 ): Promise<TimesheetDayDto> {
   await ensureTimesheetIndexes();
-  const window = validateTimeEntryWindow(input.startedAt, input.endedAt, now);
-  const { show, workSession } = await resolveEntryRelations(employeeId, input.showId, window);
+  const entryHours = validateTimeEntryHours(input.workDate, input.hours, now);
+  const { show, workSession } = await resolveEntryRelations(employeeId, input.showId, entryHours);
 
   await TimeEntry.create({
     employeeId: new Types.ObjectId(employeeId),
-    workDate: window.workDate,
+    workDate: entryHours.workDate,
     showId: show._id,
     workSessionId: workSession?._id ?? null,
-    startedAt: window.startedAt,
-    endedAt: window.endedAt,
-    durationMinutes: window.durationMinutes,
+    startedAt: null,
+    endedAt: null,
+    durationMinutes: entryHours.durationMinutes,
     comment: input.comment,
     percentage: input.percentage,
   });
 
-  return buildTimesheetDay(employeeId, window.workDate);
+  return buildTimesheetDay(employeeId, entryHours.workDate);
 }
 
 export async function updateTimeEntry(
@@ -196,22 +195,22 @@ export async function updateTimeEntry(
   const entry = await TimeEntry.findOne({ _id: entryId, employeeId }).exec();
   if (!entry) throw new HttpError(404, 'Time entry not found', 'TIME_ENTRY_NOT_FOUND');
 
-  const window = validateTimeEntryWindow(input.startedAt, input.endedAt, now);
-  if (window.workDate !== entry.workDate) {
+  const entryHours = validateTimeEntryHours(input.workDate, input.hours, now);
+  if (entryHours.workDate !== entry.workDate) {
     throw new HttpError(400, 'An entry cannot be moved to another work date', 'WORK_DATE_CHANGE');
   }
   const { show, workSession } = await resolveEntryRelations(
     employeeId,
     input.showId,
-    window,
+    entryHours,
     entryId,
     String(entry.showId),
   );
   entry.showId = show._id;
   entry.workSessionId = workSession?._id ?? null;
-  entry.startedAt = window.startedAt;
-  entry.endedAt = window.endedAt;
-  entry.durationMinutes = window.durationMinutes;
+  entry.startedAt = null;
+  entry.endedAt = null;
+  entry.durationMinutes = entryHours.durationMinutes;
   entry.comment = input.comment;
   entry.percentage = input.percentage;
   await entry.save();

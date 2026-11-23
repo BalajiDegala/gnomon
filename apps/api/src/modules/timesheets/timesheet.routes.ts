@@ -1,6 +1,7 @@
 import {
   CreateTimeEntryRequestSchema,
   TimesheetDateQuerySchema,
+  TimesheetRangeQuerySchema,
   UpdateTimeEntryRequestSchema,
 } from '@gnomon/shared';
 import { Router } from 'express';
@@ -12,6 +13,7 @@ import {
   deleteTimeEntry,
   getTimesheetDay,
   getTimesheetOptions,
+  listTimeEntries,
   updateTimeEntry,
 } from './timesheet.service.js';
 
@@ -28,6 +30,11 @@ timesheetRouter.get('/options', async (_request, response) => {
 timesheetRouter.get('/', async (request, response) => {
   const { workDate } = TimesheetDateQuerySchema.parse(request.query);
   response.json({ day: await getTimesheetDay(request.authUser!.employeeId, workDate) });
+});
+
+timesheetRouter.get('/entries', async (request, response) => {
+  const { from, to } = TimesheetRangeQuerySchema.parse(request.query);
+  response.json({ entries: await listTimeEntries(request.authUser!.employeeId, from, to) });
 });
 
 timesheetRouter.post('/entries', async (request, response) => {

@@ -34,6 +34,7 @@ import {
   type DataTableColumn,
   type SortDirection,
 } from '../components/data-view/DataTable';
+import { CatchUpBanner } from '../components/CatchUpBanner';
 import { FilterBar } from '../components/data-view/FilterBar';
 import { PageHeader } from '../components/data-view/PageHeader';
 import { PageTabs, type PageTab } from '../components/data-view/PageTabs';
@@ -173,7 +174,7 @@ function compareRequests(
   return left.submittedAt.localeCompare(right.submittedAt);
 }
 
-export function RegularisationPage() {
+export function RegularisationPage({ onOpenCatchUp }: { onOpenCatchUp?: () => void } = {}) {
   const { user } = useAuth();
   const regularisations = useMyRegularisations();
   const defaultWorkDate = useMemo(previousWorkingDate, []);
@@ -387,7 +388,7 @@ export function RegularisationPage() {
           <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 800 }}>
             {sourceLabel(request.source)}
           </Typography>
-          <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
+          <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
             {eventLabel(request.source, request.missingEvent)} - {statusLabel(request.status)}
           </Typography>
         </Box>
@@ -498,6 +499,8 @@ export function RegularisationPage() {
       {!regularisations.canCreate && (
         <Alert severity="warning">Your account cannot create regularisation requests.</Alert>
       )}
+
+      <CatchUpBanner onOpen={onOpenCatchUp} />
       {regularisations.error && !createOpen && !selectedRequest && (
         <Alert severity="error">{regularisations.error.message}</Alert>
       )}
@@ -873,7 +876,7 @@ function DetailGrid({ values }: { values: Array<[string, string]> }) {
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <Box sx={{ minWidth: 0 }}>
-      <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>{label}</Typography>
+      <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>{label}</Typography>
       <Typography sx={{ mt: 0.25, fontSize: 12.5, fontWeight: 700, overflowWrap: 'anywhere' }}>
         {value}
       </Typography>

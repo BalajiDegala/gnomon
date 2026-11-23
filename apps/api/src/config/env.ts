@@ -18,6 +18,15 @@ const EnvSchema = z.object({
   REFRESH_TOKEN_TTL: z.string().default('7d'),
   REFRESH_COOKIE_MAX_AGE_MS: z.coerce.number().int().positive().default(604_800_000),
   COOKIE_SECURE: booleanString,
+  /**
+   * Key for secrets stored in the database (the SMTP password). Optional: when
+   * unset, a key is derived from ACCESS_TOKEN_SECRET, so rotating that secret
+   * means re-entering the SMTP password in Site preferences.
+   */
+  SETTINGS_ENCRYPTION_KEY: z.string().min(32).optional(),
+  /** Record system events (debug log). Defaults to on, except under tests. */
+  SYSTEM_EVENTS_ENABLED: z.enum(['true', 'false']).optional(),
+  SYSTEM_EVENT_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(180),
 });
 
 const result = EnvSchema.safeParse(process.env);
@@ -29,4 +38,10 @@ if (!result.success) {
   throw new Error(`Invalid environment configuration: ${details}`);
 }
 
-export const env = result.data;
+export const env = {
+  ...result.data,
+  SYSTEM_EVENTS_ENABLED:
+    result.data.SYSTEM_EVENTS_ENABLED === undefined
+      ? result.data.NODE_ENV !== 'test'
+      : result.data.SYSTEM_EVENTS_ENABLED === 'true',
+};

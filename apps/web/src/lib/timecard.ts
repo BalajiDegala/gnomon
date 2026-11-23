@@ -1,4 +1,9 @@
-import type { AttendanceSignalsDto, DailyReconciliationDto, TodayTimecard } from '@gnomon/shared';
+import type {
+  AttendanceSignalsDto,
+  DailyReconciliationDto,
+  TodayTimecard,
+  WorkMode,
+} from '@gnomon/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 
@@ -8,13 +13,6 @@ interface TimecardResponse {
   timecard: TodayTimecard;
   signals: AttendanceSignalsDto;
   reconciliation: DailyReconciliationDto;
-}
-
-export function formatElapsed(totalSeconds: number): string {
-  const hours = Math.floor(totalSeconds / 3_600);
-  const minutes = Math.floor((totalSeconds % 3_600) / 60);
-  const seconds = totalSeconds % 60;
-  return [hours, minutes, seconds].map((value) => String(value).padStart(2, '0')).join(':');
 }
 
 export function formatIndiaTime(instant: string | null): string {
@@ -41,9 +39,25 @@ export function useTodayTimecard() {
     refetchInterval: 60_000,
   });
 
+  // The shift is chosen before the day's first start and then fixed. The work
+  // mode is chosen for every start, so a day can continue from home after
+  // leaving the office; while a session runs it shows that session's mode.
+  const [selectedShiftId, setSelectedShiftId] = useState('');
+  const [selectedWorkMode, setSelectedWorkMode] = useState<WorkMode>('office');
+
   const mutation = useMutation({
     mutationFn: (operation: 'start' | 'stop') =>
-      request<TimecardResponse>(`/api/v1/timecard/${operation}`, { method: 'POST' }),
+      request<TimecardResponse>(`/api/v1/timecard/${operation}`, {
+        method: 'POST',
+        ...(operation === 'start'
+          ? {
+              body: JSON.stringify({
+                ...(selectedShiftId ? { shiftId: selectedShiftId } : {}),
+                workMode: selectedWorkMode,
+              }),
+            }
+          : {}),
+      }),
     onSuccess: (response) => {
       queryClient.setQueryData(['timecard', 'today'], response);
       setClock(Date.now());
@@ -68,8 +82,28 @@ export function useTodayTimecard() {
     return timecard.totalTrackedSeconds + elapsedSinceResponse;
   }, [clock, timecard]);
 
+  const shifts = timecard?.shifts ?? [];
+  const workContext = timecard?.workContext;
+  const shiftLocked = Boolean(workContext?.shiftName);
+  const activeWorkMode = timecard?.activeSession?.workMode ?? null;
+  const defaultShiftId = shifts.find((shift) => shift.isDefault)?.id ?? shifts[0]?.id ?? '';
+  const shiftId = shiftLocked
+    ? (workContext?.shiftId ?? '')
+    : selectedShiftId && shifts.some((shift) => shift.id === selectedShiftId)
+      ? selectedShiftId
+      : defaultShiftId;
+
   return {
     canRead,
+    shifts,
+    workContext,
+    shiftLocked,
+    /** True while a session is running; switch work mode by stopping and starting again. */
+    workModeLocked: Boolean(timecard?.activeSession),
+    shiftId,
+    workMode: activeWorkMode ?? selectedWorkMode,
+    setShiftId: setSelectedShiftId,
+    setWorkMode: setSelectedWorkMode,
     canWrite,
     error: mutation.error ?? query.error,
     isLoading: query.isLoading,

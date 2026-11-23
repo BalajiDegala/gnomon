@@ -259,7 +259,7 @@ export function ShowManagementPage() {
           <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 800 }}>
             {show.name}
           </Typography>
-          <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>{show.code}</Typography>
+          <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>{show.code}</Typography>
         </Box>
       ),
     },
@@ -494,13 +494,13 @@ export function ShowManagementPage() {
                 Edit show
               </Button>
               <Box>
-                <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>Show code</Typography>
+                <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>Show code</Typography>
                 <Typography sx={{ mt: 0.25, fontSize: 13, fontWeight: 750 }}>
                   {selectedShow.code}
                 </Typography>
               </Box>
               <Box>
-                <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
+                <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
                   Timesheet availability
                 </Typography>
                 <Typography sx={{ mt: 0.25, fontSize: 13, fontWeight: 750 }}>

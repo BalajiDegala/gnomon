@@ -398,6 +398,14 @@ async function importUserDirectoryCsvUnlocked(input: {
       },
       { upsert: true, setDefaultsOnInsert: true },
     ).exec();
+    // Fill an approver that is still missing (e.g. a name that did not resolve
+    // last time). Never overwrite one chosen in Site preferences.
+    if (approver1) {
+      await DepartmentApprovalPolicy.updateOne(
+        { departmentName, approver1EmployeeId: null },
+        { $set: { approver1EmployeeId: approver1._id } },
+      ).exec();
+    }
   }
 
   const importedIds = importedEmployees.map((employee) => employee._id);

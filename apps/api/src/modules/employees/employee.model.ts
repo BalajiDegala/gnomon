@@ -17,7 +17,7 @@ export interface EmployeeDocument {
     departmentName: string | null;
     lastSeenAt: Date;
   } | null;
-  profileSource: 'users_csv' | 'door_workbook' | 'biometric_csv' | 'manual' | 'system';
+  profileSource: 'users_csv' | 'door_workbook' | 'biometric_csv' | 'manual' | 'system' | 'ldap';
   biometricProfile?: {
     fullName: string;
     departmentName: string | null;
@@ -63,7 +63,8 @@ const hrProfileSchema = new Schema(
     userId: { type: String, required: true, trim: true, lowercase: true },
     mailId: { type: String, required: true, trim: true, lowercase: true },
     fullName: { type: String, required: true, trim: true },
-    designation: { type: String, required: true, trim: true },
+    // Manually created people may have no designation yet.
+    designation: { type: String, default: '', trim: true },
     departmentName: { type: String, required: true, trim: true },
     leaveApprover1Name: { type: String, default: null, trim: true },
     leaveApprover2Name: { type: String, default: null, trim: true },
@@ -91,7 +92,7 @@ const employeeSchema = new Schema<EmployeeDocument>(
     },
     profileSource: {
       type: String,
-      enum: ['users_csv', 'door_workbook', 'biometric_csv', 'manual', 'system'],
+      enum: ['users_csv', 'door_workbook', 'biometric_csv', 'manual', 'system', 'ldap'],
       required: true,
       default: 'manual',
     },

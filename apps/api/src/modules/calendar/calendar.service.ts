@@ -1,7 +1,7 @@
 import {
   getWorkDate,
+  resolveCalendarAvailability,
   type AuthUser,
-  type ManagedCalendarAvailability,
   type ManagedCalendarDayDto,
   type ManagedCalendarDto,
   type ManagedCalendarQuery,
@@ -31,53 +31,8 @@ function monthWindow(month: string) {
   };
 }
 
-interface AvailabilityEvidence {
-  date: string;
-  weekday: number;
-  today: string;
-  holiday: boolean;
-  leave: {
-    status: 'pending_manager' | 'pending_hr' | 'approved';
-    dayPart: 'full_day' | 'first_half' | 'second_half';
-  } | null;
-  attendanceStatus:
-    | 'present'
-    | 'partial'
-    | 'absent'
-    | 'leave'
-    | 'holiday'
-    | 'weekend'
-    | 'pending_regularisation'
-    | null;
-}
-
-export function resolveManagedCalendarAvailability(
-  evidence: AvailabilityEvidence,
-): ManagedCalendarAvailability {
-  if (evidence.weekday > 5 || evidence.holiday) return 'non_working';
-  if (evidence.leave?.status === 'pending_manager' || evidence.leave?.status === 'pending_hr')
-    return 'pending';
-  if (evidence.leave?.status === 'approved') {
-    return evidence.leave.dayPart === 'full_day' ? 'unavailable' : 'partial';
-  }
-
-  switch (evidence.attendanceStatus) {
-    case 'present':
-      return 'available';
-    case 'partial':
-      return 'partial';
-    case 'absent':
-    case 'leave':
-      return 'unavailable';
-    case 'pending_regularisation':
-      return 'pending';
-    case 'holiday':
-    case 'weekend':
-      return 'non_working';
-    default:
-      return evidence.date >= evidence.today ? 'available' : 'no_record';
-  }
-}
+/** Kept for existing callers and tests; the rule lives in @gnomon/shared. */
+export const resolveManagedCalendarAvailability = resolveCalendarAvailability;
 
 export async function getPersonalCalendar(
   employeeId: string,
@@ -110,6 +65,7 @@ export async function getPersonalCalendar(
   );
   const holidayByDate = new Map(holidays.map((holiday) => [holiday.date, holiday]));
 
+  const today = getWorkDate(new Date());
   const days: PersonalCalendarDto['days'] = [];
   for (let date = window.start; date <= window.end; date = new Date(date.getTime() + 86_400_000)) {
     const isoDate = date.toISOString().slice(0, 10);
@@ -121,6 +77,19 @@ export async function getPersonalCalendar(
       date: isoDate,
       weekday,
       isWorkingDay: weekday <= 5 && !holiday,
+      availability: resolveCalendarAvailability({
+        date: isoDate,
+        weekday,
+        today,
+        holiday: Boolean(holiday),
+        leave: leave
+          ? {
+              dayPart: leave.dayPart,
+              status: leave.status as 'pending_manager' | 'pending_hr' | 'approved',
+            }
+          : null,
+        attendanceStatus: timecard?.calculated?.status ?? null,
+      }),
       holiday: holiday
         ? { id: holiday.id, name: holiday.name, scopeType: holiday.scopeType }
         : null,

@@ -53,6 +53,14 @@ const dailyTimecardSchema = new Schema(
         averageProgress: { type: Number, required: true, min: 0, max: 100 },
       },
     },
+    workContext: {
+      shiftId: { type: Schema.Types.ObjectId, ref: 'Shift', default: null },
+      shiftName: { type: String, default: null },
+      shiftStartTime: { type: String, default: null },
+      shiftEndTime: { type: String, default: null },
+      workMode: { type: String, enum: ['office', 'home', null], default: null },
+      workModes: { type: [String], enum: ['office', 'home'], default: [] },
+    },
     calculated: {
       primarySource: {
         type: String,

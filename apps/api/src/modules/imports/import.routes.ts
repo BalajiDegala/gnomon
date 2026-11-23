@@ -2,6 +2,7 @@ import {
   AttendanceImportSourceSchema,
   AttendanceReplacementPeriodSchema,
   AttendanceChangeConfirmationSchema,
+  getWorkDate,
 } from '@gnomon/shared';
 import { raw, Router, text, type Request } from 'express';
 import { z } from 'zod';
@@ -23,7 +24,11 @@ import {
   replaceAttendancePeriod,
 } from './attendance-import-change.service.js';
 import { importApprovalRoutesCsv } from './approval-route-import.service.js';
+import { ensureDailyAttendanceRecords } from '../reconciliation/daily-attendance.job.js';
 import { importUserDirectoryCsv } from './user-directory-import.service.js';
+import { importLeaveBalanceWorkbook } from './leave-balance-import.service.js';
+import { importTimecardData } from './timecard-data-import.service.js';
+import { describeEvent } from '../system-events/request-context.js';
 
 const ImportListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
@@ -95,7 +100,58 @@ importRouter.post(
       csvText: request.body,
       importedBy: request.authUser!.id,
     });
+    if (result.importedRows > 0) {
+      // New directory employees get today's default LOP row straight away
+      // instead of waiting for the next scheduled run.
+      await ensureDailyAttendanceRecords(getWorkDate(new Date()));
+    }
+    describeEvent({ metadata: { result } });
     response.status(result.importedRows > 0 ? 201 : 400).json(result);
+  },
+);
+
+importRouter.post(
+  '/leave-balances/workbook',
+  raw({
+    type: [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/octet-stream',
+    ],
+    limit: '10mb',
+  }),
+  async (request, response) => {
+    if (!Buffer.isBuffer(request.body) || request.body.length === 0) {
+      throw new HttpError(
+        400,
+        'A non-empty leave balance workbook is required',
+        'WORKBOOK_REQUIRED',
+      );
+    }
+    const result = await importLeaveBalanceWorkbook({
+      fileName: readFileName(request.get('x-file-name'), 'leave-balances.xlsx'),
+      workbookBuffer: request.body,
+      importedBy: request.authUser!.id,
+    });
+    describeEvent({ metadata: { result } });
+    response.status(result.balancesWritten > 0 ? 201 : 200).json(result);
+  },
+);
+
+importRouter.post(
+  '/timecards/json',
+  // Sent as text: the app-wide JSON parser is limited to 1 MB.
+  text({ type: ['text/plain', 'application/json'], limit: '5mb' }),
+  async (request, response) => {
+    if (typeof request.body !== 'string' || request.body.trim().length === 0) {
+      throw new HttpError(400, 'A non-empty timecard JSON file is required', 'JSON_REQUIRED');
+    }
+    const result = await importTimecardData({
+      fileName: readFileName(request.get('x-file-name'), 'time_data.json'),
+      jsonText: request.body,
+      importedBy: request.authUser!.id,
+    });
+    describeEvent({ metadata: { result } });
+    response.status(result.importedRecords > 0 ? 201 : 200).json(result);
   },
 );
 
@@ -111,6 +167,7 @@ importRouter.post(
       csvText: request.body,
       importedBy: request.authUser!.id,
     });
+    describeEvent({ metadata: { result } });
     response.status(201).json(result);
   },
 );
@@ -148,6 +205,7 @@ importRouter.post(
       csvText: request.body,
       importedBy: request.authUser!.id,
     });
+    describeEvent({ metadata: { result } });
     response.status(result.replayed ? 200 : 201).json(result);
   },
 );
@@ -190,6 +248,7 @@ importRouter.post(
       workbookBuffer: request.body,
       importedBy: request.authUser!.id,
     });
+    describeEvent({ metadata: { result } });
     response.status(result.replayed ? 200 : 201).json(result);
   },
 );

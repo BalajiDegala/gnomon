@@ -67,7 +67,7 @@ const leaveRequestSchema = new Schema<LeaveRequestDocument>(
     managerEmployeeId: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
     leaveType: {
       type: String,
-      enum: ['casual', 'sick', 'earned', 'unpaid'],
+      enum: ['casual', 'earned', 'comp_off', 'unpaid'],
       required: true,
     },
     startDate: { type: String, required: true, match: /^\d{4}-\d{2}-\d{2}$/ },
@@ -140,7 +140,7 @@ export interface LeaveBalanceDocument {
 const leaveBalanceSchema = new Schema<LeaveBalanceDocument>(
   {
     employeeId: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
-    leaveType: { type: String, enum: ['casual', 'sick', 'earned'], required: true },
+    leaveType: { type: String, enum: ['casual', 'earned', 'comp_off'], required: true },
     year: { type: Number, required: true, min: 2000, max: 2200 },
     entitledDays: { type: Number, required: true, min: 0 },
     adjustedDays: { type: Number, required: true, default: 0 },

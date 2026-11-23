@@ -2,6 +2,7 @@ import type { ErrorRequestHandler, RequestHandler } from 'express';
 import { ZodError } from 'zod';
 
 import { env } from '../config/env.js';
+import { noteRequestError } from '../modules/system-events/request-context.js';
 
 export class HttpError extends Error {
   constructor(
@@ -19,6 +20,7 @@ export const notFoundHandler: RequestHandler = (_request, _response, next) => {
 
 export const errorHandler: ErrorRequestHandler = (error, _request, response, _next) => {
   if (error instanceof ZodError) {
+    noteRequestError('VALIDATION_ERROR', 'The request is invalid', null);
     response.status(400).json({
       error: {
         code: 'VALIDATION_ERROR',
@@ -35,6 +37,7 @@ export const errorHandler: ErrorRequestHandler = (error, _request, response, _ne
     'type' in error &&
     (error as { type?: unknown }).type === 'entity.too.large'
   ) {
+    noteRequestError('PAYLOAD_TOO_LARGE', 'The uploaded file exceeds the allowed size limit', null);
     response.status(413).json({
       error: {
         code: 'PAYLOAD_TOO_LARGE',
@@ -46,6 +49,11 @@ export const errorHandler: ErrorRequestHandler = (error, _request, response, _ne
 
   const status = error instanceof HttpError ? error.status : 500;
   const code = error instanceof HttpError ? error.code : 'INTERNAL_SERVER_ERROR';
+  noteRequestError(
+    code,
+    error instanceof Error ? error.message : String(error),
+    status === 500 && error instanceof Error && error.stack ? error.stack.slice(0, 4_000) : null,
+  );
 
   response.status(status).json({
     error: {

@@ -299,7 +299,9 @@ export async function resolveAttendanceRows(
   ];
   if (hasBiometricNames) {
     employeeOrFilters.push({
-      profileSource: { $in: ['users_csv', 'door_workbook', 'biometric_csv', 'manual', 'system'] },
+      profileSource: {
+        $in: ['users_csv', 'door_workbook', 'biometric_csv', 'manual', 'system', 'ldap'],
+      },
     });
   }
   const employees = await Employee.find({

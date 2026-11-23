@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { CalendarMonthSchema } from './calendar.js';
 import { LeaveDayPartSchema, LeaveStatusSchema, LeaveTypeSchema } from './leave.js';
 import { RegularisationSourceSchema, RegularisationStatusSchema } from './regularisation.js';
+import { WorkContextSchema } from './shift.js';
 
 export const WorkforceReportQuerySchema = z
   .object({
@@ -156,6 +157,7 @@ export const AttendanceDetailsRowSchema = z.object({
   }),
   payableMinutes: z.number().int().nonnegative(),
   anomalies: z.array(z.string()),
+  workContext: WorkContextSchema,
 });
 export type AttendanceDetailsRow = z.infer<typeof AttendanceDetailsRowSchema>;
 
@@ -193,3 +195,45 @@ export const AttendanceDetailsDtoSchema = z.object({
   rows: z.array(AttendanceDetailsRowSchema),
 });
 export type AttendanceDetailsDto = z.infer<typeof AttendanceDetailsDtoSchema>;
+
+/* ------------------------------------------------ team timesheet review */
+
+export const TeamTimesheetQuerySchema = z
+  .object({
+    dateFrom: z.string().date(),
+    dateTo: z.string().date(),
+  })
+  .refine((value) => value.dateFrom <= value.dateTo, {
+    path: ['dateTo'],
+    message: 'The end date must be on or after the start date',
+  });
+export type TeamTimesheetQuery = z.infer<typeof TeamTimesheetQuerySchema>;
+
+export const TeamTimesheetRowSchema = z.object({
+  id: z.string(),
+  employeeId: z.string(),
+  employeeCode: z.string(),
+  employeeDisplayName: z.string(),
+  departmentName: z.string().nullable(),
+  workDate: z.string().date(),
+  showId: z.string(),
+  showCode: z.string(),
+  showName: z.string(),
+  startedAt: z.string().datetime().nullable(),
+  endedAt: z.string().datetime().nullable(),
+  durationMinutes: z.number().int().positive(),
+  percentage: z.number().int().min(10).max(100),
+  comment: z.string(),
+});
+export type TeamTimesheetRow = z.infer<typeof TeamTimesheetRowSchema>;
+
+export const TeamTimesheetDtoSchema = z.object({
+  dateFrom: z.string().date(),
+  dateTo: z.string().date(),
+  generatedAt: z.string().datetime(),
+  /** Every department and show the viewer may filter by, even with no entries in range. */
+  departments: z.array(z.string()),
+  shows: z.array(z.object({ id: z.string(), code: z.string(), name: z.string() })),
+  rows: z.array(TeamTimesheetRowSchema),
+});
+export type TeamTimesheetDto = z.infer<typeof TeamTimesheetDtoSchema>;

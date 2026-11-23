@@ -25,6 +25,12 @@ import { Save, UploadCloud, UsersRound } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 import { useApprovalPreferences } from '../lib/approval-preferences';
+import { ShiftAdministrationSection } from './ShiftAdministrationSection';
+import { LdapSettingsSection } from './LdapSettingsSection';
+import { LeaveBalanceImportSection } from './LeaveBalanceImportSection';
+import { TimecardDataImportSection } from './TimecardDataImportSection';
+import { SmtpSettingsSection } from './SmtpSettingsSection';
+import { TipsSettingsSection } from './TipsSettingsSection';
 
 interface PolicyForm {
   approvalSteps: 1 | 2;
@@ -131,8 +137,9 @@ export function SitePreferencesPage() {
       <Box>
         <Typography sx={{ fontSize: 18, fontWeight: 850 }}>Site preferences</Typography>
         <Typography sx={{ mt: 0.4, color: 'text.secondary', fontSize: 12.5 }}>
-          Keep the employee directory synchronized with users.csv and choose one or two leave
-          approval stages for every department.
+          Manage work shifts and outgoing email, keep the employee directory synchronized with
+          users.csv, import leave balances and choose one or two leave approval stages for every
+          department.
         </Typography>
       </Box>
 
@@ -146,6 +153,14 @@ export function SitePreferencesPage() {
           {success}
         </Alert>
       )}
+
+      <ShiftAdministrationSection onSaved={setSuccess} />
+
+      <SmtpSettingsSection onSaved={setSuccess} />
+
+      <LdapSettingsSection onSaved={setSuccess} />
+
+      <TipsSettingsSection onSaved={setSuccess} />
 
       {preferences.canImport && (
         <Card sx={{ boxShadow: 'none' }}>
@@ -204,6 +219,10 @@ export function SitePreferencesPage() {
           </CardContent>
         </Card>
       )}
+
+      <LeaveBalanceImportSection onSaved={setSuccess} />
+
+      <TimecardDataImportSection onSaved={setSuccess} />
 
       {preferences.canImport && (
         <Card sx={{ boxShadow: 'none' }}>
@@ -327,7 +346,7 @@ export function SitePreferencesPage() {
                       <Typography sx={{ fontSize: 14, fontWeight: 850 }}>
                         {policy.departmentName}
                       </Typography>
-                      <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
+                      <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
                         {policy.employeeCount} employees · imported approver:{' '}
                         {policy.importedApprover1Name ?? 'none'}
                       </Typography>

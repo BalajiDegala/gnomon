@@ -68,6 +68,20 @@ export function parseUserDirectoryCsv(csvText: string): ParsedUserDirectory {
     };
   }
   const missing = REQUIRED_HEADERS.filter((header) => !headers.includes(header));
+  if (missing.length > 0 && /appr?oval/i.test(headers.join(' '))) {
+    return {
+      totalRows: records.length,
+      rows: [],
+      errors: [
+        {
+          rowNumber: 1,
+          employeeId: '',
+          reason:
+            'This is the leave approval routes file (approvals.csv). Upload it under "Leave approval routes CSV"; this upload expects users.csv',
+        },
+      ],
+    };
+  }
   if (missing.length > 0) {
     return {
       totalRows: records.length,

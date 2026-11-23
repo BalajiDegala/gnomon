@@ -87,14 +87,13 @@ export function DataTable<Row, SortKey extends string>({
     <Box
       sx={{
         overflow: 'hidden',
-        border: '1px solid',
-        borderColor: 'divider',
         borderRadius: '22px',
-        bgcolor: '#fff',
-        boxShadow: '0 16px 42px rgba(20,32,51,.065)',
+        bgcolor: 'var(--g-base)',
+        boxShadow: 'var(--g-raised)',
+        border: '1px solid var(--g-border)',
       }}
     >
-      <TableContainer sx={{ bgcolor: '#fff' }}>
+      <TableContainer sx={{ bgcolor: 'var(--g-base)' }}>
         <Table stickyHeader size="small" aria-label={ariaLabel}>
           <TableHead>
             <TableRow>
@@ -108,9 +107,9 @@ export function DataTable<Row, SortKey extends string>({
                     width: column.width,
                     minWidth: column.minWidth,
                     height: 48,
-                    bgcolor: '#f1f5f7',
+                    bgcolor: 'var(--g-base)',
                     color: 'text.secondary',
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: 850,
                     letterSpacing: 0.55,
                     textTransform: 'uppercase',
@@ -156,7 +155,7 @@ export function DataTable<Row, SortKey extends string>({
                           colSpan={columns.length}
                           sx={{
                             py: 1,
-                            bgcolor: '#eaf3f5',
+                            bgcolor: 'var(--g-accent-soft)',
                             borderTop: index === 0 ? 0 : '1px solid',
                             borderColor: 'divider',
                           }}
@@ -167,14 +166,14 @@ export function DataTable<Row, SortKey extends string>({
                           {group.secondary && (
                             <Typography
                               component="span"
-                              sx={{ ml: 1, color: 'text.secondary', fontSize: 10.5 }}
+                              sx={{ ml: 1, color: 'text.secondary', fontSize: 11.5 }}
                             >
                               {group.secondary}
                             </Typography>
                           )}
                           <Typography
                             component="span"
-                            sx={{ ml: 1, color: 'text.secondary', fontSize: 10.5 }}
+                            sx={{ ml: 1, color: 'text.secondary', fontSize: 11.5 }}
                           >
                             · {groupCounts.get(group.key) ?? 0} records
                           </Typography>
@@ -199,9 +198,11 @@ export function DataTable<Row, SortKey extends string>({
                         height: 56,
                         cursor: onRowClick ? 'pointer' : 'default',
                         transition: 'background-color 150ms ease, box-shadow 150ms ease',
-                        '&:hover': { bgcolor: onRowClick ? '#f3fafb !important' : undefined },
+                        '&:hover': {
+                          bgcolor: onRowClick ? 'var(--g-accent-soft) !important' : undefined,
+                        },
                         '&:hover td:first-of-type': onRowClick
-                          ? { boxShadow: 'inset 3px 0 0 #2bb4c0' }
+                          ? { boxShadow: 'inset 3px 0 0 var(--g-accent)' }
                           : undefined,
                         '&:last-child td': { borderBottom: 0 },
                       }}
@@ -232,8 +233,7 @@ export function DataTable<Row, SortKey extends string>({
                       display: 'grid',
                       placeItems: 'center',
                       px: 2,
-                      background:
-                        'radial-gradient(circle at center, rgba(18,148,161,.045), transparent 36%)',
+                      background: 'none',
                     }}
                   >
                     <Box sx={{ textAlign: 'center' }}>
@@ -246,9 +246,9 @@ export function DataTable<Row, SortKey extends string>({
                           display: 'grid',
                           placeItems: 'center',
                           borderRadius: 2.5,
-                          bgcolor: '#eaf5f6',
-                          color: '#188d99',
-                          boxShadow: '0 8px 22px rgba(18,148,161,.08)',
+                          bgcolor: 'var(--g-base)',
+                          color: 'var(--g-accent)',
+                          boxShadow: 'var(--g-raised-sm)',
                         }}
                       >
                         <Inbox size={20} />
@@ -281,7 +281,7 @@ export function DataTable<Row, SortKey extends string>({
         labelRowsPerPage="Rows"
         sx={{
           minHeight: 56,
-          bgcolor: '#f7fafb',
+          bgcolor: 'var(--g-base)',
           borderTop: '1px solid',
           borderColor: 'divider',
         }}

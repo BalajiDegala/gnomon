@@ -16,6 +16,7 @@ export const permissionCodes = [
   'imports:create',
   'policy:manage',
   'audit:read',
+  'system:events:read',
 ] as const;
 
 export const PermissionCodeSchema = z.enum(permissionCodes);

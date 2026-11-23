@@ -612,7 +612,8 @@ def ensure_storage(values: dict[str, str], repo_root: Path) -> None:
                             "command": [
                                 "/bin/sh",
                                 "-c",
-                                f"mkdir -p /host/{path.name} && chmod 0755 /host/{path.name}",
+                                f"mkdir -p /host/{path.name} /host/gnomon-backups"
+                                f" && chmod 0755 /host/{path.name} /host/gnomon-backups",
                             ],
                             "volumeMounts": [{"name": "host", "mountPath": "/host"}],
                         }

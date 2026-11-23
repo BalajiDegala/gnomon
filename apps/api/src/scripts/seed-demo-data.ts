@@ -360,7 +360,7 @@ async function seedDemoData(): Promise<void> {
     {
       employeeId: employees.get('DEMO2002')!._id,
       managerEmployeeId: managerEmployee._id,
-      leaveType: 'sick',
+      leaveType: 'casual',
       startDate: futureWorkDates[1],
       endDate: futureWorkDates[1],
       dayPart: 'full_day',
@@ -372,6 +372,7 @@ async function seedDemoData(): Promise<void> {
       status: 'approved',
       approvalPolicyVersion: 'LEAVE_V1',
       decision: {
+        step: 1,
         decision: 'approved',
         actorUserId: managerUser._id,
         actorEmployeeId: managerEmployee._id,
@@ -397,6 +398,7 @@ async function seedDemoData(): Promise<void> {
       status: 'rejected',
       approvalPolicyVersion: 'LEAVE_V1',
       decision: {
+        step: 1,
         decision: 'rejected',
         actorUserId: managerUser._id,
         actorEmployeeId: managerEmployee._id,
@@ -422,6 +424,7 @@ async function seedDemoData(): Promise<void> {
       status: 'approved',
       approvalPolicyVersion: 'LEAVE_V1',
       decision: {
+        step: 1,
         decision: 'approved',
         actorUserId: managerUser._id,
         actorEmployeeId: managerEmployee._id,
@@ -440,7 +443,7 @@ async function seedDemoData(): Promise<void> {
       .flatMap((definition) =>
         [
           ['casual', 8],
-          ['sick', 6],
+          ['comp_off', 2],
           ['earned', 12],
         ].map(([leaveType, entitledDays]) => ({
           employeeId: employees.get(definition.code)!._id,

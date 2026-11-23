@@ -20,8 +20,8 @@ export function MonthPicker({ label, value, onChange }: MonthPickerProps) {
         '& .MuiInputLabel-root': {
           px: 0.45,
           borderRadius: 0.5,
-          bgcolor: '#fff',
-          color: '#607086',
+          bgcolor: 'var(--g-base)',
+          color: 'var(--g-muted)',
           '&.Mui-focused': { color: 'primary.main' },
         },
         '& .MuiInputBase-input': {

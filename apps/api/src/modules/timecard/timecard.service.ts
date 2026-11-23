@@ -1,7 +1,19 @@
-import { getWorkDate, type TodayTimecard, type WorkSessionDto } from '@gnomon/shared';
+import {
+  emptyWorkContext,
+  getWorkDate,
+  type StartTimecardRequest,
+  type TodayTimecard,
+  type WorkContext,
+  type WorkMode,
+  type WorkSessionDto,
+} from '@gnomon/shared';
 import { Types } from 'mongoose';
 
+import { describeEvent } from '../system-events/request-context.js';
+import { recordEvent } from '../system-events/system-event.service.js';
 import { HttpError } from '../../middleware/errors.js';
+import { LeaveRequest } from '../leaves/leave.model.js';
+import { listShifts, resolveShiftForStart } from '../shifts/shift.service.js';
 import { WorkSession, type WorkSessionDocument } from './work-session.model.js';
 
 export interface ClientMetadata {
@@ -17,6 +29,37 @@ function toDto(session: WorkSessionDocument): WorkSessionDto {
     stoppedAt: session.stoppedAt?.toISOString() ?? null,
     durationMinutes: session.durationMinutes,
     status: session.status,
+    shiftName: session.shiftName ?? null,
+    workMode: session.workMode ?? null,
+  };
+}
+
+export interface WorkContextSource {
+  startedAt: Date;
+  shiftId?: unknown;
+  shiftName?: string | null;
+  shiftStartTime?: string | null;
+  shiftEndTime?: string | null;
+  workMode?: WorkMode | null;
+}
+
+/** The first session that recorded a shift or work mode decides the day's work context. */
+export function workContextFromSessions(sessions: readonly WorkContextSource[]): WorkContext {
+  const ordered = [...sessions].sort(
+    (left, right) => left.startedAt.getTime() - right.startedAt.getTime(),
+  );
+  const declared = ordered.find((session) => session.shiftName || session.workMode);
+  if (!declared) return emptyWorkContext;
+  const workModes = [
+    ...new Set(ordered.flatMap((session) => (session.workMode ? [session.workMode] : []))),
+  ];
+  return {
+    shiftId: declared.shiftId ? String(declared.shiftId) : null,
+    shiftName: declared.shiftName ?? null,
+    shiftStartTime: declared.shiftStartTime ?? null,
+    shiftEndTime: declared.shiftEndTime ?? null,
+    workMode: workModes[0] ?? null,
+    workModes,
   };
 }
 
@@ -30,7 +73,17 @@ export async function getTodayTimecard(
   now = new Date(),
 ): Promise<TodayTimecard> {
   const workDate = getWorkDate(now);
-  const sessions = await WorkSession.find({ employeeId, workDate }).sort({ startedAt: 1 }).exec();
+  const [sessions, leave] = await Promise.all([
+    WorkSession.find({ employeeId, workDate }).sort({ startedAt: 1 }).exec(),
+    LeaveRequest.findOne({
+      employeeId,
+      workingDates: workDate,
+      status: { $in: ['pending_manager', 'pending_hr', 'approved'] },
+    })
+      .select({ leaveType: 1, dayPart: 1, status: 1 })
+      .lean()
+      .exec(),
+  ]);
   const activeSession = sessions.find((session) => session.status === 'running') ?? null;
 
   return {
@@ -42,8 +95,46 @@ export async function getTodayTimecard(
       (total, session) => total + elapsedSeconds(session, now),
       0,
     ),
+    workContext: workContextFromSessions(sessions),
+    shifts: await listShifts({ activeOnly: true }),
     serverNow: now.toISOString(),
+    leave: leave
+      ? {
+          requestId: String(leave._id),
+          leaveType: leave.leaveType,
+          dayPart: leave.dayPart,
+          status: leave.status,
+        }
+      : null,
   };
+}
+
+/** Work recorded on dates in a range, used to warn before applying leave on them. */
+export async function getRecordedWorkDays(
+  employeeId: string,
+  startDate: string,
+  endDate: string,
+  now = new Date(),
+): Promise<Array<{ workDate: string; trackedMinutes: number; running: boolean }>> {
+  const sessions = await WorkSession.find({
+    employeeId,
+    workDate: { $gte: startDate, $lte: endDate },
+  })
+    .select({ workDate: 1, startedAt: 1, stoppedAt: 1, status: 1 })
+    .lean()
+    .exec();
+  const byDate = new Map<string, { trackedMinutes: number; running: boolean }>();
+  for (const session of sessions) {
+    const end = session.stoppedAt ?? (session.status === 'running' ? now : session.startedAt);
+    const minutes = Math.max(0, Math.round((end.getTime() - session.startedAt.getTime()) / 60_000));
+    const day = byDate.get(session.workDate) ?? { trackedMinutes: 0, running: false };
+    day.trackedMinutes += minutes;
+    day.running ||= session.status === 'running';
+    byDate.set(session.workDate, day);
+  }
+  return [...byDate.entries()]
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([workDate, day]) => ({ workDate, ...day }));
 }
 
 function isDuplicateKeyError(error: unknown): boolean {
@@ -58,20 +149,70 @@ function isDuplicateKeyError(error: unknown): boolean {
 export async function startTimecard(
   employeeId: string,
   metadata: ClientMetadata,
+  input: StartTimecardRequest = {},
   now = new Date(),
 ): Promise<TodayTimecard> {
   const workDate = getWorkDate(now);
   const runningSession = await WorkSession.findOne({ employeeId, status: 'running' }).exec();
 
+  if (runningSession?.workDate === workDate) {
+    throw new HttpError(409, 'Your timecard is already running', 'TIMECARD_ALREADY_RUNNING');
+  }
   if (runningSession) {
-    const isStale = runningSession.workDate !== workDate;
-    throw new HttpError(
-      409,
-      isStale
-        ? `A session from ${runningSession.workDate} is still open and requires regularisation`
-        : 'Your timecard is already running',
-      isStale ? 'STALE_OPEN_SESSION' : 'TIMECARD_ALREADY_RUNNING',
-    );
+    // A session left open on an earlier day must not block today's work. Close it
+    // without a stop time: that day stays incomplete and still needs regularisation.
+    await WorkSession.updateOne(
+      { _id: runningSession._id, status: 'running' },
+      { $set: { status: 'force_stopped', stopMetadata: metadata } },
+    ).exec();
+    recordEvent({
+      category: 'timecard',
+      action: 'timecard.stale_session_closed',
+      severity: 'warn',
+      message: `Closed a session left open since ${runningSession.workDate}; that day needs regularisation`,
+      subject: {
+        type: 'work_session',
+        id: String(runningSession._id),
+        employeeCode: null,
+        label: runningSession.workDate,
+      },
+      metadata: {
+        employeeId,
+        workDate: runningSession.workDate,
+        startedAt: runningSession.startedAt,
+        startedFrom: runningSession.startMetadata,
+      },
+    });
+  }
+
+  // The shift is declared once per work date: later sessions inherit it. The
+  // work mode is chosen for each session, so someone can stop at the office and
+  // start again from home on the same day.
+  const earlierSessions = await WorkSession.find({ employeeId, workDate })
+    .select({
+      startedAt: 1,
+      shiftId: 1,
+      shiftName: 1,
+      shiftStartTime: 1,
+      shiftEndTime: 1,
+      workMode: 1,
+    })
+    .lean()
+    .exec();
+  const lockedContext = workContextFromSessions(earlierSessions);
+  const workMode = input.workMode ?? 'office';
+  let context: Omit<WorkContext, 'workModes'>;
+  if (lockedContext.shiftName) {
+    context = { ...lockedContext, workMode };
+  } else {
+    const shift = await resolveShiftForStart(input.shiftId);
+    context = {
+      shiftId: String(shift._id),
+      shiftName: shift.name,
+      shiftStartTime: shift.startTime,
+      shiftEndTime: shift.endTime,
+      workMode,
+    };
   }
 
   try {
@@ -86,6 +227,11 @@ export async function startTimecard(
       stopMetadata: null,
       stoppedBy: null,
       correctionRequestId: null,
+      shiftId: context.shiftId ? new Types.ObjectId(context.shiftId) : null,
+      shiftName: context.shiftName,
+      shiftStartTime: context.shiftStartTime,
+      shiftEndTime: context.shiftEndTime,
+      workMode: context.workMode,
     });
   } catch (error) {
     if (isDuplicateKeyError(error)) {
@@ -131,6 +277,21 @@ export async function stopTimecard(
   if (!stoppedSession) {
     throw new HttpError(409, 'The timecard was already stopped', 'TIMECARD_ALREADY_STOPPED');
   }
+
+  // Stopping from another machine is allowed; record it so the log shows where.
+  const differentMachine =
+    session.startMetadata.ipAddress !== metadata.ipAddress ||
+    session.startMetadata.userAgent !== metadata.userAgent;
+  describeEvent({
+    message: differentMachine ? 'Stopped workday from a different machine' : 'Stopped workday',
+    metadata: {
+      workDate: session.workDate,
+      durationMinutes: stoppedSession.durationMinutes,
+      startedFrom: session.startMetadata,
+      stoppedFrom: metadata,
+      differentMachine,
+    },
+  });
 
   return getTodayTimecard(employeeId, now);
 }

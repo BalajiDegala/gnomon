@@ -298,9 +298,13 @@ export function AttendanceImportsPage({ onBack, embedded = false }: AttendanceIm
                 placeItems: 'center',
                 textAlign: 'center',
                 border: '1.5px dashed',
-                borderColor: isDragging ? 'primary.main' : file ? '#5bbf91' : 'divider',
+                borderColor: isDragging ? 'primary.main' : file ? 'var(--g-pr)' : 'divider',
                 borderRadius: 3,
-                bgcolor: isDragging ? '#edf9fa' : file ? '#f4fbf7' : '#fafbfd',
+                bgcolor: isDragging
+                  ? 'var(--g-accent-soft)'
+                  : file
+                    ? 'var(--g-pr-soft)'
+                    : 'var(--g-base)',
                 transition: 'all .16s ease',
               }}
             >
@@ -314,8 +318,9 @@ export function AttendanceImportsPage({ onBack, embedded = false }: AttendanceIm
                     display: 'grid',
                     placeItems: 'center',
                     borderRadius: 3,
-                    bgcolor: file ? '#e2f5ea' : '#e8f6f8',
-                    color: file ? '#26855c' : '#147f8d',
+                    bgcolor: 'var(--g-base)',
+                    boxShadow: 'var(--g-raised-sm)',
+                    color: file ? 'var(--g-pr)' : 'var(--g-accent)',
                   }}
                 >
                   {file ? <FileCheck2 size={24} /> : <UploadCloud size={25} />}
@@ -428,7 +433,7 @@ export function AttendanceImportsPage({ onBack, embedded = false }: AttendanceIm
           <Card sx={{ boxShadow: 'none' }}>
             <CardContent sx={{ p: 3 }}>
               <Stack direction="row" sx={{ alignItems: 'center', gap: 1.25 }}>
-                <Fingerprint size={19} color="#6d5bd0" />
+                <Fingerprint size={19} color="var(--g-pn)" />
                 <Typography sx={{ fontSize: 14.5, fontWeight: 800 }}>Timestamp handling</Typography>
               </Stack>
               <Typography
@@ -569,17 +574,25 @@ function ImportResult({ result }: { result: ReturnType<typeof useAttendanceImpor
           }}
         >
           {[
-            { label: 'Imported', value: batch.successfulRows, color: '#24855e' },
-            { label: 'Duplicates', value: batch.duplicateRows, color: '#7a6ac8' },
-            { label: 'Ignored', value: batch.ignoredRows, color: '#147f8d' },
-            { label: 'Rejected', value: batch.failedRows, color: '#c45b5f' },
-            { label: 'Employees added', value: batch.provisionedEmployees, color: '#3f6fa8' },
-            { label: 'Timecards updated', value: batch.reconciledTimecards, color: '#8a5d9f' },
-            { label: 'Total rows', value: batch.totalRows, color: '#526174' },
+            { label: 'Imported', value: batch.successfulRows, color: 'var(--g-pr)' },
+            { label: 'Duplicates', value: batch.duplicateRows, color: 'var(--g-pn)' },
+            { label: 'Ignored', value: batch.ignoredRows, color: 'var(--g-accent)' },
+            { label: 'Rejected', value: batch.failedRows, color: 'var(--g-ab)' },
+            { label: 'Employees added', value: batch.provisionedEmployees, color: 'var(--g-lv)' },
+            { label: 'Timecards updated', value: batch.reconciledTimecards, color: 'var(--g-off)' },
+            { label: 'Total rows', value: batch.totalRows, color: 'var(--g-fg)' },
           ].map(({ label, value, color }) => (
-            <Box key={label} sx={{ p: 1.5, borderRadius: 2, bgcolor: '#f7f9fb' }}>
+            <Box
+              key={label}
+              sx={{
+                p: 1.5,
+                borderRadius: 2,
+                bgcolor: 'var(--g-base)',
+                boxShadow: 'var(--g-inset-sm)',
+              }}
+            >
               <Typography sx={{ color, fontSize: 20, fontWeight: 850 }}>{value}</Typography>
-              <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>{label}</Typography>
+              <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>{label}</Typography>
             </Box>
           ))}
         </Box>
@@ -594,7 +607,7 @@ function ImportResult({ result }: { result: ReturnType<typeof useAttendanceImpor
               >
                 <AlertTriangle
                   size={14}
-                  color="#c45b5f"
+                  color="var(--g-ab)"
                   style={{ marginTop: 2, flex: '0 0 auto' }}
                 />
                 <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
@@ -634,12 +647,12 @@ function ImportHistory({
               Most recent biometric and access-card batches
             </Typography>
           </Box>
-          {loading ? <CircularProgress size={18} /> : <History size={19} color="#748195" />}
+          {loading ? <CircularProgress size={18} /> : <History size={19} color="var(--g-faint)" />}
         </Stack>
 
         {batches.length === 0 && !loading ? (
           <Box sx={{ py: 4, textAlign: 'center' }}>
-            <RefreshCw size={22} color="#98a2b1" />
+            <RefreshCw size={22} color="var(--g-faint)" />
             <Typography sx={{ mt: 0.75, color: 'text.secondary', fontSize: 12 }}>
               No attendance files have been imported yet.
             </Typography>
@@ -660,7 +673,8 @@ function ImportHistory({
                   px: 1.5,
                   py: 1.35,
                   borderRadius: 2,
-                  bgcolor: '#f8fafb',
+                  bgcolor: 'var(--g-base)',
+                  boxShadow: 'var(--g-inset-sm)',
                 }}
               >
                 <Box sx={{ minWidth: 0 }}>
@@ -669,12 +683,12 @@ function ImportHistory({
                   </Typography>
                   {batch.removedAt && (
                     <Typography
-                      sx={{ color: 'text.secondary', fontSize: 10.5, overflowWrap: 'anywhere' }}
+                      sx={{ color: 'text.secondary', fontSize: 11.5, overflowWrap: 'anywhere' }}
                     >
                       {batch.removedRows} punches removed · {batch.removalReason}
                     </Typography>
                   )}
-                  <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
+                  <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
                     {batch.importType === 'door_workbook'
                       ? 'Door access workbook'
                       : sourceLabel(batch.source)}{' '}
@@ -716,7 +730,7 @@ function HistoryMetric({ label, value }: { label: string; value: number }) {
   return (
     <Box sx={{ display: { xs: 'none', md: 'block' } }}>
       <Typography sx={{ fontSize: 12.5, fontWeight: 750 }}>{value}</Typography>
-      <Typography sx={{ color: 'text.secondary', fontSize: 9.5 }}>{label}</Typography>
+      <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>{label}</Typography>
     </Box>
   );
 }

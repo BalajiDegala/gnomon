@@ -2,30 +2,33 @@ import {
   Alert,
   Box,
   Button,
-  Card,
-  CardContent,
-  Chip,
   CircularProgress,
   LinearProgress,
   Stack,
   Typography,
 } from '@mui/material';
 import type { LucideIcon } from 'lucide-react';
-import { ArrowLeft, CheckCircle2, Clock3 } from 'lucide-react';
+import { ArrowLeft, Clock3, Play, Square } from 'lucide-react';
 
-import { formatElapsed, formatIndiaTime, useTodayTimecard } from '../lib/timecard';
+import { durationDigits, durationLabel, FlipClock } from '../components/FlipClock';
+import { CardHeading, Dot, Eyebrow, SoftCard, SoftRow } from '../components/soft';
+import { TimecardContextPicker } from '../components/TimecardContextPicker';
+import { useGuardedTimecardToggle } from '../components/useGuardedTimecardToggle';
+import { formatIndiaTime, useTodayTimecard } from '../lib/timecard';
 import { useAuth } from '../lib/auth';
 import type { AppView } from '../navigation';
 import { AdministrationPage } from './AdministrationPage';
 import { ApprovalQueuePage } from './ApprovalQueuePage';
+import { CatchUpPage } from './CatchUpPage';
 import { AttendanceDetailsPage } from './AttendanceDetailsPage';
 import { CalendarPage } from './CalendarPage';
 import { LeavePage } from './LeavePage';
 import { PeoplePage } from './PeoplePage';
 import { RegularisationPage } from './RegularisationPage';
-import { ReportingPage } from './ReportingPage';
 import { ShowManagementPage } from './ShowManagementPage';
+import { SystemEventsPage } from './SystemEventsPage';
 import { TeamCalendarPage } from './TeamCalendarPage';
+import { TeamTimesheetsPage } from './TeamTimesheetsPage';
 import { TimesheetsPage } from './TimesheetsPage';
 
 interface ModulePageProps {
@@ -44,30 +47,35 @@ export function ModulePage({ view, onNavigate }: ModulePageProps) {
       />
     );
   }
+  if (view === 'catch-up') return <CatchUpPage />;
   if (view === 'regularisation') {
-    return <RegularisationPage />;
+    return <RegularisationPage onOpenCatchUp={() => onNavigate('catch-up')} />;
   }
-  if (view === 'leave') return <LeavePage />;
+  if (view === 'leave') return <LeavePage onOpenCatchUp={() => onNavigate('catch-up')} />;
   if (view === 'calendar') return <CalendarPage />;
   if (view === 'team-calendar') {
     return <TeamCalendarPage onBack={() => onNavigate('overview')} />;
   }
   if (view === 'attendance-details') return <AttendanceDetailsPage />;
-  if (view === 'approvals') {
-    return <ApprovalQueuePage />;
+  if (view === 'system-events') return <SystemEventsPage />;
+  if (view === 'team-timesheets') return <TeamTimesheetsPage />;
+  if (view === 'leave-approvals') {
+    return <ApprovalQueuePage key="leave" kind="leave" />;
+  }
+  if (view === 'regularisation-approvals') {
+    return <ApprovalQueuePage key="regularisations" kind="regularisations" />;
   }
   if (view === 'shows') return <ShowManagementPage />;
   if (view === 'administration') {
     return <AdministrationPage />;
   }
   if (view === 'people') return <PeoplePage />;
-  if (view === 'reports') return <ReportingPage />;
   return null;
 }
 
 function PageBackButton({ onBack }: { onBack: () => void }) {
   return (
-    <Button color="inherit" startIcon={<ArrowLeft size={16} />} onClick={onBack} sx={{ mb: 2 }}>
+    <Button color="inherit" startIcon={<ArrowLeft size={16} />} onClick={onBack} sx={{ mb: 1.5 }}>
       Back to overview
     </Button>
   );
@@ -75,183 +83,128 @@ function PageBackButton({ onBack }: { onBack: () => void }) {
 
 function TimecardDetailPage({ onBack }: { onBack: () => void }) {
   const timecard = useTodayTimecard();
+  const guardedToggle = useGuardedTimecardToggle(timecard);
   const completion = Math.min(100, (timecard.trackedSeconds / (9 * 3_600)) * 100);
+  const running = Boolean(timecard.timecard?.activeSession);
+  const sessions = timecard.timecard?.sessions ?? [];
 
   return (
-    <Stack spacing={2.5} sx={{ maxWidth: 1120, mx: 'auto' }}>
+    <Stack spacing={3} sx={{ maxWidth: 1120, mx: 'auto' }}>
       <Box>
         <PageBackButton onBack={onBack} />
+        <Eyebrow>Personal attendance</Eyebrow>
         <Typography
-          sx={{ color: 'primary.dark', fontSize: 11, fontWeight: 800, letterSpacing: 1.3 }}
+          component="h1"
+          sx={{ mt: 0.5, fontSize: 32, fontWeight: 600, letterSpacing: '-0.03em' }}
         >
-          PERSONAL ATTENDANCE
-        </Typography>
-        <Typography variant="h4" sx={{ mt: 0.5, fontWeight: 850, letterSpacing: '-0.035em' }}>
           My timecard
         </Typography>
-        <Typography sx={{ color: 'text.secondary', fontSize: 13.5, mt: 0.6 }}>
+        <Typography sx={{ color: 'text.secondary', fontSize: 13.5, mt: 0.5 }}>
           Website sessions for the active 07:00-to-07:00 workday.
         </Typography>
       </Box>
 
       {timecard.error && <Alert severity="error">{timecard.error.message}</Alert>}
 
-      <Card
-        sx={{
-          border: 0,
-          color: '#fff',
-          background: 'linear-gradient(135deg, #111c30 0%, #0b1423 100%)',
-          boxShadow: '0 18px 48px rgba(12,18,32,.16)',
-        }}
-      >
-        <CardContent sx={{ p: { xs: 3, md: 4 } }}>
-          <Stack
-            direction={{ xs: 'column', md: 'row' }}
-            sx={{ justifyContent: 'space-between', alignItems: { md: 'center' }, gap: 3 }}
-          >
-            <Box>
-              <Stack direction="row" sx={{ alignItems: 'center', gap: 1, mb: 2 }}>
-                <Chip
-                  size="small"
-                  label={timecard.timecard?.activeSession ? 'Active' : 'Not running'}
-                  color={timecard.timecard?.activeSession ? 'success' : 'default'}
-                  sx={{ fontWeight: 750 }}
-                />
-                <Typography sx={{ color: 'rgba(255,255,255,.5)', fontSize: 12 }}>
-                  Work date {timecard.timecard?.workDate ?? '—'}
-                </Typography>
-              </Stack>
-              <Typography
-                sx={{
-                  fontSize: { xs: 48, sm: 64 },
-                  fontWeight: 850,
-                  lineHeight: 1,
-                  letterSpacing: '-0.055em',
-                  fontVariantNumeric: 'tabular-nums',
-                }}
-              >
-                {timecard.isLoading ? '— — : — —' : formatElapsed(timecard.trackedSeconds)}
-              </Typography>
-              <Box sx={{ width: { xs: '100%', sm: 360 }, mt: 2.5 }}>
-                <Stack direction="row" sx={{ justifyContent: 'space-between', mb: 0.75 }}>
-                  <Typography sx={{ color: 'rgba(255,255,255,.48)', fontSize: 11 }}>
-                    Daily completion
-                  </Typography>
-                  <Typography sx={{ fontSize: 11, fontWeight: 750 }}>
-                    {Math.round(completion)}%
-                  </Typography>
-                </Stack>
-                <LinearProgress
-                  variant="determinate"
-                  value={completion}
-                  sx={{
-                    height: 6,
-                    borderRadius: 5,
-                    bgcolor: 'rgba(255,255,255,.1)',
-                    '& .MuiLinearProgress-bar': { bgcolor: '#38ceda', borderRadius: 5 },
-                  }}
-                />
-              </Box>
+      <SoftCard>
+        <CardHeading
+          eyebrow={`Work date ${timecard.timecard?.workDate ?? '—'}`}
+          title={running ? 'Your day is in progress' : 'Ready when you are'}
+          aside={
+            <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.75 }}>
+              <Dot color={running ? 'var(--g-pr)' : 'var(--g-faint)'} />
+              {running ? 'Active' : 'Not running'}
             </Box>
-            <Button
-              size="large"
-              variant="contained"
-              disabled={!timecard.canWrite || timecard.isLoading || timecard.isUpdating}
-              onClick={timecard.toggle}
-              startIcon={
-                timecard.isUpdating ? (
-                  <CircularProgress size={16} color="inherit" />
-                ) : timecard.timecard?.activeSession ? (
-                  <CheckCircle2 size={18} />
-                ) : (
-                  <Clock3 size={18} />
-                )
-              }
-              sx={{
-                minWidth: 210,
-                py: 1.35,
-                bgcolor: timecard.timecard?.activeSession ? '#df5e63' : '#39ceda',
-                color: timecard.timecard?.activeSession ? '#fff' : '#071519',
-              }}
+          }
+        />
+        <Box sx={{ overflowX: 'auto' }}>
+          <FlipClock
+            size="xl"
+            digits={timecard.isLoading ? null : durationDigits(timecard.trackedSeconds)}
+            label={`Time worked ${durationLabel(timecard.trackedSeconds)}`}
+          />
+        </Box>
+        <Box>
+          <Stack direction="row" sx={{ justifyContent: 'space-between', mb: 0.75 }}>
+            <Typography
+              sx={{ fontSize: 11.5, fontWeight: 600, letterSpacing: 1.4, color: 'var(--g-muted)' }}
             >
-              {timecard.isUpdating
-                ? 'Updating…'
-                : timecard.timecard?.activeSession
-                  ? 'Stop workday'
-                  : 'Start workday'}
-            </Button>
+              9-HOUR DAY
+            </Typography>
+            <Typography sx={{ fontSize: 11.5, fontWeight: 600 }}>
+              {Math.round(completion)}%
+            </Typography>
           </Stack>
-        </CardContent>
-      </Card>
+          <LinearProgress variant="determinate" value={completion} aria-label="9-hour day" />
+        </Box>
+        <Stack
+          direction={{ xs: 'column', md: 'row' }}
+          sx={{ gap: 2, alignItems: { md: 'center' }, justifyContent: 'space-between' }}
+        >
+          <Box sx={{ flex: 1, minWidth: 0, maxWidth: { md: 520 } }}>
+            <TimecardContextPicker timecard={timecard} />
+          </Box>
+          {guardedToggle.dialog}
+          <Button
+            size="large"
+            variant="contained"
+            color={running ? 'error' : 'primary'}
+            disabled={!timecard.canWrite || timecard.isLoading || timecard.isUpdating}
+            onClick={guardedToggle.onToggle}
+            startIcon={
+              timecard.isUpdating ? (
+                <CircularProgress size={15} color="inherit" />
+              ) : running ? (
+                <Square size={13} fill="currentColor" />
+              ) : (
+                <Play size={14} fill="currentColor" />
+              )
+            }
+            sx={{ minWidth: 190, py: 1.3 }}
+          >
+            {timecard.isUpdating ? 'Updating…' : running ? 'Stop workday' : 'Start workday'}
+          </Button>
+        </Stack>
+      </SoftCard>
 
-      <Card sx={{ boxShadow: 'none' }}>
-        <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
-          <Typography sx={{ fontSize: 15, fontWeight: 800 }}>Session history</Typography>
-          <Typography sx={{ color: 'text.secondary', fontSize: 11.5, mb: 2.25 }}>
-            Every start and stop is retained as a separate audited interval.
-          </Typography>
-          {timecard.timecard?.sessions.length ? (
-            <Stack spacing={1}>
-              {timecard.timecard.sessions.map((session, index) => (
-                <Box
-                  key={session.id}
-                  sx={{
-                    display: 'grid',
-                    gridTemplateColumns: { xs: '32px 1fr auto', sm: '32px 1fr 1fr auto' },
-                    alignItems: 'center',
-                    gap: 1.5,
-                    p: 1.5,
-                    borderRadius: 2,
-                    bgcolor: index % 2 === 0 ? '#f7f9fb' : '#fff',
-                  }}
-                >
-                  <Box
-                    sx={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: '50%',
-                      display: 'grid',
-                      placeItems: 'center',
-                      bgcolor: session.status === 'running' ? '#e6f7ef' : '#edf1f5',
-                      color: session.status === 'running' ? '#188b5c' : '#687587',
-                    }}
-                  >
-                    <Clock3 size={14} />
-                  </Box>
-                  <Box>
-                    <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>Started</Typography>
-                    <Typography sx={{ fontSize: 13, fontWeight: 750 }}>
-                      {formatIndiaTime(session.startedAt)}
-                    </Typography>
-                  </Box>
-                  <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
-                    <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>Stopped</Typography>
-                    <Typography sx={{ fontSize: 13, fontWeight: 750 }}>
-                      {formatIndiaTime(session.stoppedAt)}
-                    </Typography>
-                  </Box>
-                  <Chip
-                    size="small"
-                    label={
-                      session.status === 'running'
-                        ? 'Running'
-                        : `${session.durationMinutes ?? 0} min`
-                    }
-                    color={session.status === 'running' ? 'success' : 'default'}
-                    variant={session.status === 'running' ? 'filled' : 'outlined'}
-                  />
-                </Box>
-              ))}
-            </Stack>
-          ) : (
-            <EmptyPanel
-              icon={Clock3}
-              title="No sessions for this work date"
-              detail="Use Start workday when you begin."
-            />
-          )}
-        </CardContent>
-      </Card>
+      <SoftCard>
+        <CardHeading
+          eyebrow="Session history"
+          title="Every start and stop is kept as a separate interval"
+        />
+        {sessions.length ? (
+          <Stack spacing={1.25}>
+            {sessions.map((session) => (
+              <SoftRow
+                key={session.id}
+                dot={session.status === 'running' ? 'var(--g-pr)' : 'var(--g-faint)'}
+                label={`${formatIndiaTime(session.startedAt)} – ${
+                  session.stoppedAt ? formatIndiaTime(session.stoppedAt) : 'now'
+                }`}
+                detail={[
+                  session.shiftName,
+                  session.workMode === 'home'
+                    ? 'WFH'
+                    : session.workMode === 'office'
+                      ? 'WFO'
+                      : null,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+                value={
+                  session.status === 'running' ? 'Running' : `${session.durationMinutes ?? 0} min`
+                }
+              />
+            ))}
+          </Stack>
+        ) : (
+          <EmptyPanel
+            icon={Clock3}
+            title="No sessions for this work date"
+            detail="Use Start workday when you begin."
+          />
+        )}
+      </SoftCard>
     </Stack>
   );
 }
@@ -272,15 +225,18 @@ function EmptyPanel({
         display: 'grid',
         placeItems: 'center',
         textAlign: 'center',
-        border: '1px dashed',
-        borderColor: 'divider',
-        borderRadius: 3,
+        px: 2,
+        borderRadius: '18px',
+        boxShadow: 'var(--g-inset-sm)',
+        border: '1px dashed var(--g-border)',
       }}
     >
-      <Box>
-        <Icon size={25} color="#8491a3" />
-        <Typography sx={{ mt: 0.75, fontSize: 13.5, fontWeight: 750 }}>{title}</Typography>
-        <Typography sx={{ mt: 0.25, color: 'text.secondary', fontSize: 11.5 }}>{detail}</Typography>
+      <Box sx={{ color: 'var(--g-faint)' }}>
+        <Icon size={24} />
+        <Typography sx={{ mt: 0.75, fontSize: 13.5, fontWeight: 600, color: 'var(--g-fg)' }}>
+          {title}
+        </Typography>
+        <Typography sx={{ mt: 0.25, color: 'text.secondary', fontSize: 12 }}>{detail}</Typography>
       </Box>
     </Box>
   );

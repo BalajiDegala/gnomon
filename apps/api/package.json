@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "tsup src/server.ts src/scripts/import-data-folder.ts src/scripts/recover-attendance-change.ts --format esm --clean --sourcemap",
+    "build": "tsup src/server.ts src/scripts/import-data-folder.ts src/scripts/recover-attendance-change.ts src/scripts/seed-admin.ts --format esm --clean --sourcemap",
     "dev": "tsx watch src/server.ts",
     "seed:admin": "tsx src/scripts/seed-admin.ts",
     "seed:demo": "cross-env ACCESS_TOKEN_SECRET=demo-seed-access-secret-with-at-least-32-characters REFRESH_TOKEN_SECRET=demo-seed-refresh-secret-with-at-least-32-characters tsx src/scripts/seed-demo-data.ts",
@@ -20,6 +20,7 @@
   "dependencies": {
     "@gnomon/shared": "*",
     "bcryptjs": "latest",
+    "compression": "^1.8.1",
     "cookie-parser": "latest",
     "cors": "latest",
     "csv-parse": "^7.0.1",
@@ -28,17 +29,21 @@
     "fflate": "^0.8.3",
     "helmet": "latest",
     "jose": "latest",
+    "ldapts": "^8.2.0",
     "mongoose": "latest",
+    "nodemailer": "10.3.1",
     "pino": "latest",
     "pino-http": "latest",
     "saxes": "^6.0.0",
     "zod": "latest"
   },
   "devDependencies": {
+    "@types/compression": "^1.8.1",
     "@types/cookie-parser": "latest",
     "@types/cors": "latest",
     "@types/express": "latest",
     "@types/node": "latest",
+    "@types/nodemailer": "8.0.2",
     "@types/supertest": "latest",
     "supertest": "latest",
     "tsup": "latest",

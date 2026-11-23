@@ -1,4 +1,4 @@
-import { getWorkDate, type CreateTimeEntryRequest, type TimeEntryDto } from '@gnomon/shared';
+import type { CreateTimeEntryRequest, TimeEntryDto } from '@gnomon/shared';
 import {
   Alert,
   Box,
@@ -9,46 +9,80 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  Chip,
   Drawer,
   FormControl,
   IconButton,
+  InputAdornment,
   InputLabel,
   MenuItem,
   Select,
   Stack,
   TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Tooltip,
   Typography,
 } from '@mui/material';
 import {
   ChevronLeft,
   ChevronRight,
+  ChevronsDownUp,
+  ChevronsUpDown,
   Clock3,
+  Download,
   FileClock,
   Pencil,
   Plus,
+  RotateCcw,
+  Search,
   Trash2,
   X,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 
-import {
-  DataTable,
-  type DataTableColumn,
-  type SortDirection,
-} from '../components/data-view/DataTable';
-import { FilterBar } from '../components/data-view/FilterBar';
+import { ColumnPicker } from '../components/data-view/ColumnPicker';
+import { DataGrid, type DataGridColumn } from '../components/data-view/DataGrid';
+import { MultiSelectFilter } from '../components/data-view/MultiSelectFilter';
 import { PageHeader } from '../components/data-view/PageHeader';
 import { useAuth } from '../lib/auth';
+import { useStoredColumnOrder } from '../lib/column-order';
+import { downloadCsv } from '../lib/csv';
 import { readFormDraft, useSessionFormDraft } from '../lib/form-drafts';
-import { formatIndiaTime } from '../lib/timecard';
+import {
+  buildMyTimesheetExport,
+  defaultMyTimesheetSort,
+  entryGroupFor,
+  filterEntries,
+  movePeriod,
+  myTimesheetColumnIds,
+  myTimesheetColumnLabels,
+  myTimesheetGroupLabels,
+  myTimesheetGroupOptions,
+  nextMyTimesheetSort,
+  orderEntries,
+  parseMyTimesheetSort,
+  periodRange,
+  progressBands,
+  serializeMyTimesheetSort,
+  timesheetPeriods,
+  type MyTimesheetColumnId,
+  type MyTimesheetGroupBy,
+  type MyTimesheetSortRule,
+  type TimesheetPeriod,
+} from '../lib/my-timesheet-view';
 import {
   currentIndiaWorkDate,
   formatMinutes,
-  indiaLocalInputToIso,
   useTimesheetDay,
+  useTimesheetRange,
 } from '../lib/timesheets';
-import { parseEnumValue, parseIsoDate, useUrlQueryState } from '../lib/url-query-state';
+import {
+  parseEnumValue,
+  parseIsoDate,
+  parseShortSearch,
+  useUrlQueryState,
+} from '../lib/url-query-state';
 import { confirmDiscardChanges, useUnsavedChanges } from '../lib/unsaved-changes';
 
 interface TimesheetsPageProps {
@@ -56,18 +90,45 @@ interface TimesheetsPageProps {
   canManageShows: boolean;
 }
 
-type TimesheetSortKey = 'start' | 'show' | 'duration' | 'percentage';
+const LIST_SEPARATOR = '|';
+const emptyList: readonly string[] = [];
+const parseList = (value: string): readonly string[] | null => {
+  const items = value.split(LIST_SEPARATOR).filter(Boolean);
+  return items.length <= 100 && items.every((item) => item.length <= 40) ? items : null;
+};
+const serializeList = (items: readonly string[]) => items.join(LIST_SEPARATOR);
+const parsePeriod = (value: string) => parseEnumValue(value, timesheetPeriods);
+const parseGroupBy = (value: string) => parseEnumValue(value, myTimesheetGroupOptions);
+const parseSort = (value: string) => parseMyTimesheetSort(value);
+const serializeSort = (rules: readonly MyTimesheetSortRule[]) => serializeMyTimesheetSort(rules);
+const VISIBLE_COLUMNS_KEY = 'gnomon:my-timesheets:visible-columns';
+const COLUMN_ORDER_KEY = 'gnomon:my-timesheets:column-order';
+const fieldSx = { '& .MuiOutlinedInput-root': { borderRadius: '10px', bgcolor: 'var(--g-base)' } };
+const outlinedButtonSx = {
+  border: '1px solid',
+  borderColor: 'divider',
+  borderRadius: '10px',
+  bgcolor: 'var(--g-base)',
+};
 
-const timesheetSortKeys = ['start', 'show', 'duration', 'percentage'] as const;
-const sortDirections = ['asc', 'desc'] as const;
-const pageSizes = [10, 25, 50, 100] as const;
+function readVisibleColumns(): MyTimesheetColumnId[] {
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem(VISIBLE_COLUMNS_KEY) ?? 'null');
+    if (Array.isArray(value)) {
+      const valid = myTimesheetColumnIds.filter((id) => value.includes(id));
+      if (valid.length) return valid;
+    }
+  } catch {
+    // Fall back to every column.
+  }
+  return [...myTimesheetColumnIds];
+}
 const progressOptions = Array.from({ length: 10 }, (_, index) => (index + 1) * 10);
 
 interface TimesheetFormDraft {
   workDate: string;
   showId: string;
-  startedAt: string;
-  endedAt: string;
+  hours: string;
   comment: string;
   percentage: string;
 }
@@ -78,88 +139,34 @@ function isTimesheetFormDraft(value: unknown): value is TimesheetFormDraft {
   return (
     typeof draft.workDate === 'string' &&
     typeof draft.showId === 'string' &&
-    typeof draft.startedAt === 'string' &&
-    typeof draft.endedAt === 'string' &&
+    typeof draft.hours === 'string' &&
     typeof draft.comment === 'string' &&
     typeof draft.percentage === 'string'
   );
 }
 
-function parseTimesheetSort(value: string): TimesheetSortKey | null {
-  return parseEnumValue(value, timesheetSortKeys);
-}
+const defaultHours = '1';
 
-function parseSortDirection(value: string): SortDirection | null {
-  return parseEnumValue(value, sortDirections);
-}
-
-function parsePage(value: string): number | null {
-  const page = Number(value);
-  return Number.isInteger(page) && page >= 1 ? page : null;
-}
-
-function parsePageSize(value: string): number | null {
-  const pageSize = Number(value);
-  return pageSizes.includes(pageSize as (typeof pageSizes)[number]) ? pageSize : null;
-}
-
-function parseShowFilter(value: string): string | null {
-  return value === 'all' || /^[a-f\d]{24}$/i.test(value) ? value : null;
-}
-
-function compareEntries(left: TimeEntryDto, right: TimeEntryDto, key: TimesheetSortKey): number {
-  if (key === 'start') return left.startedAt.localeCompare(right.startedAt);
-  if (key === 'show')
-    return left.showName.localeCompare(right.showName, undefined, { numeric: true });
-  if (key === 'duration') return left.durationMinutes - right.durationMinutes;
-  return left.percentage - right.percentage;
-}
-
-function isoToIndiaLocalInput(value: string): string {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-    timeZone: 'Asia/Kolkata',
-  }).formatToParts(new Date(value));
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((candidate) => candidate.type === type)?.value ?? '';
-  return `${part('year')}-${part('month')}-${part('day')}T${part('hour')}:${part('minute')}`;
-}
-
-function moveDate(workDate: string, offset: number): string {
-  const date = new Date(`${workDate}T00:00:00.000Z`);
-  date.setUTCDate(date.getUTCDate() + offset);
-  return date.toISOString().slice(0, 10);
+function formatHoursInput(minutes: number): string {
+  return String(Math.round((minutes / 60) * 100) / 100);
 }
 
 function validateEntryForm(input: {
   workDate: string;
   showId: string;
-  startedAt: string;
-  endedAt: string;
+  hours: string;
   comment: string;
   percentage: number;
 }): string | null {
   if (!input.showId) return 'Select a show.';
-  if (!input.startedAt || !input.endedAt) return 'Enter both the start and end time.';
-
-  const startedAt = new Date(indiaLocalInputToIso(input.startedAt));
-  const endedAt = new Date(indiaLocalInputToIso(input.endedAt));
-  if (endedAt <= startedAt) return 'End time must be after start time.';
-  if (endedAt.getTime() - startedAt.getTime() > 24 * 60 * 60_000) {
-    return 'A time entry cannot exceed 24 hours.';
+  const hours = Number(input.hours);
+  if (!input.hours.trim() || !Number.isFinite(hours) || hours <= 0) {
+    return 'Enter the number of hours worked.';
   }
-  if (endedAt.getTime() > Date.now() + 5 * 60_000) return 'Show time cannot end in the future.';
-
-  const startWorkDate = getWorkDate(startedAt);
-  const endWorkDate = getWorkDate(new Date(endedAt.getTime() - 1));
-  if (startWorkDate !== input.workDate || endWorkDate !== input.workDate) {
-    return `The entry must stay inside the ${input.workDate} workday (07:00 to 07:00).`;
-  }
+  if (hours > 24) return 'A time entry cannot exceed 24 hours.';
+  if (!Number.isInteger(hours * 4)) return 'Use quarter-hour steps (e.g. 1.25, 2.5).';
+  if (input.workDate > currentIndiaWorkDate())
+    return 'Show time cannot be logged for a future date.';
   if (!input.comment.trim()) return 'Describe the work performed.';
   if (!progressOptions.includes(input.percentage)) return 'Select progress from 10% to 100%.';
   return null;
@@ -175,32 +182,41 @@ export function TimesheetsPage({ onManageShows, canManageShows }: TimesheetsPage
     recoveredDraft?.workDate ?? defaultWorkDate,
     parseIsoDate,
   );
-  const [showFilter, setShowFilter] = useUrlQueryState('show', 'all', parseShowFilter);
-  const [sortKey, setSortKey] = useUrlQueryState<TimesheetSortKey>(
+  const [period, setPeriod] = useUrlQueryState<TimesheetPeriod>('period', 'day', parsePeriod);
+  const [search, setSearch] = useUrlQueryState('q', '', parseShortSearch);
+  const [showFilter, setShowFilter] = useUrlQueryState('show', emptyList, parseList, serializeList);
+  const [progressFilter, setProgressFilter] = useUrlQueryState(
+    'progress',
+    emptyList,
+    parseList,
+    serializeList,
+  );
+  const [groupBy, setGroupBy] = useUrlQueryState<MyTimesheetGroupBy>('group', 'none', parseGroupBy);
+  const [sortRules, setSortRules] = useUrlQueryState<readonly MyTimesheetSortRule[]>(
     'sort',
-    'start',
-    parseTimesheetSort,
+    defaultMyTimesheetSort,
+    parseSort,
+    serializeSort,
   );
-  const [sortDirection, setSortDirection] = useUrlQueryState<SortDirection>(
-    'order',
-    'asc',
-    parseSortDirection,
-  );
-  const [pageNumber, setPageNumber] = useUrlQueryState('page', 1, parsePage);
-  const [rowsPerPage, setRowsPerPage] = useUrlQueryState('size', 25, parsePageSize);
+  const [visibleColumns, setVisibleColumns] = useState<MyTimesheetColumnId[]>(readVisibleColumns);
+  const columnOrder = useStoredColumnOrder(COLUMN_ORDER_KEY, myTimesheetColumnIds);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(50);
+  const [collapsedGroups, setCollapsedGroups] = useState<ReadonlySet<string>>(new Set());
   const timesheet = useTimesheetDay(workDate);
+  const range = useMemo(() => periodRange(period, workDate), [period, workDate]);
+  const rangeData = useTimesheetRange(range.from, range.to);
   const [formOpen, setFormOpen] = useState(Boolean(recoveredDraft));
   const [editingEntry, setEditingEntry] = useState<TimeEntryDto | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<TimeEntryDto | null>(null);
   const [deleteEntry, setDeleteEntry] = useState<TimeEntryDto | null>(null);
   const [showId, setShowId] = useState(recoveredDraft?.showId ?? '');
-  const [startedAt, setStartedAt] = useState(recoveredDraft?.startedAt ?? `${workDate}T09:00`);
-  const [endedAt, setEndedAt] = useState(recoveredDraft?.endedAt ?? `${workDate}T10:00`);
+  const [hours, setHours] = useState(recoveredDraft?.hours ?? defaultHours);
   const [comment, setComment] = useState(recoveredDraft?.comment ?? '');
   const [percentage, setPercentage] = useState(recoveredDraft?.percentage ?? '100');
   const recoveredOnMount = useRef(Boolean(recoveredDraft && recoveredDraft.workDate === workDate));
   const percentageValue = Number(percentage);
-  const entries = timesheet.day?.entries ?? [];
+  const entries = period === 'day' ? (timesheet.day?.entries ?? []) : rangeData.entries;
   const entryOptions = useMemo(() => {
     const options = timesheet.options.map((show) => ({ ...show, inactive: false }));
     if (editingEntry && !options.some((show) => show.id === editingEntry.showId)) {
@@ -224,15 +240,20 @@ export function TimesheetsPage({ onManageShows, canManageShows }: TimesheetsPage
         });
       }
     }
-    return [...options.values()].sort((left, right) => left.name.localeCompare(right.name));
+    return [...options.values()]
+      .sort((left, right) => left.name.localeCompare(right.name))
+      .map((show) => ({
+        value: show.id,
+        label: `${show.code} · ${show.name}`,
+        secondary: `${entries.filter((entry) => entry.showId === show.id).length} entries`,
+      }));
   }, [entries, timesheet.options]);
   const selectedShowId = entryOptions.some((show) => show.id === showId) ? showId : '';
   const formValidationError = formOpen
     ? validateEntryForm({
-        workDate,
+        workDate: editingEntry?.workDate ?? workDate,
         showId: selectedShowId,
-        startedAt,
-        endedAt,
+        hours,
         comment,
         percentage: percentageValue,
       })
@@ -241,18 +262,14 @@ export function TimesheetsPage({ onManageShows, canManageShows }: TimesheetsPage
     formOpen &&
     (editingEntry
       ? showId !== editingEntry.showId ||
-        startedAt !== isoToIndiaLocalInput(editingEntry.startedAt) ||
-        endedAt !== isoToIndiaLocalInput(editingEntry.endedAt) ||
+        hours !== formatHoursInput(editingEntry.durationMinutes) ||
         comment !== editingEntry.comment ||
         percentage !== String(editingEntry.percentage)
-      : startedAt !== `${workDate}T09:00` ||
-        endedAt !== `${workDate}T10:00` ||
-        Boolean(comment) ||
-        percentage !== '100'),
+      : hours !== defaultHours || Boolean(comment) || percentage !== '100'),
   );
   const draft = useMemo(
-    () => ({ workDate, showId, startedAt, endedAt, comment, percentage }),
-    [comment, endedAt, percentage, showId, startedAt, workDate],
+    () => ({ workDate, showId, hours, comment, percentage }),
+    [comment, hours, percentage, showId, workDate],
   );
   const clearDraft = useSessionFormDraft(draftKey, draft, formDirty && !editingEntry);
   useUnsavedChanges(formDirty);
@@ -276,8 +293,7 @@ export function TimesheetsPage({ onManageShows, canManageShows }: TimesheetsPage
     setEditingEntry(null);
     setSelectedEntry(null);
     setDeleteEntry(null);
-    setStartedAt(`${workDate}T09:00`);
-    setEndedAt(`${workDate}T10:00`);
+    setHours(defaultHours);
   }, [workDate]);
 
   useEffect(() => {
@@ -286,37 +302,49 @@ export function TimesheetsPage({ onManageShows, canManageShows }: TimesheetsPage
   }, [selectedShowId, timesheet.options]);
 
   useEffect(() => {
-    if (
-      !timesheet.isLoading &&
-      showFilter !== 'all' &&
-      !filterOptions.some((show) => show.id === showFilter)
-    ) {
-      setShowFilter('all');
+    try {
+      localStorage.setItem(VISIBLE_COLUMNS_KEY, JSON.stringify(visibleColumns));
+    } catch {
+      // Preferences are a convenience; ignore blocked storage.
     }
-  }, [filterOptions, setShowFilter, showFilter, timesheet.isLoading]);
+  }, [visibleColumns]);
 
-  const filteredEntries = useMemo(() => {
-    const direction = sortDirection === 'asc' ? 1 : -1;
-    return entries
-      .filter((entry) => showFilter === 'all' || entry.showId === showFilter)
-      .slice()
-      .sort(
-        (left, right) =>
-          compareEntries(left, right, sortKey) * direction ||
-          left.startedAt.localeCompare(right.startedAt),
-      );
-  }, [entries, showFilter, sortDirection, sortKey]);
-
-  useEffect(() => {
-    const lastPage = Math.max(1, Math.ceil(filteredEntries.length / rowsPerPage));
-    if (pageNumber > lastPage) setPageNumber(lastPage);
-  }, [filteredEntries.length, pageNumber, rowsPerPage, setPageNumber]);
+  const viewRows = useMemo(
+    () =>
+      orderEntries(
+        filterEntries(entries, { search, showIds: showFilter, progress: progressFilter }),
+        sortRules,
+        groupBy,
+      ),
+    [entries, groupBy, progressFilter, search, showFilter, sortRules],
+  );
+  const groupKeys = useMemo(
+    () =>
+      groupBy === 'none'
+        ? []
+        : [...new Set(viewRows.map((entry) => entryGroupFor(entry, groupBy).key))],
+    [groupBy, viewRows],
+  );
+  const totals = useMemo(
+    () => ({
+      minutes: viewRows.reduce((total, entry) => total + entry.durationMinutes, 0),
+      count: viewRows.length,
+      progress: viewRows.length
+        ? Math.round(
+            viewRows.reduce((total, entry) => total + entry.percentage, 0) / viewRows.length,
+          )
+        : 0,
+      days: new Set(viewRows.map((entry) => entry.workDate)).size,
+    }),
+    [viewRows],
+  );
+  useEffect(() => setPage(0), [groupBy, period, progressFilter, range.from, search, showFilter]);
+  useEffect(() => setCollapsedGroups(new Set()), [groupBy]);
 
   const openCreate = () => {
     timesheet.clearError();
     setEditingEntry(null);
-    setStartedAt(`${workDate}T09:00`);
-    setEndedAt(`${workDate}T10:00`);
+    setHours(defaultHours);
     setComment('');
     setPercentage('100');
     setFormOpen(true);
@@ -326,8 +354,7 @@ export function TimesheetsPage({ onManageShows, canManageShows }: TimesheetsPage
     timesheet.clearError();
     setEditingEntry(entry);
     setShowId(entry.showId);
-    setStartedAt(isoToIndiaLocalInput(entry.startedAt));
-    setEndedAt(isoToIndiaLocalInput(entry.endedAt));
+    setHours(formatHoursInput(entry.durationMinutes));
     setComment(entry.comment);
     setPercentage(String(entry.percentage));
     setSelectedEntry(null);
@@ -338,9 +365,9 @@ export function TimesheetsPage({ onManageShows, canManageShows }: TimesheetsPage
     event.preventDefault();
     if (formValidationError) return;
     const input: CreateTimeEntryRequest = {
+      workDate: editingEntry?.workDate ?? workDate,
       showId: selectedShowId,
-      startedAt: indiaLocalInputToIso(startedAt),
-      endedAt: indiaLocalInputToIso(endedAt),
+      hours: Number(hours),
       comment,
       percentage: percentageValue,
     };
@@ -366,96 +393,94 @@ export function TimesheetsPage({ onManageShows, canManageShows }: TimesheetsPage
     }
   };
 
-  const updateSort = (key: TimesheetSortKey) => {
-    if (key === sortKey) setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-    else {
-      setSortKey(key);
-      setSortDirection('asc');
-    }
-    setPageNumber(1);
-  };
-
-  const columns: ReadonlyArray<DataTableColumn<TimeEntryDto, TimesheetSortKey>> = [
-    {
-      id: 'time',
-      label: 'Time',
-      sortKey: 'start',
-      width: 112,
+  const allColumns: Record<
+    MyTimesheetColumnId,
+    DataGridColumn<TimeEntryDto, MyTimesheetColumnId>
+  > = {
+    date: {
+      id: 'date',
+      label: myTimesheetColumnLabels.date,
+      sortKey: 'date',
+      width: 130,
       render: (entry) => (
-        <Box>
-          <Typography sx={{ fontSize: 12.5, fontWeight: 800 }}>
-            {formatIndiaTime(entry.startedAt)}
-          </Typography>
-          <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
-            to {formatIndiaTime(entry.endedAt)}
-          </Typography>
-        </Box>
+        <Typography sx={{ fontSize: 12.5, fontVariantNumeric: 'tabular-nums' }}>
+          {entry.workDate}
+        </Typography>
       ),
     },
-    {
+    show: {
       id: 'show',
-      label: 'Show',
+      label: myTimesheetColumnLabels.show,
       sortKey: 'show',
-      minWidth: 180,
+      minWidth: 190,
       render: (entry) => (
         <Box sx={{ minWidth: 0 }}>
           <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 750 }}>
             {entry.showName}
           </Typography>
-          <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>{entry.showCode}</Typography>
-          <Typography
-            noWrap
-            sx={{ display: { xs: 'block', sm: 'none' }, mt: 0.35, maxWidth: 190, fontSize: 10.5 }}
-          >
-            {entry.comment} · {entry.percentage}%
-          </Typography>
+          <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>{entry.showCode}</Typography>
         </Box>
       ),
     },
-    {
+    comment: {
       id: 'comment',
-      label: 'Work comment',
+      label: myTimesheetColumnLabels.comment,
+      sortKey: 'comment',
       minWidth: 280,
-      hideBelow: 'sm',
       render: (entry) => (
-        <Typography noWrap sx={{ maxWidth: 420, fontSize: 12 }}>
-          {entry.comment}
+        <Tooltip title={entry.comment} enterDelay={500}>
+          <Typography noWrap sx={{ fontSize: 12.5, color: 'text.secondary' }}>
+            {entry.comment}
+          </Typography>
+        </Tooltip>
+      ),
+    },
+    hours: {
+      id: 'hours',
+      label: myTimesheetColumnLabels.hours,
+      sortKey: 'hours',
+      width: 110,
+      align: 'right',
+      render: (entry) => (
+        <Typography sx={{ fontSize: 12.5, fontWeight: 800, fontVariantNumeric: 'tabular-nums' }}>
+          {formatMinutes(entry.durationMinutes)}
         </Typography>
       ),
     },
-    {
-      id: 'duration',
-      label: 'Duration',
-      sortKey: 'duration',
-      align: 'right',
-      hideBelow: 'sm',
-      width: 110,
-      render: (entry) => formatMinutes(entry.durationMinutes),
-    },
-    {
+    progress: {
       id: 'progress',
-      label: 'Progress',
-      sortKey: 'percentage',
+      label: myTimesheetColumnLabels.progress,
+      sortKey: 'progress',
+      width: 120,
       align: 'right',
-      hideBelow: 'sm',
-      width: 105,
-      render: (entry) => `${entry.percentage}%`,
+      render: (entry) => (
+        <Typography sx={{ fontSize: 12.5, fontVariantNumeric: 'tabular-nums' }}>
+          {entry.percentage}%
+        </Typography>
+      ),
     },
+  };
+  const hiddenNow = (id: MyTimesheetColumnId) =>
+    (period === 'day' && id === 'date') ||
+    (groupBy === 'date' && id === 'date') ||
+    (groupBy === 'show' && id === 'show');
+  const orderedIds = columnOrder.order.filter(
+    (id) => visibleColumns.includes(id) && !hiddenNow(id),
+  );
+  const gridColumns: DataGridColumn<TimeEntryDto, MyTimesheetColumnId>[] = [
+    ...(orderedIds.length ? orderedIds : (['show'] as const)).map((id) => allColumns[id]),
     {
       id: 'actions',
       label: 'Actions',
       align: 'right',
-      width: 84,
+      width: 96,
       render: (entry) => (
         <Stack direction="row" sx={{ justifyContent: 'flex-end' }}>
           <Tooltip title="Edit entry">
             <IconButton
               aria-label={`Edit ${entry.showCode} entry`}
               size="small"
-              onClick={(event) => {
-                event.stopPropagation();
-                openEdit(entry);
-              }}
+              onClick={() => openEdit(entry)}
             >
               <Pencil size={15} />
             </IconButton>
@@ -465,8 +490,7 @@ export function TimesheetsPage({ onManageShows, canManageShows }: TimesheetsPage
               aria-label={`Delete ${entry.showCode} entry`}
               color="error"
               size="small"
-              onClick={(event) => {
-                event.stopPropagation();
+              onClick={() => {
                 timesheet.clearError();
                 setDeleteEntry(entry);
               }}
@@ -479,19 +503,53 @@ export function TimesheetsPage({ onManageShows, canManageShows }: TimesheetsPage
     },
   ];
 
+  const hasFilters =
+    Boolean(search) || showFilter.length > 0 || progressFilter.length > 0 || groupBy !== 'none';
+  const clearFilters = () => {
+    setSearch('');
+    setShowFilter([]);
+    setProgressFilter([]);
+    setGroupBy('none');
+  };
+  const exportCsv = () => {
+    const ids = columnOrder.order.filter(
+      (id) => visibleColumns.includes(id) || (id === 'date' && period !== 'day'),
+    );
+    const withDate = ids.includes('date') ? ids : (['date', ...ids] as MyTimesheetColumnId[]);
+    const csv = buildMyTimesheetExport(viewRows, withDate, groupBy);
+    downloadCsv(`my-timesheet-${range.from}-to-${range.to}.csv`, csv.headers, csv.rows);
+  };
+  const periodLabel = period === 'day' ? workDate : `${range.from} – ${range.to}`;
+  const isLoading = period === 'day' ? timesheet.isLoading : rangeData.isLoading;
+
   return (
-    <Stack spacing={2.5} sx={{ width: '100%', maxWidth: 1440, mx: 'auto' }}>
+    <Stack spacing={2.5} sx={{ width: '100%', maxWidth: 1600, mx: 'auto' }}>
       <PageHeader
         eyebrow="SHOW TIME"
         title="Timesheets"
-        meta={`${formatMinutes(timesheet.day?.totalMinutes ?? 0)} recorded · ${workDate}`}
+        meta={`${formatMinutes(totals.minutes)} recorded · ${periodLabel}`}
         action={
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+            <ToggleButtonGroup
+              exclusive
+              size="small"
+              value={period}
+              onChange={(_event, value: TimesheetPeriod | null) => value && setPeriod(value)}
+              aria-label="Period"
+              sx={{
+                bgcolor: 'var(--g-base)',
+                '& .MuiToggleButton-root': { borderRadius: '10px', px: 1.5 },
+              }}
+            >
+              <ToggleButton value="day">Day</ToggleButton>
+              <ToggleButton value="week">Week</ToggleButton>
+              <ToggleButton value="month">Month</ToggleButton>
+            </ToggleButtonGroup>
             <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
-              <Tooltip title="Previous day">
+              <Tooltip title={`Previous ${period}`}>
                 <IconButton
                   aria-label="Previous timesheet day"
-                  onClick={() => setWorkDate(moveDate(workDate, -1))}
+                  onClick={() => setWorkDate(movePeriod(period, workDate, -1))}
                   sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1 }}
                 >
                   <ChevronLeft size={18} />
@@ -506,10 +564,10 @@ export function TimesheetsPage({ onManageShows, canManageShows }: TimesheetsPage
                 slotProps={{ inputLabel: { shrink: true } }}
                 sx={{ flex: 1, minWidth: 150 }}
               />
-              <Tooltip title="Next day">
+              <Tooltip title={`Next ${period}`}>
                 <IconButton
                   aria-label="Next timesheet day"
-                  onClick={() => setWorkDate(moveDate(workDate, 1))}
+                  onClick={() => setWorkDate(movePeriod(period, workDate, 1))}
                   sx={{ border: '1px solid', borderColor: 'divider', borderRadius: 1 }}
                 >
                   <ChevronRight size={18} />
@@ -531,83 +589,208 @@ export function TimesheetsPage({ onManageShows, canManageShows }: TimesheetsPage
       {!timesheet.canCreate && (
         <Alert severity="warning">Your account does not have timesheet permission.</Alert>
       )}
-      {timesheet.error && !formOpen && <Alert severity="error">{timesheet.error.message}</Alert>}
+      {(timesheet.error || rangeData.error) && !formOpen && (
+        <Alert severity="error">{(timesheet.error ?? rangeData.error)?.message}</Alert>
+      )}
 
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+          gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' },
           gap: 1.5,
         }}
       >
-        <SummaryValue label="Total" value={formatMinutes(timesheet.day?.totalMinutes ?? 0)} />
-        <SummaryValue label="Entries" value={String(timesheet.day?.entryCount ?? 0)} />
-        <SummaryValue label="Average progress" value={`${timesheet.day?.averageProgress ?? 0}%`} />
+        <SummaryValue label="Total" value={formatMinutes(totals.minutes)} />
+        <SummaryValue label="Entries" value={String(totals.count)} />
+        <SummaryValue label="Days with entries" value={String(totals.days)} />
+        <SummaryValue label="Average progress" value={`${totals.progress}%`} />
       </Box>
 
-      <FilterBar
-        standalone
-        resultCount={filteredEntries.length}
-        resultLabel={filteredEntries.length === 1 ? 'entry' : 'entries'}
-        hasActiveFilters={showFilter !== 'all'}
-        onClear={() => {
-          setShowFilter('all');
-          setPageNumber(1);
-        }}
-      >
-        <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 240 } }}>
-          <InputLabel id="timesheet-show-filter-label">Show</InputLabel>
-          <Select
-            labelId="timesheet-show-filter-label"
-            label="Show"
-            value={showFilter}
-            onChange={(event) => {
-              setShowFilter(event.target.value);
-              setPageNumber(1);
-            }}
+      <Stack direction="row" sx={{ gap: 1.25, flexWrap: 'wrap', alignItems: 'center' }}>
+        <TextField
+          size="small"
+          placeholder="Search show, comment, date…"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          sx={{ width: { xs: '100%', sm: 250 }, ...fieldSx }}
+          slotProps={{
+            htmlInput: { 'aria-label': 'Search timesheet entries' },
+            input: {
+              startAdornment: (
+                <InputAdornment position="start">
+                  <Search size={15} />
+                </InputAdornment>
+              ),
+              endAdornment: search ? (
+                <InputAdornment position="end">
+                  <IconButton size="small" aria-label="Clear search" onClick={() => setSearch('')}>
+                    <X size={14} />
+                  </IconButton>
+                </InputAdornment>
+              ) : undefined,
+            },
+          }}
+        />
+        <MultiSelectFilter
+          label="Show"
+          values={showFilter}
+          options={filterOptions}
+          onChange={setShowFilter}
+          width={200}
+          sx={fieldSx}
+        />
+        <MultiSelectFilter
+          label="Progress"
+          values={progressFilter}
+          options={progressBands.map((band) => ({ value: band.value, label: band.label }))}
+          onChange={setProgressFilter}
+          width={160}
+          sx={fieldSx}
+        />
+        <TextField
+          select
+          size="small"
+          label="Group by"
+          value={groupBy}
+          onChange={(event) => setGroupBy(event.target.value as MyTimesheetGroupBy)}
+          sx={{ width: 150, ...fieldSx }}
+        >
+          {myTimesheetGroupOptions.map((option) => (
+            <MenuItem key={option} value={option}>
+              {myTimesheetGroupLabels[option]}
+            </MenuItem>
+          ))}
+        </TextField>
+        {groupBy !== 'none' && (
+          <Tooltip
+            title={
+              collapsedGroups.size === groupKeys.length
+                ? 'Expand all groups'
+                : 'Collapse all groups'
+            }
           >
-            <MenuItem value="all">All shows</MenuItem>
-            {filterOptions.map((show) => (
-              <MenuItem key={show.id} value={show.id}>
-                {show.code} · {show.name}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </FilterBar>
+            <IconButton
+              aria-label={
+                collapsedGroups.size === groupKeys.length
+                  ? 'Expand all groups'
+                  : 'Collapse all groups'
+              }
+              onClick={() =>
+                setCollapsedGroups(
+                  collapsedGroups.size === groupKeys.length ? new Set() : new Set(groupKeys),
+                )
+              }
+              sx={outlinedButtonSx}
+            >
+              {collapsedGroups.size === groupKeys.length ? (
+                <ChevronsUpDown size={17} />
+              ) : (
+                <ChevronsDownUp size={17} />
+              )}
+            </IconButton>
+          </Tooltip>
+        )}
+        <ColumnPicker
+          columns={columnOrder.order.map((id) => ({ id, label: myTimesheetColumnLabels[id] }))}
+          visible={visibleColumns}
+          onChange={setVisibleColumns}
+          onReset={() => {
+            setVisibleColumns([...myTimesheetColumnIds]);
+            columnOrder.reset();
+          }}
+        />
+        <Button
+          variant="outlined"
+          color="inherit"
+          startIcon={<Download size={15} />}
+          onClick={exportCsv}
+          disabled={!viewRows.length}
+          sx={outlinedButtonSx}
+        >
+          Export
+        </Button>
+        {serializeMyTimesheetSort(sortRules) !==
+          serializeMyTimesheetSort(defaultMyTimesheetSort) && (
+          <Button
+            size="small"
+            color="inherit"
+            startIcon={<RotateCcw size={14} />}
+            onClick={() => setSortRules(defaultMyTimesheetSort)}
+          >
+            Reset sort
+          </Button>
+        )}
+        <Box sx={{ flex: 1 }} />
+        {hasFilters && (
+          <Button color="inherit" size="small" startIcon={<X size={14} />} onClick={clearFilters}>
+            Clear
+          </Button>
+        )}
+        <Chip
+          size="small"
+          label={`${viewRows.length} ${viewRows.length === 1 ? 'entry' : 'entries'}`}
+          sx={{ fontWeight: 750, bgcolor: 'var(--g-accent-soft)', color: 'primary.dark' }}
+        />
+      </Stack>
 
-      <DataTable
-        ariaLabel="Timesheet entries"
-        rows={filteredEntries}
-        columns={columns}
-        getRowId={(entry) => entry.id}
-        sortKey={sortKey}
-        sortDirection={sortDirection}
-        onSort={updateSort}
-        page={pageNumber - 1}
-        rowsPerPage={rowsPerPage}
-        onPageChange={(page) => setPageNumber(page + 1)}
-        onRowsPerPageChange={(size) => {
-          setRowsPerPage(size);
-          setPageNumber(1);
-        }}
-        onRowClick={setSelectedEntry}
-        isLoading={timesheet.isLoading}
-        emptyTitle={entries.length ? 'No entries match this show' : 'No show time recorded'}
-        emptyMessage={
-          entries.length
-            ? 'Change or clear the show filter.'
-            : 'Add the first show entry for this work date.'
-        }
-      />
+      {isLoading ? (
+        <Box sx={{ minHeight: 280, display: 'grid', placeItems: 'center' }}>
+          <CircularProgress aria-label="Loading timesheet" />
+        </Box>
+      ) : (
+        <DataGrid
+          ariaLabel="Timesheet entries"
+          rows={viewRows}
+          columns={gridColumns}
+          getRowId={(entry) => entry.id}
+          sort={sortRules}
+          onSort={(key, additive) => setSortRules(nextMyTimesheetSort(sortRules, key, additive))}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          onPageChange={setPage}
+          onRowsPerPageChange={(value) => {
+            setRowsPerPage(value);
+            setPage(0);
+          }}
+          height="56vh"
+          emptyTitle={entries.length ? 'No entries match these filters' : 'No show time recorded'}
+          emptyMessage={
+            entries.length
+              ? 'Change or clear the search and filters.'
+              : period === 'day'
+                ? 'Add the first show entry for this work date.'
+                : 'No entries in this period yet.'
+          }
+          getRowGroup={groupBy === 'none' ? undefined : (entry) => entryGroupFor(entry, groupBy)}
+          collapsedGroups={collapsedGroups}
+          onToggleGroup={(key) =>
+            setCollapsedGroups((current) => {
+              const next = new Set(current);
+              if (next.has(key)) next.delete(key);
+              else next.add(key);
+              return next;
+            })
+          }
+          renderGroupSummary={(rows) => (
+            <Typography sx={{ fontSize: 11.5, fontWeight: 750, color: 'text.secondary' }}>
+              {formatMinutes(rows.reduce((total, entry) => total + entry.durationMinutes, 0))}
+            </Typography>
+          )}
+          rowNoun={{ one: 'entry', other: 'entries' }}
+          onRowClick={setSelectedEntry}
+          onColumnMove={(columnId, targetId, place) => {
+            if (columnId === 'actions' || targetId === 'actions') return;
+            columnOrder.move(columnId, targetId, place);
+          }}
+        />
+      )}
 
       <EntryFormDialog
         open={formOpen}
         editing={Boolean(editingEntry)}
         options={entryOptions}
         selectedShowId={selectedShowId}
-        startedAt={startedAt}
-        endedAt={endedAt}
+        hours={hours}
         comment={comment}
         percentage={percentage}
         isUpdating={timesheet.isSaving}
@@ -615,8 +798,7 @@ export function TimesheetsPage({ onManageShows, canManageShows }: TimesheetsPage
         validationError={formValidationError ?? undefined}
         canManageShows={canManageShows}
         onShowChange={setShowId}
-        onStartedAtChange={setStartedAt}
-        onEndedAtChange={setEndedAt}
+        onHoursChange={setHours}
         onCommentChange={setComment}
         onPercentageChange={setPercentage}
         onManageShows={onManageShows}
@@ -642,7 +824,7 @@ export function TimesheetsPage({ onManageShows, canManageShows }: TimesheetsPage
             {timesheet.error && <Alert severity="error">{timesheet.error.message}</Alert>}
             <Typography sx={{ fontSize: 13.5 }}>
               {deleteEntry
-                ? `${deleteEntry.showCode} · ${formatIndiaTime(deleteEntry.startedAt)} to ${formatIndiaTime(deleteEntry.endedAt)}`
+                ? `${deleteEntry.showCode} · ${formatMinutes(deleteEntry.durationMinutes)}`
                 : ''}
             </Typography>
             <Typography sx={{ color: 'text.secondary', fontSize: 12.5 }}>
@@ -685,12 +867,11 @@ function SummaryValue({ label, value }: { label: string; value: string }) {
         border: '1px solid',
         borderColor: 'divider',
         borderRadius: '18px',
-        bgcolor: '#fff',
-        backgroundImage: 'linear-gradient(135deg, rgba(18,148,161,.035), transparent 58%)',
-        boxShadow: '0 10px 26px rgba(20,32,51,.045)',
+        bgcolor: 'var(--g-base)',
+        boxShadow: 'var(--g-raised)',
       }}
     >
-      <Typography sx={{ color: 'primary.dark', fontSize: 10.5, fontWeight: 750 }}>
+      <Typography sx={{ color: 'primary.dark', fontSize: 11.5, fontWeight: 750 }}>
         {label}
       </Typography>
       <Typography sx={{ mt: 0.35, fontSize: { xs: 14, sm: 17 }, fontWeight: 850 }}>
@@ -705,8 +886,7 @@ function EntryFormDialog({
   editing,
   options,
   selectedShowId,
-  startedAt,
-  endedAt,
+  hours,
   comment,
   percentage,
   isUpdating,
@@ -714,8 +894,7 @@ function EntryFormDialog({
   validationError,
   canManageShows,
   onShowChange,
-  onStartedAtChange,
-  onEndedAtChange,
+  onHoursChange,
   onCommentChange,
   onPercentageChange,
   onManageShows,
@@ -726,8 +905,7 @@ function EntryFormDialog({
   editing: boolean;
   options: Array<{ id: string; code: string; name: string; inactive: boolean }>;
   selectedShowId: string;
-  startedAt: string;
-  endedAt: string;
+  hours: string;
   comment: string;
   percentage: string;
   isUpdating: boolean;
@@ -735,8 +913,7 @@ function EntryFormDialog({
   validationError?: string;
   canManageShows: boolean;
   onShowChange: (value: string) => void;
-  onStartedAtChange: (value: string) => void;
-  onEndedAtChange: (value: string) => void;
+  onHoursChange: (value: string) => void;
   onCommentChange: (value: string) => void;
   onPercentageChange: (value: string) => void;
   onManageShows: () => void;
@@ -783,26 +960,15 @@ function EntryFormDialog({
                   ))}
                 </Select>
               </FormControl>
-              <Box
-                sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}
-              >
-                <TextField
-                  type="datetime-local"
-                  label="Started at"
-                  value={startedAt}
-                  onChange={(event) => onStartedAtChange(event.target.value)}
-                  slotProps={{ inputLabel: { shrink: true } }}
-                  required
-                />
-                <TextField
-                  type="datetime-local"
-                  label="Ended at"
-                  value={endedAt}
-                  onChange={(event) => onEndedAtChange(event.target.value)}
-                  slotProps={{ inputLabel: { shrink: true } }}
-                  required
-                />
-              </Box>
+              <TextField
+                type="number"
+                label="Hours"
+                value={hours}
+                onChange={(event) => onHoursChange(event.target.value)}
+                helperText="Total hours spent on this show (e.g. 2 or 1.5)"
+                slotProps={{ htmlInput: { min: 0.25, max: 24, step: 0.25, inputMode: 'decimal' } }}
+                required
+              />
               <TextField
                 label="Work comment"
                 placeholder="Describe the task or work performed"
@@ -841,8 +1007,7 @@ function EntryFormDialog({
             disabled={
               !options.length ||
               !selectedShowId ||
-              !startedAt ||
-              !endedAt ||
+              !hours ||
               !comment.trim() ||
               !progressOptions.includes(Number(percentage)) ||
               Boolean(validationError) ||
@@ -903,9 +1068,7 @@ function EntryDetailsDrawer({
           <Stack spacing={2.5} sx={{ p: 2.5, overflowY: 'auto' }}>
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 2 }}>
               <Detail label="Work date" value={entry.workDate} />
-              <Detail label="Duration" value={formatMinutes(entry.durationMinutes)} />
-              <Detail label="Started" value={formatIndiaTime(entry.startedAt)} />
-              <Detail label="Ended" value={formatIndiaTime(entry.endedAt)} />
+              <Detail label="Hours" value={formatMinutes(entry.durationMinutes)} />
               <Detail label="Progress" value={`${entry.percentage}%`} />
             </Box>
             <Divider />
@@ -920,7 +1083,7 @@ function EntryDetailsDrawer({
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <Box>
-      <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>{label}</Typography>
+      <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>{label}</Typography>
       <Typography sx={{ mt: 0.25, fontSize: 12.5, fontWeight: 700 }}>{value}</Typography>
     </Box>
   );

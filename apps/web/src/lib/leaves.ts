@@ -5,6 +5,7 @@ import type {
   LeaveBalanceDto,
   LeaveDecisionRequest,
   LeaveRequestDto,
+  LeaveWorkCheckDto,
 } from '@gnomon/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -69,6 +70,11 @@ export function useMyLeaves(year: number) {
     error: query.error ?? create.error ?? cancel.error,
     create: (input: CreateLeaveRequest) => create.mutateAsync(input),
     cancel: (requestId: string) => cancel.mutateAsync(requestId),
+    /** Days in the range that already have recorded work (to confirm before applying). */
+    checkRecordedWork: (startDate: string, endDate: string) =>
+      request<LeaveWorkCheckDto>(
+        `/api/v1/leaves/work-check?startDate=${startDate}&endDate=${endDate}`,
+      ).then((response) => response.days),
   };
 }
 
@@ -79,6 +85,11 @@ export function useLeaveApprovals() {
   const query = useQuery({
     queryKey: ['leave-approvals'],
     queryFn: () => request<LeaveListResponse>('/api/v1/approvals/leaves'),
+    enabled: canApprove,
+  });
+  const history = useQuery({
+    queryKey: ['leave-approvals', 'history'],
+    queryFn: () => request<LeaveListResponse>('/api/v1/approvals/leaves/history'),
     enabled: canApprove,
   });
   const decision = useMutation({
@@ -93,9 +104,12 @@ export function useLeaveApprovals() {
   return {
     canApprove,
     requests: query.data?.requests ?? [],
+    history: history.data?.requests ?? [],
     isLoading: query.isLoading,
+    isHistoryLoading: history.isLoading,
     isUpdating: decision.isPending,
     error: query.error ?? decision.error,
+    historyError: history.error,
     decide: (requestId: string, input: LeaveDecisionRequest) =>
       decision.mutateAsync({ requestId, input }),
   };

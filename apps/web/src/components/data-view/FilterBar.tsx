@@ -34,12 +34,10 @@ export function FilterBar({
         py: 1.35,
         alignItems: { md: 'center' },
         gap: 1.25,
-        border: '1px solid',
-        borderTop: standalone ? '1px solid' : 0,
-        borderColor: 'divider',
         borderRadius: standalone ? '18px' : '0 0 16px 16px',
-        bgcolor: 'rgba(255,255,255,.9)',
-        backgroundImage: 'linear-gradient(90deg, rgba(18,148,161,.025), transparent 32%)',
+        bgcolor: 'var(--g-base)',
+        boxShadow: 'var(--g-raised-sm)',
+        border: '1px solid var(--g-border)',
       }}
     >
       {search !== undefined && onSearchChange && searchLabel && (
@@ -73,8 +71,9 @@ export function FilterBar({
           px: 1,
           py: 0.5,
           borderRadius: 1.5,
-          bgcolor: '#e9f5f6',
-          color: 'primary.dark',
+          bgcolor: 'var(--g-base)',
+          boxShadow: 'var(--g-inset-sm)',
+          color: 'var(--g-fg)',
           fontSize: 11.5,
           fontWeight: 700,
           whiteSpace: 'nowrap',

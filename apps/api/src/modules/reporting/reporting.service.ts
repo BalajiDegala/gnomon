@@ -24,10 +24,13 @@ import {
 const REPORT_PERMISSIONS = ['attendance:all:read', 'attendance:team:read', 'audit:read'] as const;
 
 // Reconciliation keeps empty daily summaries after imports are removed (and can
-// create them just by viewing a date). They are not recorded attendance evidence.
-// Apply the same rule to rows, counts and month discovery in both reports.
+// create them just by viewing a date). Empty summaries are only shown when they
+// are LOP ('absent') working days: every active employee gets one of those at
+// the start of each working day until evidence arrives. Apply the same rule to
+// rows, counts and month discovery in both reports.
 const recordedAttendanceFilter: QueryFilter<InferSchemaType<typeof DailyTimecard.schema>> = {
   $or: [
+    { 'calculated.status': 'absent' },
     { 'sourceSummary.biometric.eventCount': { $gt: 0 } },
     { 'sourceSummary.accessCard.eventCount': { $gt: 0 } },
     { 'sourceSummary.website.sessionCount': { $gt: 0 } },
@@ -91,7 +94,7 @@ export async function buildWorkforceReport(
       .lean()
       .exec(),
     TimeEntry.find({ employeeId: { $in: employeeIds }, workDate: dateFilter })
-      .sort({ workDate: -1, startedAt: -1 })
+      .sort({ workDate: -1, createdAt: -1 })
       .lean()
       .exec(),
   ]);
@@ -369,6 +372,19 @@ export async function buildAttendanceDetails(
       },
       payableMinutes: calculated?.payableMinutes ?? 0,
       anomalies: calculated?.anomalies ?? [],
+      workContext: {
+        shiftId: timecard.workContext?.shiftId ? String(timecard.workContext.shiftId) : null,
+        shiftName: timecard.workContext?.shiftName ?? null,
+        shiftStartTime: timecard.workContext?.shiftStartTime ?? null,
+        shiftEndTime: timecard.workContext?.shiftEndTime ?? null,
+        workMode: timecard.workContext?.workMode ?? null,
+        // Older rows predate per-session work modes; fall back to the single mode.
+        workModes: timecard.workContext?.workModes?.length
+          ? timecard.workContext.workModes
+          : timecard.workContext?.workMode
+            ? [timecard.workContext.workMode]
+            : [],
+      },
     };
   });
   const recordedEmployees = new Set(rows.map((row) => row.employeeId));

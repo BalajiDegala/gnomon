@@ -24,6 +24,9 @@ spec:
         - name: mongodb
           image: "{{ .Values.mongodb.image.repository }}:{{ .Values.mongodb.image.tag }}"
           imagePullPolicy: {{ .Values.mongodb.image.pullPolicy }}
+          args:
+            - --wiredTigerCacheSizeGB
+            - {{ .Values.mongodb.wiredTigerCacheSizeGB | quote }}
           ports:
             - name: mongodb
               containerPort: 27017
@@ -39,6 +42,13 @@ spec:
             exec:
               command: ["mongo", "--quiet", "--eval", "db.adminCommand('ping').ok"]
             periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: ["mongo", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 5
           resources:
             {{- toYaml .Values.mongodb.resources | nindent 12 }}
           volumeMounts:

@@ -1,0 +1,99 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gnomon-api
+  labels:
+    app.kubernetes.io/name: gnomon
+    app.kubernetes.io/component: api
+spec:
+  # Safe to scale: the attendance scheduler is idempotent and write locks live in MongoDB.
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gnomon
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gnomon
+        app.kubernetes.io/component: api
+    spec:
+      # Private Docker Hub repositories; see docs/DOCKERHUB_DEPLOYMENT_RUNBOOK.md.
+      imagePullSecrets:
+        - name: dockerhub-registry
+      containers:
+        - name: api
+          image: gnomon-api
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 4000
+          envFrom:
+            - configMapRef:
+                name: gnomon-api-config
+          env:
+            - name: ACCESS_TOKEN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: gnomon-secrets
+                  key: ACCESS_TOKEN_SECRET
+            - name: REFRESH_TOKEN_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: gnomon-secrets
+                  key: REFRESH_TOKEN_SECRET
+            - name: MONGODB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: gnomon-secrets
+                  key: MONGODB_URI
+            - name: SETTINGS_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: gnomon-secrets
+                  key: SETTINGS_ENCRYPTION_KEY
+                  optional: true
+          startupProbe:
+            httpGet:
+              path: /api/v1/health/live
+              port: http
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health/ready
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health/live
+              port: http
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gnomon-api
+  labels:
+    app.kubernetes.io/name: gnomon
+    app.kubernetes.io/component: api
+spec:
+  selector:
+    app.kubernetes.io/name: gnomon
+    app.kubernetes.io/component: api
+  ports:
+    - name: http
+      port: 4000
+      targetPort: http

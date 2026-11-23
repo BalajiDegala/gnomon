@@ -3,12 +3,13 @@
 Start with the runbook. The other documents provide the details needed for imports,
 deployment, and unfinished work.
 
-| Document                                                   | Who needs it                         | What it covers                                                                                     |
-| ---------------------------------------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------- |
-| [Handover runbook](HANDOVER_RUNBOOK.md)                    | Everyone taking over the project     | Daily tasks, setup, releases, troubleshooting, recovery, contacts, and sign-off                    |
-| [Attendance import formats](ATTENDANCE_CSV_FORMAT.md)      | Attendance operators and developers  | File formats, employee matching, validation, deletion/replacement, and interrupted-import recovery |
-| [CI/CD and Kubernetes operations](CI_CD_DEPLOYMENT.md)     | Developers and infrastructure owners | Deployment configuration, platform setup, verification, and troubleshooting                        |
-| [Outstanding usability work](MVP_STABILIZATION_BACKLOG.md) | Incoming developer and project owner | Existing improvement backlog to review and assign                                                  |
+| Document                                                         | Who needs it                                         | What it covers                                                                                          |
+| ---------------------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| [Handover runbook](HANDOVER_RUNBOOK.md)                          | Everyone taking over the project                     | Daily tasks, setup, releases, troubleshooting, recovery, contacts, and sign-off                         |
+| [Attendance import formats](ATTENDANCE_CSV_FORMAT.md)            | Attendance operators and developers                  | File formats, employee matching, validation, deletion/replacement, and interrupted-import recovery      |
+| [CI/CD and Kubernetes operations](CI_CD_DEPLOYMENT.md)           | Developers and infrastructure owners                 | Deployment configuration, platform setup, verification, and troubleshooting                             |
+| [Docker Hub deployment runbook](DOCKERHUB_DEPLOYMENT_RUNBOOK.md) | Whoever deploys while Harbor/Argo CD are unavailable | Build/push to Docker Hub, install/upgrade/rollback with Helm or plain kubectl, backups, troubleshooting |
+| [Outstanding usability work](MVP_STABILIZATION_BACKLOG.md)       | Incoming developer and project owner                 | Existing improvement backlog to review and assign                                                       |
 
 The runbook records the current handover findings, including the administrator
 seed behavior and differences from older instructions. Live deployment details

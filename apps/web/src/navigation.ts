@@ -1,6 +1,10 @@
 import type { LucideIcon } from 'lucide-react';
 import {
-  BarChart3,
+  Activity,
+  CalendarCheck,
+  ClipboardList,
+  History,
+  ListTodo,
   CalendarDays,
   Clock3,
   FileClock,
@@ -8,7 +12,6 @@ import {
   Gauge,
   LayoutDashboard,
   Settings2,
-  ShieldCheck,
   UsersRound,
 } from 'lucide-react';
 
@@ -16,31 +19,37 @@ export type AppView =
   | 'overview'
   | 'timecard'
   | 'timesheets'
+  | 'catch-up'
   | 'regularisation'
   | 'leave'
   | 'calendar'
   | 'team-calendar'
+  | 'team-timesheets'
   | 'attendance-details'
-  | 'approvals'
+  | 'system-events'
+  | 'leave-approvals'
+  | 'regularisation-approvals'
   | 'shows'
   | 'people'
-  | 'administration'
-  | 'reports';
+  | 'administration';
 
 export const appViewPaths: Record<AppView, string> = {
   overview: '/',
   timecard: '/timecard',
   timesheets: '/timesheets',
+  'catch-up': '/catch-up',
   regularisation: '/regularisation',
   leave: '/leave',
   calendar: '/calendar',
   'team-calendar': '/team-calendar',
+  'team-timesheets': '/team-timesheets',
   'attendance-details': '/attendance-details',
-  approvals: '/approvals',
+  'system-events': '/system-events',
+  'leave-approvals': '/leave-approvals',
+  'regularisation-approvals': '/regularisation-approvals',
   shows: '/shows',
   people: '/people',
   administration: '/administration',
-  reports: '/reports',
 };
 
 const viewByPath = new Map(
@@ -53,6 +62,8 @@ export function appViewPath(view: AppView): string {
 
 export function appViewFromPath(pathname: string): AppView | null {
   const normalized = pathname === '/' ? pathname : pathname.replace(/\/+$/, '');
+  // Older links (e.g. saved notifications) pointed at the combined approvals page.
+  if (normalized === '/approvals') return 'leave-approvals';
   return viewByPath.get(normalized) ?? null;
 }
 
@@ -83,6 +94,12 @@ const employeeNavigation: NavigationItem[] = [
     requiredPermissions: ['timesheet:create'],
   },
   {
+    id: 'catch-up',
+    label: 'Catch-up',
+    icon: ListTodo,
+    requiredPermissions: ['attendance:self:read'],
+  },
+  {
     id: 'regularisation',
     label: 'Regularisation',
     icon: Fingerprint,
@@ -110,10 +127,27 @@ const managerNavigation: NavigationItem[] = [
     requiredPermissions: ['attendance:team:read'],
   },
   {
-    id: 'approvals',
-    label: 'Approvals',
-    icon: ShieldCheck,
-    requiredPermissions: ['regularisation:approve', 'leave:approve'],
+    id: 'team-timesheets',
+    label: 'Team timesheets',
+    icon: ClipboardList,
+    requiredPermissions: [
+      'attendance:team:read',
+      'attendance:all:read',
+      'audit:read',
+      'show:manage',
+    ],
+  },
+  {
+    id: 'leave-approvals',
+    label: 'Leave approvals',
+    icon: CalendarCheck,
+    requiredPermissions: ['leave:approve'],
+  },
+  {
+    id: 'regularisation-approvals',
+    label: 'Regularisation approvals',
+    icon: History,
+    requiredPermissions: ['regularisation:approve'],
   },
   {
     id: 'shows',
@@ -146,10 +180,10 @@ const reportingNavigation: NavigationItem[] = [
     requiredPermissions: ['attendance:team:read', 'attendance:all:read', 'audit:read'],
   },
   {
-    id: 'reports',
-    label: 'Reports',
-    icon: BarChart3,
-    requiredPermissions: ['attendance:team:read', 'attendance:all:read', 'audit:read'],
+    id: 'system-events',
+    label: 'System events',
+    icon: Activity,
+    requiredPermissions: ['system:events:read'],
   },
 ];
 

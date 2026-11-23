@@ -26,7 +26,7 @@ describe('managed calendar contracts', () => {
     const day = ManagedCalendarDayDtoSchema.parse({
       date: '2026-07-29',
       weekday: 3,
-      availability: 'unavailable',
+      availability: 'leave',
       attendanceStatus: 'leave',
       leave: { dayPart: 'full_day', status: 'approved', reason: 'Private medical detail' },
       holiday: null,

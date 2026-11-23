@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { AttendanceDetailsRow } from '@gnomon/shared';
+import { emptyWorkContext, type AttendanceDetailsRow } from '@gnomon/shared';
 
 import { mergeAttendanceRows } from './attendance-details';
 
@@ -38,6 +38,7 @@ function row(overrides: Partial<AttendanceDetailsRow>): AttendanceDetailsRow {
     timesheets: { totalMinutes: 0, entryCount: 0, averageProgress: 0 },
     payableMinutes: 674,
     anomalies: ['missing_access_entry', 'missing_access_exit'],
+    workContext: emptyWorkContext,
     ...overrides,
   };
 }

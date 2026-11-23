@@ -23,6 +23,9 @@ adminSeed:
     repository: gnomon-admin-seed
     tag: '0.11.0'
     pullPolicy: IfNotPresent
+  # Optional command override. Lets the seed run from the API image, which
+  # bundles dist/scripts/seed-admin.js, instead of a separate seed image.
+  command: []
 
 api:
   replicaCount: 1
@@ -46,13 +49,35 @@ mongodb:
     pullPolicy: IfNotPresent
   storage: 10Gi
   storageClassName: local-path
+  # MongoDB 4.4 sizes its cache from host RAM, not the container limit; pin it well
+  # below the memory limit so the pod is not OOM-killed.
+  wiredTigerCacheSizeGB: 0.5
   resources:
     requests:
       cpu: 100m
-      memory: 256Mi
+      memory: 512Mi
     limits:
       cpu: '1'
-      memory: 1Gi
+      memory: 2Gi
+
+# Nightly mongodump of the gnomon database to a local-storage volume.
+backup:
+  enabled: false
+  schedule: '30 1 * * *'
+  timeZone: Asia/Kolkata
+  retentionDays: 14
+  storage: 50Gi
+  # Pre-created local PersistentVolume class (see deploy/kubernetes/storage.yaml).
+  storageClassName: local-path
+  # Bind to a specific pre-created PV; leave empty for dynamic provisioning.
+  volumeName: ''
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
 
 ingress:
   enabled: true
@@ -71,6 +96,9 @@ secrets:
   refreshTokenSecret: ''
   mongodbRootPassword: ''
   mongodbUri: ''
+  # Optional (min 32 chars). Encrypts the stored SMTP password independently of
+  # ACCESS_TOKEN_SECRET. Read from SETTINGS_ENCRYPTION_KEY in the secret if present.
+  settingsEncryptionKey: ''
   adminEmail: ''
   adminPassword: ''
   adminEmployeeCode: DDI0001

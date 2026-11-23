@@ -24,7 +24,7 @@ import { reconcileDailyTimecard } from '../reconciliation/reconciliation.service
 import { LeaveBalance, LeaveRequest, type LeaveRequestDocument } from './leave.model.js';
 
 const APPROVAL_POLICY_VERSION = 'LEAVE_V1';
-const leaveTypes: LeaveType[] = ['casual', 'sick', 'earned', 'unpaid'];
+const leaveTypes: LeaveType[] = ['casual', 'earned', 'comp_off', 'unpaid'];
 let indexesReady: Promise<unknown> | null = null;
 
 function ensureIndexes(): Promise<unknown> {
@@ -172,6 +172,7 @@ function toDto(
         step: decision.step ?? 1,
         decision: decision.decision,
         actorDisplayName: decision.actorDisplayName,
+        actorEmployeeId: decision.actorEmployeeId ? String(decision.actorEmployeeId) : undefined,
         actorRole: decision.actorRole,
         comment: decision.comment,
         decidedAt: decision.decidedAt.toISOString(),
@@ -450,6 +451,36 @@ export async function listLeaveApprovals(user: AuthUser): Promise<LeaveRequestDt
         }),
   })
     .sort({ submittedAt: 1 })
+    .lean()
+    .exec();
+  const employees = await Employee.find({
+    _id: { $in: requests.map((request) => request.employeeId) },
+  })
+    .lean()
+    .exec();
+  const employeeById = new Map(employees.map((employee) => [String(employee._id), employee]));
+  return requests.flatMap((request) => {
+    const employee = employeeById.get(String(request.employeeId));
+    return employee ? [toDto(request, employee)] : [];
+  });
+}
+
+/** Requests this user has approved or rejected at any step, newest decision first. */
+export async function listLeaveDecisionHistory(
+  user: AuthUser,
+  limit = 500,
+): Promise<LeaveRequestDto[]> {
+  await ensureIndexes();
+  const actorEmployeeId = new Types.ObjectId(user.employeeId);
+  const requests = await LeaveRequest.find({
+    $or: [
+      { 'decisions.actorEmployeeId': actorEmployeeId },
+      // Older requests stored only the latest decision.
+      { 'decision.actorEmployeeId': actorEmployeeId },
+    ],
+  })
+    .sort({ updatedAt: -1 })
+    .limit(limit)
     .lean()
     .exec();
   const employees = await Employee.find({

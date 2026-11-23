@@ -49,13 +49,31 @@ export async function parseAuthResponse(response: Response): Promise<AuthRespons
   return body;
 }
 
+/**
+ * Server errors carry a short reference (the start of the X-Request-Id) that an
+ * administrator can paste into Reporting → System events.
+ */
+export function errorMessageWithReference(
+  message: string,
+  status: number,
+  requestId: string | null,
+): string {
+  return status >= 500 && requestId ? `${message} (reference ${requestId.slice(0, 8)})` : message;
+}
+
 async function parseApiResponse<T>(response: Response): Promise<T> {
   const body = (await response.json().catch(() => ({}))) as T & {
     error?: { message?: string };
   };
 
   if (!response.ok) {
-    throw new Error(body.error?.message ?? 'The request could not be completed');
+    throw new Error(
+      errorMessageWithReference(
+        body.error?.message ?? 'The request could not be completed',
+        response.status,
+        response.headers.get('x-request-id'),
+      ),
+    );
   }
 
   return body;

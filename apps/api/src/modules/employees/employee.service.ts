@@ -191,23 +191,46 @@ export async function listEmployees(
   };
 }
 
-async function validateManager(managerId: string | null, employeeId?: string): Promise<void> {
-  if (managerId === null) return;
-  if (managerId === employeeId) {
-    throw new HttpError(
-      400,
-      'An employee cannot report to themselves',
-      'INVALID_REPORTING_MANAGER',
-    );
+/**
+ * HR fields live on `hrProfile` (normally filled by the users CSV import). Manual
+ * edits update it in place, or create it for people who were never imported.
+ */
+function buildHrProfileUpdate(
+  before: EmployeeDocument,
+  input: { departmentName?: string; designation?: string },
+): Record<string, unknown> {
+  if (input.departmentName === undefined && input.designation === undefined) return {};
+
+  if (before.hrProfile) {
+    const set: Record<string, unknown> = {};
+    if (input.departmentName !== undefined) set['hrProfile.departmentName'] = input.departmentName;
+    if (input.designation !== undefined) set['hrProfile.designation'] = input.designation;
+    return set;
   }
-  const manager = await Employee.exists({ _id: managerId, status: 'active' });
-  if (!manager) {
-    throw new HttpError(
-      400,
-      'The reporting manager must be an active employee',
-      'INVALID_REPORTING_MANAGER',
-    );
+
+  const departmentName =
+    input.departmentName ??
+    before.biometricProfile?.departmentName ??
+    before.attendanceIdentity?.departmentName;
+  if (!departmentName) {
+    throw new HttpError(400, 'Enter a department for this employee', 'DEPARTMENT_REQUIRED');
   }
+  return {
+    hrProfile: {
+      source: 'users_csv',
+      userId: before.employeeCode.toLowerCase(),
+      mailId: before.email,
+      fullName: `${before.firstName} ${before.lastName}`.trim(),
+      designation: input.designation ?? before.biometricProfile?.designation ?? '',
+      departmentName,
+      leaveApprover1Name: null,
+      leaveApprover2Name: null,
+      approver1EmployeeId: null,
+      approver2EmployeeId: null,
+      emailTriggers: [],
+      importedAt: new Date(),
+    },
+  };
 }
 
 export async function createEmployee(
@@ -218,13 +241,10 @@ export async function createEmployee(
   if (!hasCompanyEmployeePermission(user, 'employee:update')) {
     throw new HttpError(403, 'Creating employees requires company scope', 'SCOPE_FORBIDDEN');
   }
-  await validateManager(input.reportingManagerId);
   try {
     const employee = await Employee.create({
       ...input,
-      reportingManagerId: input.reportingManagerId
-        ? new Types.ObjectId(input.reportingManagerId)
-        : null,
+      reportingManagerId: null,
       status: 'active',
     });
     await EmployeeAuditEvent.create({
@@ -249,7 +269,6 @@ export async function updateEmployee(
 ): Promise<EmployeeDirectoryItemDto> {
   await ensureIndexes();
   await assertEmployeeInScope(user, employeeId, 'employee:update');
-  await validateManager(input.reportingManagerId ?? null, employeeId);
   const before = await Employee.findById(employeeId).lean().exec();
   if (!before) throw new HttpError(404, 'Employee not found', 'EMPLOYEE_NOT_FOUND');
   if (input.email) {
@@ -266,25 +285,28 @@ export async function updateEmployee(
     }
   }
 
+  const { departmentName, designation, ...coreInput } = input;
+  const hrSet = buildHrProfileUpdate(before, { departmentName, designation });
+
   const changes = Object.fromEntries(
-    Object.entries(input).map(([key, value]) => [
-      key,
-      { from: before[key as keyof typeof before], to: value },
-    ]),
+    Object.entries(input).map(([key, value]) => {
+      const hr = before.hrProfile;
+      const previous =
+        key === 'departmentName'
+          ? hr?.departmentName
+          : key === 'designation'
+            ? hr?.designation
+            : before[key as keyof typeof before];
+      return [key, { from: previous ?? null, to: value }];
+    }),
   );
   try {
     const employee = await Employee.findByIdAndUpdate(
       employeeId,
       {
         $set: {
-          ...input,
-          ...(input.reportingManagerId !== undefined
-            ? {
-                reportingManagerId: input.reportingManagerId
-                  ? new Types.ObjectId(input.reportingManagerId)
-                  : null,
-              }
-            : {}),
+          ...coreInput,
+          ...hrSet,
         },
       },
       { returnDocument: 'after', runValidators: true },

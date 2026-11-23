@@ -209,7 +209,7 @@ async function seedWorkflowFixtures(): Promise<void> {
   await LeaveBalance.insertMany(
     [
       ['casual', 12],
-      ['sick', 10],
+      ['comp_off', 3],
       ['earned', 15],
     ].map(([leaveType, entitledDays]) => ({
       employeeId: employee._id,
