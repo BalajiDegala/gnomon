@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { WorkContextSchema } from './shift.js';
+
 export const BiometricDayStatusSchema = z.enum([
   'complete',
   'missing_in',
@@ -31,6 +33,21 @@ export const DailyAttendanceStatusSchema = z.enum([
   'pending_regularisation',
 ]);
 export type DailyAttendanceStatus = z.infer<typeof DailyAttendanceStatusSchema>;
+
+/**
+ * Display labels for attendance statuses. Every working day starts as `absent`,
+ * which HR reads as loss of pay (LOP) until biometric, access-card or website
+ * timecard evidence arrives.
+ */
+export const attendanceStatusLabels: Record<DailyAttendanceStatus, string> = {
+  present: 'Present',
+  partial: 'Partial',
+  absent: 'LOP',
+  leave: 'Leave',
+  holiday: 'Holiday',
+  weekend: 'Weekend',
+  pending_regularisation: 'Pending regularisation',
+};
 
 export const ReconciliationSourceSchema = z.enum(['biometric', 'access_card', 'website', 'none']);
 export type ReconciliationSource = z.infer<typeof ReconciliationSourceSchema>;
@@ -84,6 +101,7 @@ export const DailyReconciliationDtoSchema = z.object({
       averageProgress: z.number().int().min(0).max(100),
     }),
   }),
+  workContext: WorkContextSchema,
   calculated: z.object({
     primarySource: ReconciliationSourceSchema,
     attendanceStart: z.string().datetime().nullable(),

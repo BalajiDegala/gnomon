@@ -1,6 +1,13 @@
 import { expect, test } from '@playwright/test';
 
 const email = process.env.E2E_EMAIL;
+
+/** Sign-in uses the User ID; test accounts' User ID is their email prefix unless E2E_USER_ID is set. */
+function loginId(accountEmail: string): string {
+  return process.env.E2E_USER_ID && accountEmail === email
+    ? process.env.E2E_USER_ID
+    : accountEmail.split('@')[0]!;
+}
 const password = process.env.E2E_PASSWORD;
 const regularisationUsers = {
   employee: {
@@ -71,8 +78,8 @@ async function signIn(
   user: typeof regularisationUsers.employee,
 ) {
   await page.goto('/');
-  await page.getByLabel('Work email').fill(user.email!);
-  await page.getByLabel('Password').fill(user.password!);
+  await page.getByLabel('User ID').fill(loginId(user.email!));
+  await page.locator('input[autocomplete="current-password"]').fill(user.password!);
   await page.getByRole('button', { name: 'Sign in to Gnomon' }).click();
   await expect(
     page.getByRole('heading', { name: /Good (morning|afternoon|evening),/ }),
@@ -81,7 +88,7 @@ async function signIn(
 
 async function signOut(page: import('@playwright/test').Page) {
   await page.getByRole('button', { name: 'Sign out' }).click();
-  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sign in to Gnomon' })).toBeVisible();
 }
 
 function navigationLink(page: import('@playwright/test').Page, name: string) {
@@ -92,16 +99,16 @@ test('renders the authenticated workforce overview', async ({ page }, testInfo) 
   test.skip(!email || !password, 'E2E_EMAIL and E2E_PASSWORD are required');
 
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sign in to Gnomon' })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('login.png'), fullPage: true });
-  await page.getByLabel('Work email').fill(email!);
-  await page.getByLabel('Password').fill(password!);
+  await page.getByLabel('User ID').fill(loginId(email!));
+  await page.locator('input[autocomplete="current-password"]').fill(password!);
   await page.getByRole('button', { name: 'Sign in to Gnomon' }).click();
 
   await expect(
     page.getByRole('heading', { name: /Good (morning|afternoon|evening),/ }),
   ).toBeVisible();
-  await expect(page.getByText('Attendance signals')).toBeVisible();
+  await expect(page.getByText('My attendance today')).toBeVisible();
   await expect(page.getByText('Daily reconciliation')).toBeVisible();
   await expect(page.getByText('Website timecard').first()).toBeVisible();
 
@@ -117,8 +124,10 @@ test('renders the authenticated workforce overview', async ({ page }, testInfo) 
     await page.getByRole('button', { name: 'Open navigation' }).click();
   }
   await navigationLink(page, 'Administration').click();
+  // Administrators land on Site preferences; imports are their own tab.
+  await page.getByRole('tab', { name: 'Attendance imports', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Attendance imports' })).toBeVisible();
-  await expect(page.getByText('New CSV import')).toBeVisible();
+  await expect(page.getByText('New attendance import')).toBeVisible();
   await page.getByRole('tab', { name: 'Access & roles', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Access & roles', exact: true })).toBeVisible();
   await expect(page.getByLabel('Search access directory')).toBeVisible();
@@ -169,14 +178,16 @@ test('renders the authenticated workforce overview', async ({ page }, testInfo) 
   if (testInfo.project.name === 'mobile-chromium') {
     await page.getByRole('button', { name: 'Open navigation' }).click();
   }
-  await navigationLink(page, 'Reports').click();
-  await expect(page.getByRole('heading', { name: 'Workforce reports' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Run report' })).toBeVisible();
+  await navigationLink(page, 'Attendance details').click();
+  await expect(page.getByRole('heading', { name: 'Attendance details' })).toBeVisible();
+  await expect(
+    page.getByRole('table', { name: 'All employee attendance source details' }),
+  ).toBeVisible();
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export CSV' }).click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toMatch(/^attendance-.*\.csv$/);
-  await page.screenshot({ path: testInfo.outputPath('workforce-reports.png'), fullPage: true });
+  expect(download.suggestedFilename()).toMatch(/^attendance-details-.*\.csv$/);
+  await page.screenshot({ path: testInfo.outputPath('attendance-details.png'), fullPage: true });
 });
 
 test('opens a direct page route through sign-in', async ({ page }, testInfo) => {
@@ -184,9 +195,9 @@ test('opens a direct page route through sign-in', async ({ page }, testInfo) => 
   test.skip(testInfo.project.name !== 'desktop-chromium', 'Covered once on desktop');
 
   await page.goto('/timesheets');
-  await expect(page.getByRole('heading', { name: 'Welcome back' })).toBeVisible();
-  await page.getByLabel('Work email').fill(email!);
-  await page.getByLabel('Password').fill(password!);
+  await expect(page.getByRole('heading', { name: 'Sign in to Gnomon' })).toBeVisible();
+  await page.getByLabel('User ID').fill(loginId(email!));
+  await page.locator('input[autocomplete="current-password"]').fill(password!);
   await page.getByRole('button', { name: 'Sign in to Gnomon' }).click();
 
   await expect(page.getByRole('heading', { name: 'Timesheets' })).toBeVisible();
@@ -196,6 +207,8 @@ test('opens a direct page route through sign-in', async ({ page }, testInfo) => 
 test('restores durable page context after refresh', async ({ page }, testInfo) => {
   test.skip(!email || !password, 'E2E_EMAIL and E2E_PASSWORD are required');
   test.skip(testInfo.project.name !== 'desktop-chromium', 'Covered once on desktop');
+  // Reloads about ten pages, which can exceed the default timeout on a dev server.
+  test.slow();
 
   await signIn(page, { email, password });
 
@@ -212,8 +225,13 @@ test('restores durable page context after refresh', async ({ page }, testInfo) =
   await page.getByRole('button', { name: 'New correction' }).click();
   await expect(page.getByLabel('Work date')).toHaveValue('2026-07-23');
   await page.reload();
-  await page.getByRole('button', { name: 'New correction' }).click();
+  // The unfinished correction is restored from its saved draft after a refresh.
+  await expect(page.getByRole('heading', { name: 'New correction request' })).toBeVisible();
   await expect(page.getByLabel('Work date')).toHaveValue('2026-07-23');
+  // Cancelling a filled form asks before discarding it.
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('heading', { name: 'New correction request' })).toHaveCount(0);
 
   await page.goto('/calendar?month=2026-07');
   await expect(page.getByLabel('Jump to month')).toHaveValue('2026-07');
@@ -246,18 +264,45 @@ test('restores durable page context after refresh', async ({ page }, testInfo) =
   await expect(page.getByLabel('Search people')).toHaveValue('Asha');
   await expect(page.getByRole('tab', { name: /All/ })).toHaveAttribute('aria-selected', 'true');
 
-  await page.goto('/reports?from=2026-07-01&to=2026-07-31&tab=timesheets');
-  await expect(page.getByLabel('From')).toHaveValue('2026-07-01');
-  await expect(page.getByLabel('To')).toHaveValue('2026-07-31');
-  await expect(page.getByRole('tab', { name: /Timesheets/ })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
+  await page.goto('/attendance-details?month=2026-07&group=department&sort=employee:asc');
+  await expect(page.getByLabel('Month')).toHaveValue('2026-07');
+  await expect(page.getByLabel('Group by')).toHaveText('Department');
   await page.reload();
-  await expect(page.getByRole('tab', { name: /Timesheets/ })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
+  await expect(page).toHaveURL(/group=department/);
+  await expect(page.getByLabel('Group by')).toHaveText('Department');
+});
+
+test('protects and restores an unfinished timesheet draft', async ({ page }, testInfo) => {
+  const employee = regularisationUsers.employee;
+  test.skip(!employee.email || !employee.password, 'Employee E2E credentials are required'); // Intentional skip when optional employee credentials are unavailable in CI.
+  test.skip(testInfo.project.name !== 'desktop-chromium', 'Covered once on desktop'); // Intentional skip to avoid duplicating this workflow on mobile.
+
+  await signIn(page, employee);
+  await navigationLink(page, 'Timesheets').click();
+  await page.getByRole('button', { name: 'Add entry' }).click();
+  await page.getByLabel('Work comment').fill('Recovered comp review draft');
+
+  page.once('dialog', async (dialog) => {
+    expect(dialog.message()).toContain('unsaved changes');
+    await dialog.dismiss();
+  });
+  await page.goBack();
+  await expect(page.getByRole('heading', { name: 'Add show time' })).toBeVisible();
+  await expect(page.getByLabel('Work comment')).toHaveValue('Recovered comp review draft');
+
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.goBack();
+  await expect(
+    page.getByRole('heading', { name: /Good (morning|afternoon|evening),/ }),
+  ).toBeVisible();
+
+  await navigationLink(page, 'Timesheets').click();
+  await expect(page.getByRole('heading', { name: 'Add show time' })).toBeVisible();
+  await expect(page.getByLabel('Work comment')).toHaveValue('Recovered comp review draft');
+
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('heading', { name: 'Add show time' })).toHaveCount(0);
 });
 
 test('restores the team calendar month after refresh', async ({ page }, testInfo) => {
@@ -279,10 +324,12 @@ test('imports a biometric CSV idempotently', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop-chromium', 'Covered once on desktop');
 
   await page.goto('/');
-  await page.getByLabel('Work email').fill(email!);
-  await page.getByLabel('Password').fill(password!);
+  await page.getByLabel('User ID').fill(loginId(email!));
+  await page.locator('input[autocomplete="current-password"]').fill(password!);
   await page.getByRole('button', { name: 'Sign in to Gnomon' }).click();
   await navigationLink(page, 'Administration').click();
+  // Administrators land on Site preferences; imports are their own tab.
+  await page.getByRole('tab', { name: 'Attendance imports', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Attendance imports' })).toBeVisible();
 
   const uniqueId = `${Date.now()}-${testInfo.workerIndex}`;
@@ -318,8 +365,8 @@ test('manages a show lifecycle while preserving historical show time', async ({
   test.skip(testInfo.project.name !== 'desktop-chromium', 'Covered once on desktop');
 
   await page.goto('/');
-  await page.getByLabel('Work email').fill(email!);
-  await page.getByLabel('Password').fill(password!);
+  await page.getByLabel('User ID').fill(loginId(email!));
+  await page.locator('input[autocomplete="current-password"]').fill(password!);
   await page.getByRole('button', { name: 'Sign in to Gnomon' }).click();
   await navigationLink(page, 'Shows').click();
 
@@ -331,9 +378,6 @@ test('manages a show lifecycle while preserving historical show time', async ({
   const workComment = `Final comp review for ${showCode}`;
   const updatedWorkComment = `Updated final comp review for ${showCode}`;
   const workDate = previousWeekdayDate(14 + (seed % 120));
-  const startMinutes = 8 * 60 + (Math.floor(seed / 120) % 48) * 15;
-  const startedAt = `${workDate}T${String(Math.floor(startMinutes / 60)).padStart(2, '0')}:${String(startMinutes % 60).padStart(2, '0')}`;
-  const endedAt = `${workDate}T${String(Math.floor((startMinutes + 15) / 60)).padStart(2, '0')}:${String((startMinutes + 15) % 60).padStart(2, '0')}`;
 
   await page.getByRole('button', { name: 'Add show' }).click();
   await page.getByLabel('Show code').fill(showCode);
@@ -355,11 +399,10 @@ test('manages a show lifecycle while preserving historical show time', async ({
   await showSelect.click();
   await page.getByRole('option', { name: new RegExp(showCode) }).click();
   await expect(showSelect).toHaveText(new RegExp(showCode));
-  await page.getByLabel('Started at').fill(startedAt);
-  await page.getByLabel('Ended at').fill(startedAt);
-  await expect(page.getByText('End time must be after start time.')).toBeVisible();
+  await page.getByLabel('Hours').fill('0');
+  await expect(page.getByText('Enter the number of hours worked.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Save entry' })).toBeDisabled();
-  await page.getByLabel('Ended at').fill(endedAt);
+  await page.getByLabel('Hours').fill('0.25');
   await page.getByLabel('Work comment').fill(workComment);
   await page.getByRole('combobox', { name: 'Progress' }).click();
   await page.getByRole('option', { name: '70%' }).click();
@@ -425,8 +468,8 @@ test('saves and edits timesheets without an approval workflow', async ({ page },
   if (testInfo.project.name === 'mobile-chromium') {
     await signIn(page, regularisationUsers.manager);
     await page.getByRole('button', { name: 'Open navigation' }).click();
-    await navigationLink(page, 'Approvals').click();
-    await expect(page.getByRole('heading', { name: 'Approvals' })).toBeVisible();
+    await navigationLink(page, 'Regularisation approvals').click();
+    await expect(page.getByRole('heading', { name: 'Regularisation approvals' })).toBeVisible();
     await expect(page.getByRole('tab', { name: /Timesheets/ })).toHaveCount(0);
     await page.screenshot({
       path: testInfo.outputPath('timesheet-approvals-mobile.png'),
@@ -454,8 +497,8 @@ test('saves and edits timesheets without an approval workflow', async ({ page },
   const updatedComment = `Updated lighting review ${suffix}`;
 
   await page.goto('/');
-  await page.getByLabel('Work email').fill(email!);
-  await page.getByLabel('Password').fill(password!);
+  await page.getByLabel('User ID').fill(loginId(email!));
+  await page.locator('input[autocomplete="current-password"]').fill(password!);
   await page.getByRole('button', { name: 'Sign in to Gnomon' }).click();
   await navigationLink(page, 'Shows').click();
   await page.getByRole('button', { name: 'Add show' }).click();
@@ -472,8 +515,7 @@ test('saves and edits timesheets without an approval workflow', async ({ page },
   const showSelect = page.getByRole('combobox', { name: 'Show', exact: true });
   await showSelect.click();
   await page.getByRole('option', { name: new RegExp(showCode) }).click();
-  await page.getByLabel('Started at').fill(`${workDate}T09:00`);
-  await page.getByLabel('Ended at').fill(`${workDate}T10:30`);
+  await page.getByLabel('Hours').fill('1.5');
   await page.getByLabel('Work comment').fill(showComment);
   await page.getByRole('combobox', { name: 'Progress' }).click();
   await page.getByRole('option', { name: '60%' }).click();
@@ -481,8 +523,7 @@ test('saves and edits timesheets without an approval workflow', async ({ page },
   await page.getByRole('button', { name: 'Add entry' }).click();
   await page.getByRole('combobox', { name: 'Show', exact: true }).click();
   await page.getByRole('option', { name: new RegExp(showCode) }).click();
-  await page.getByLabel('Started at').fill(`${workDate}T10:30`);
-  await page.getByLabel('Ended at').fill(`${workDate}T11:15`);
+  await page.getByLabel('Hours').fill('0.75');
   await page.getByLabel('Work comment').fill(secondComment);
   await page.getByRole('combobox', { name: 'Progress' }).click();
   await page.getByRole('option', { name: '40%' }).click();
@@ -492,7 +533,7 @@ test('saves and edits timesheets without an approval workflow', async ({ page },
   await signOut(page);
 
   await signIn(page, regularisationUsers.manager);
-  await navigationLink(page, 'Approvals').click();
+  await navigationLink(page, 'Regularisation approvals').click();
   await expect(page.getByRole('tab', { name: /Timesheets/ })).toHaveCount(0);
   await signOut(page);
 
@@ -509,10 +550,12 @@ test('saves and edits timesheets without an approval workflow', async ({ page },
   await page.getByRole('combobox', { name: 'Progress' }).click();
   await page.getByRole('option', { name: '90%' }).click();
   await page.getByRole('button', { name: 'Update entry' }).click();
-  await expect(page.getByText(updatedComment)).toBeVisible();
-  await expect(
-    page.getByLabel('Timesheet entries').getByText('90%', { exact: true }),
-  ).toBeVisible();
+  await expect(page.getByLabel('Timesheet entries').getByText(updatedComment)).toBeVisible();
+  const updatedRow = page
+    .getByRole('table', { name: 'Timesheet entries' })
+    .getByRole('row')
+    .filter({ hasText: updatedComment });
+  await expect(updatedRow.getByText('90%', { exact: true })).toBeVisible();
   await page.screenshot({
     path: testInfo.outputPath('timesheet-direct-saved.png'),
     fullPage: true,
@@ -562,22 +605,28 @@ test('completes scoped regularisation approval and attendance finalisation', asy
   await signOut(page);
 
   await signIn(page, regularisationUsers.manager);
-  await navigationLink(page, 'Approvals').click();
-  await expect(page.getByRole('heading', { name: 'Approvals' })).toBeVisible();
-  await page.getByRole('tab', { name: /Regularisation/ }).click();
+  await navigationLink(page, 'Regularisation approvals').click();
+  await expect(page.getByRole('heading', { name: 'Regularisation approvals' })).toBeVisible();
   await expect(page.getByText('Eshan Artist')).toBeVisible();
+  // Other requests may still be pending; this one must leave the queue once approved.
+  await expect(page.getByRole('row').filter({ hasText: reason })).toHaveCount(1);
   await page.getByText(reason).click();
   await page.getByRole('button', { name: 'Approve' }).click();
-  await expect(page.getByText('Queue is clear')).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('row').filter({ hasText: reason })).toHaveCount(0);
   await signOut(page);
 
   await signIn(page, regularisationUsers.hr);
-  await navigationLink(page, 'Approvals').click();
-  await page.getByRole('tab', { name: /Regularisation/ }).click();
-  await expect(page.getByText('Final HR review', { exact: true })).toBeVisible();
+  await navigationLink(page, 'Regularisation approvals').click();
+  await expect(
+    page.getByRole('row').filter({ hasText: reason }).getByText('Final HR review', { exact: true }),
+  ).toBeVisible();
+  // Other requests may still be pending; this one must leave the queue once approved.
+  await expect(page.getByRole('row').filter({ hasText: reason })).toHaveCount(1);
   await page.getByText(reason).click();
   await page.getByRole('button', { name: 'Approve' }).click();
-  await expect(page.getByText('Queue is clear')).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('row').filter({ hasText: reason })).toHaveCount(0);
   await signOut(page);
 
   await signIn(page, regularisationUsers.employee);
@@ -628,7 +677,7 @@ test('completes leave approval and shows approved leave in the personal calendar
   await page.getByLabel('Start date').fill(leaveDate);
   await page.getByLabel('End date').fill(leaveDate);
   await page.getByLabel('Private reason').fill(reason);
-  await page.getByRole('button', { name: 'Submit for manager review' }).click();
+  await page.getByRole('button', { name: 'Submit for approval' }).click();
   const leaveDetails = page.getByRole('dialog').last();
   await expect(leaveDetails.getByText(reason)).toBeVisible();
   await expect(leaveDetails.getByText('Manager review', { exact: true })).toBeVisible();
@@ -636,12 +685,14 @@ test('completes leave approval and shows approved leave in the personal calendar
   await signOut(page);
 
   await signIn(page, regularisationUsers.manager);
-  await navigationLink(page, 'Approvals').click();
-  await page.getByRole('tab', { name: /Leave/ }).click();
+  await navigationLink(page, 'Leave approvals').click();
+  // Other requests may still be pending; this one must leave the queue once approved.
+  await expect(page.getByRole('row').filter({ hasText: reason })).toHaveCount(1);
   await page.getByText(reason).click();
   await expect(page.getByText('Eshan Artist').last()).toBeVisible();
   await page.getByRole('button', { name: 'Approve' }).click();
-  await expect(page.getByText('No leave decisions waiting')).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('row').filter({ hasText: reason })).toHaveCount(0);
   await navigationLink(page, 'Team calendar').click();
   await expect(page.getByRole('heading', { name: 'Team calendar' })).toBeVisible();
   await page.getByLabel('Calendar month').fill(leaveDate.slice(0, 7));
@@ -666,7 +717,7 @@ test('completes leave approval and shows approved leave in the personal calendar
 
   await navigationLink(page, 'Calendar').click();
   await page.getByLabel('Jump to month').fill(leaveDate.slice(0, 7));
-  await expect(page.getByText('Casual leave', { exact: true })).toBeVisible();
+  await expect(page.getByText('Casual/Sick leave', { exact: true })).toBeVisible();
   await page.screenshot({
     path: testInfo.outputPath('leave-calendar-approved.png'),
     fullPage: true,
@@ -716,10 +767,10 @@ test('configures a company holiday and an employee leave balance', async ({ page
   await balanceCard.getByLabel('Employee code').fill(policyEmployee.code);
   await balanceCard.getByRole('button', { name: 'Load balances' }).click();
   await expect(balanceCard.getByText(policyEmployee.name)).toBeVisible();
-  await balanceCard.getByLabel('Casual leave entitlement').fill('12');
-  await balanceCard.getByLabel('Casual leave adjustment').fill('1');
-  await balanceCard.getByLabel('Casual leave note').fill('E2E annual balance configuration');
-  await balanceCard.getByRole('button', { name: 'Save casual leave' }).click();
+  await balanceCard.getByLabel('Casual/Sick leave entitlement').fill('12');
+  await balanceCard.getByLabel('Casual/Sick leave adjustment').fill('1');
+  await balanceCard.getByLabel('Casual/Sick leave note').fill('E2E annual balance configuration');
+  await balanceCard.getByRole('button', { name: 'Save casual/sick leave' }).click();
   await expect(balanceCard.getByText(/\d+(?:\.\d+)? available/).first()).toBeVisible();
   await page.screenshot({
     path: testInfo.outputPath('company-policy-administration.png'),

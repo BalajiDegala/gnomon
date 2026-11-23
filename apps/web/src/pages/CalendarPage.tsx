@@ -6,16 +6,17 @@ import {
   CircularProgress,
   IconButton,
   Stack,
-  TextField,
   Tooltip,
   Typography,
 } from '@mui/material';
-import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useMemo } from 'react';
 
 import { PageHeader } from '../components/data-view/PageHeader';
 import { PageTabs, type PageTab } from '../components/data-view/PageTabs';
+import { MonthPicker } from '../components/data-view/MonthPicker';
 import { currentIndiaMonth, usePersonalCalendar } from '../lib/calendar';
+import { calendarCodes, legendCodes } from '../lib/calendar-codes';
 import { formatMinutes } from '../lib/timesheets';
 import { parseEnumValue, parseYearMonth, useUrlQueryState } from '../lib/url-query-state';
 import { leaveTypeLabels } from './LeavePage';
@@ -42,75 +43,86 @@ function monthLabel(month: string): string {
   }).format(new Date(`${month}-01T00:00:00.000Z`));
 }
 
-function AttendanceMarker({ day, layer }: { day: PersonalCalendarDayDto; layer: CalendarLayer }) {
-  if ((layer === 'all' || layer === 'holiday') && day.holiday) {
-    return (
-      <Box sx={{ mt: 0.75, px: 0.75, py: 0.5, borderRadius: 1, bgcolor: '#f1edff' }}>
-        <Typography
-          noWrap
-          sx={{ color: '#6852a8', fontSize: { xs: 8.5, sm: 10 }, fontWeight: 800 }}
-        >
-          {day.holiday.name}
-        </Typography>
-      </Box>
-    );
+/** Whether a day belongs on the selected layer tab. */
+function inLayer(day: PersonalCalendarDayDto, layer: CalendarLayer): boolean {
+  if (layer === 'all') return true;
+  if (layer === 'holiday') return Boolean(day.holiday);
+  if (layer === 'leave') return Boolean(day.leave);
+  return Boolean(day.attendance) && !day.holiday && day.availability !== 'non_working';
+}
+
+function dayDetail(day: PersonalCalendarDayDto): string | null {
+  if (day.holiday) return day.holiday.name;
+  if (day.leave) {
+    const part = day.leave.dayPart === 'full_day' ? '' : ' · half day';
+    const pending = day.leave.status === 'approved' ? '' : ' · awaiting approval';
+    return `${leaveTypeLabels[day.leave.leaveType]}${part}${pending}`;
   }
-  if (layer === 'holiday') return null;
-  if ((layer === 'all' || layer === 'leave') && day.leave) {
-    const approved = day.leave.status === 'approved';
-    return (
-      <Box
-        sx={{
-          mt: 0.75,
-          px: 0.75,
-          py: 0.5,
-          borderRadius: 1,
-          bgcolor: approved ? '#e6f7ef' : '#fff4df',
-        }}
-      >
-        <Typography
-          noWrap
-          sx={{
-            color: approved ? '#19764d' : '#a86616',
-            fontSize: { xs: 8.5, sm: 10 },
-            fontWeight: 800,
-          }}
-        >
-          {leaveTypeLabels[day.leave.leaveType]}
-        </Typography>
-      </Box>
-    );
+  if (day.attendance?.status === 'pending_regularisation') return 'Correction pending';
+  if (day.attendance && day.attendance.grossMinutes > 0) {
+    return formatMinutes(day.attendance.grossMinutes);
   }
-  if (layer === 'leave') return null;
-  if (!day.attendance) return null;
-  const tones = {
-    present: { background: '#e6f7ef', color: '#19764d' },
-    partial: { background: '#fff4df', color: '#a86616' },
-    absent: { background: '#fdebec', color: '#b43f48' },
-    leave: { background: '#e9f1ff', color: '#315fa4' },
-    holiday: { background: '#f1edff', color: '#6852a8' },
-    weekend: { background: '#f1f3f6', color: '#697587' },
-    pending_regularisation: { background: '#fff4df', color: '#a86616' },
-  }[day.attendance.status];
+  return null;
+}
+
+/** Same code as the team calendar (PR, PT, AB, LV, PN, —, Off), plus what it refers to. */
+function DayMarker({ day, layer }: { day: PersonalCalendarDayDto; layer: CalendarLayer }) {
+  if (!inLayer(day, layer)) return null;
+  const code = calendarCodes[day.availability];
+  // The legend says "Weekend / holiday"; a single day can be specific.
+  const label =
+    day.availability === 'non_working' ? (day.holiday ? 'Holiday' : 'Weekend') : code.label;
+  const detail = dayDetail(day);
+  if (!code.short && !detail) return null;
   return (
-    <Box sx={{ mt: 0.75, px: 0.75, py: 0.5, borderRadius: 1, bgcolor: tones.background }}>
-      <Typography
-        noWrap
-        sx={{
-          color: tones.color,
-          fontSize: { xs: 8.5, sm: 10 },
-          fontWeight: 800,
-          textTransform: 'capitalize',
-        }}
-      >
-        {day.attendance.status.replaceAll('_', ' ')}
-      </Typography>
-      {day.attendance.grossMinutes > 0 && (
-        <Typography sx={{ display: { xs: 'none', sm: 'block' }, color: tones.color, fontSize: 9 }}>
-          {formatMinutes(day.attendance.grossMinutes)}
-        </Typography>
-      )}
-    </Box>
+    <Tooltip title={[label, detail].filter(Boolean).join(' · ')} arrow>
+      <Box sx={{ mt: 0.75, minWidth: 0 }}>
+        {code.short && (
+          <Stack
+            direction="row"
+            sx={{
+              alignItems: 'center',
+              gap: 0.6,
+              px: 0.6,
+              py: 0.4,
+              borderRadius: '6px',
+              bgcolor: code.background,
+              color: code.color,
+              minWidth: 0,
+            }}
+          >
+            <Typography sx={{ fontSize: { xs: 11, sm: 11 }, fontWeight: 900, lineHeight: 1.2 }}>
+              {code.short}
+            </Typography>
+            <Typography
+              noWrap
+              sx={{
+                display: { xs: 'none', md: 'block' },
+                fontSize: 11,
+                fontWeight: 700,
+                lineHeight: 1.2,
+              }}
+            >
+              {label}
+            </Typography>
+          </Stack>
+        )}
+        {detail && (
+          <Typography
+            noWrap
+            sx={{
+              display: { xs: 'none', sm: 'block' },
+              mt: 0.4,
+              px: 0.25,
+              color: 'text.secondary',
+              fontSize: 10.5,
+            }}
+          >
+            {detail}
+          </Typography>
+        )}
+      </Box>
+    </Tooltip>
   );
 }
 
@@ -154,15 +166,7 @@ export function CalendarPage() {
                 <ChevronLeft size={18} />
               </IconButton>
             </Tooltip>
-            <TextField
-              type="month"
-              label="Jump to month"
-              value={month}
-              onChange={(event) => setMonth(event.target.value)}
-              slotProps={{ inputLabel: { shrink: true } }}
-              size="small"
-              sx={{ width: 175 }}
-            />
+            <MonthPicker label="Jump to month" value={month} onChange={setMonth} />
             <Tooltip title="Next month">
               <IconButton
                 aria-label="Next month"
@@ -191,7 +195,7 @@ export function CalendarPage() {
           borderTop: '1px solid',
           borderBottom: '1px solid',
           borderColor: 'divider',
-          bgcolor: '#fff',
+          bgcolor: 'var(--g-base)',
         }}
       >
         <SummaryValue label="Working days" value={String(workingDays)} />
@@ -208,7 +212,7 @@ export function CalendarPage() {
           border: '1px solid',
           borderColor: 'divider',
           borderRadius: 1.5,
-          bgcolor: '#fff',
+          bgcolor: 'var(--g-base)',
         }}
       >
         {calendar.isLoading ? (
@@ -232,7 +236,7 @@ export function CalendarPage() {
                     py: 0.75,
                     textAlign: 'center',
                     color: 'text.secondary',
-                    fontSize: { xs: 9, sm: 11 },
+                    fontSize: { xs: 10, sm: 11 },
                     fontWeight: 800,
                   }}
                 >
@@ -261,13 +265,14 @@ export function CalendarPage() {
                     border: '1px solid',
                     borderColor: 'divider',
                     borderRadius: 1,
-                    bgcolor: day.isWorkingDay ? '#fff' : '#f6f7f9',
+                    bgcolor: 'var(--g-base)',
+                    boxShadow: day.isWorkingDay ? 'var(--g-raised-sm)' : 'var(--g-inset-sm)',
                   }}
                 >
                   <Typography sx={{ fontSize: { xs: 11, sm: 12.5 }, fontWeight: 820 }}>
                     {Number(day.date.slice(-2))}
                   </Typography>
-                  <AttendanceMarker day={day} layer={layer} />
+                  <DayMarker day={day} layer={layer} />
                 </Box>
               ))}
             </Box>
@@ -276,20 +281,17 @@ export function CalendarPage() {
       </Box>
 
       <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }} aria-label="Calendar legend">
-        <Chip size="small" label="Present" sx={{ bgcolor: '#e6f7ef', color: '#19764d' }} />
-        <Chip
-          size="small"
-          label="Partial / pending"
-          sx={{ bgcolor: '#fff4df', color: '#a86616' }}
-        />
-        <Chip size="small" label="Absent" sx={{ bgcolor: '#fdebec', color: '#b43f48' }} />
-        <Chip size="small" label="Holiday" sx={{ bgcolor: '#f1edff', color: '#6852a8' }} />
-        <Chip
-          size="small"
-          icon={<CalendarDays size={13} />}
-          label="Leave"
-          sx={{ bgcolor: '#e9f1ff', color: '#315fa4' }}
-        />
+        {legendCodes.map((availability) => {
+          const code = calendarCodes[availability];
+          return (
+            <Chip
+              key={availability}
+              size="small"
+              label={`${code.short} = ${code.label}`}
+              sx={{ bgcolor: code.background, color: code.color, fontWeight: 700 }}
+            />
+          );
+        })}
       </Stack>
     </Stack>
   );
@@ -298,7 +300,7 @@ export function CalendarPage() {
 function SummaryValue({ label, value }: { label: string; value: string }) {
   return (
     <Box aria-label={`${value} ${label.toLowerCase()}`} sx={{ minWidth: 0 }}>
-      <Typography noWrap sx={{ color: 'text.secondary', fontSize: 10.5 }}>
+      <Typography noWrap sx={{ color: 'text.secondary', fontSize: 11.5 }}>
         {label}
       </Typography>
       <Typography sx={{ mt: 0.15, fontSize: 15, fontWeight: 850 }}>{value}</Typography>

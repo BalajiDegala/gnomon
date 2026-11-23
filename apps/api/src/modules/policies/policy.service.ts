@@ -25,7 +25,7 @@ import { reconcileDailyTimecard } from '../reconciliation/reconciliation.service
 import { listEmployeeIdsAtLocation } from './holiday-applicability.service.js';
 import { Holiday, type HolidayDocument } from './holiday.model.js';
 
-const paidLeaveTypes = ['casual', 'sick', 'earned'] as const;
+const paidLeaveTypes = ['casual', 'earned', 'comp_off'] as const;
 let indexesReady: Promise<unknown> | null = null;
 
 function ensureIndexes(): Promise<unknown> {
@@ -549,7 +549,7 @@ export async function getEmployeeLeaveBalances(
     LeaveRequest.find({
       employeeId: employee._id,
       startDate: { $gte: `${year}-01-01`, $lte: `${year}-12-31` },
-      status: { $in: ['pending_manager', 'approved'] },
+      status: { $in: ['pending_manager', 'pending_hr', 'approved'] },
     })
       .select({ leaveType: 1, requestedDays: 1, status: 1 })
       .lean()
@@ -565,7 +565,9 @@ export async function getEmployeeLeaveBalances(
       const balance = configuredByType.get(leaveType);
       const pendingDays = requests
         .filter(
-          (request) => request.leaveType === leaveType && request.status === 'pending_manager',
+          (request) =>
+            request.leaveType === leaveType &&
+            (request.status === 'pending_manager' || request.status === 'pending_hr'),
         )
         .reduce((total, request) => total + request.requestedDays, 0);
       const approvedDays = requests
@@ -600,7 +602,7 @@ export async function updateEmployeeLeaveBalance(
         employeeId: employee._id,
         leaveType: input.leaveType,
         startDate: { $gte: `${input.year}-01-01`, $lte: `${input.year}-12-31` },
-        status: { $in: ['pending_manager', 'approved'] },
+        status: { $in: ['pending_manager', 'pending_hr', 'approved'] },
       },
     },
     { $group: { _id: null, total: { $sum: '$requestedDays' } } },

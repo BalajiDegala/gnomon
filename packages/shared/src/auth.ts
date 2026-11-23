@@ -2,12 +2,15 @@ import { z } from 'zod';
 
 import { PermissionCodeSchema, RoleCodeSchema, ScopeTypeSchema } from './authorization.js';
 
+/** Login uses the directory User ID (the users.csv "User ID" column), not email. */
 export const LoginRequestSchema = z.object({
-  email: z
+  userId: z
     .string()
     .trim()
-    .email()
-    .transform((value) => value.toLowerCase()),
+    .toLowerCase()
+    .min(1, 'Enter your user ID')
+    .max(64)
+    .regex(/^[a-z0-9._-]+$/, 'Use your user ID, not your email address'),
   password: z.string().min(8).max(128),
 });
 

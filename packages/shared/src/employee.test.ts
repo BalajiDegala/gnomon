@@ -17,7 +17,6 @@ describe('employee contracts', () => {
       lastName: 'Rao',
       email: 'asha.rao@example.test',
       timezone: 'Asia/Kolkata',
-      reportingManagerId: null,
     });
   });
 

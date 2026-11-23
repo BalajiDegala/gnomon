@@ -15,6 +15,7 @@
     "build": "tsc -p tsconfig.json",
     "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage --coverage.reporter=lcov --coverage.reportsDirectory=../../coverage/shared",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {

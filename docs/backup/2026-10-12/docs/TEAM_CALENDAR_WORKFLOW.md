@@ -38,8 +38,10 @@ evidence remains `no_record` rather than being silently treated as absence.
 ## API
 
 ```text
-GET /api/v1/calendar/managed?month=YYYY-MM
+GET /api/v1/calendar/managed?month=YYYY-MM&page=1&pageSize=25
 ```
 
 The page renders the same restricted response as a desktop month matrix and responsive
-mobile employee cards.
+mobile employee cards. Company views are paginated so the browser renders at most 25
+people (up to 775 day cells) at a time. The API reads the one company holiday calendar
+once per request and queries attendance/leave only for the current employee page.

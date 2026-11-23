@@ -3,6 +3,7 @@ import type { RequestHandler } from 'express';
 
 import { HttpError } from './errors.js';
 import { buildAuthUser, getActiveUser, verifyAccessToken } from '../modules/auth/auth.service.js';
+import { setEventActor } from '../modules/system-events/request-context.js';
 
 export const requireAuth: RequestHandler = async (request, _response, next) => {
   try {
@@ -14,6 +15,7 @@ export const requireAuth: RequestHandler = async (request, _response, next) => {
     const identity = await verifyAccessToken(authorization.slice('Bearer '.length));
     const user = await getActiveUser(identity.userId, identity.tokenVersion);
     request.authUser = await buildAuthUser(user);
+    setEventActor(request.authUser);
     next();
   } catch (error) {
     next(error);

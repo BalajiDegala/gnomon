@@ -8,6 +8,9 @@ export interface UserDocument {
   status: 'active' | 'locked' | 'inactive';
   tokenVersion: number;
   lastLoginAt: Date | null;
+  /** 'ldap' accounts sign in with their directory password only. */
+  authSource: 'local' | 'ldap';
+  ldapDn: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -27,6 +30,8 @@ const userSchema = new Schema<UserDocument>(
     },
     tokenVersion: { type: Number, required: true, default: 0 },
     lastLoginAt: { type: Date, default: null },
+    authSource: { type: String, enum: ['local', 'ldap'], default: 'local', required: true },
+    ldapDn: { type: String, default: null, trim: true },
   },
   { timestamps: true },
 );

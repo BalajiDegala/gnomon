@@ -14,4 +14,8 @@ describe('system role permissions', () => {
     expect(systemRolePermissions.SHOW_MANAGER).not.toContain('attendance:all:read');
     expect(systemRolePermissions.HR).toContain('attendance:all:read');
   });
+
+  it('keeps the leave approver role narrowly scoped', () => {
+    expect(systemRolePermissions.LEAVE_APPROVER).toEqual(['leave:approve']);
+  });
 });

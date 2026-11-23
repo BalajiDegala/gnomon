@@ -1,18 +1,27 @@
 import { z } from 'zod';
 
-export const LeaveTypeSchema = z.enum(['casual', 'sick', 'earned', 'unpaid']);
+export const LeaveTypeSchema = z.enum(['casual', 'earned', 'comp_off', 'unpaid']);
 export type LeaveType = z.infer<typeof LeaveTypeSchema>;
 
 export const LeaveDayPartSchema = z.enum(['full_day', 'first_half', 'second_half']);
 export type LeaveDayPart = z.infer<typeof LeaveDayPartSchema>;
 
-export const LeaveStatusSchema = z.enum(['pending_manager', 'approved', 'rejected', 'cancelled']);
+export const LeaveStatusSchema = z.enum([
+  'pending_manager',
+  'pending_hr',
+  'approved',
+  'rejected',
+  'cancelled',
+]);
 export type LeaveStatus = z.infer<typeof LeaveStatusSchema>;
 
 export const LeaveDecisionSchema = z.object({
+  step: z.number().int().min(1).max(2),
   decision: z.enum(['approved', 'rejected']),
   actorDisplayName: z.string(),
-  actorRole: z.enum(['reporting_manager', 'system_admin']),
+  /** Lets an approver find their own step in the history. */
+  actorEmployeeId: z.string().optional(),
+  actorRole: z.enum(['reporting_manager', 'department_approver', 'system_admin']),
   comment: z.string(),
   decidedAt: z.string().datetime(),
 });
@@ -31,13 +40,26 @@ export const LeaveRequestDtoSchema = z.object({
   workingDates: z.array(z.string().date()),
   reason: z.string(),
   status: LeaveStatusSchema,
+  approvalSteps: z.union([z.literal(1), z.literal(2)]),
+  currentStep: z.number().int().min(1).max(3),
+  approver1DisplayName: z.string(),
+  approver2DisplayName: z.string().nullable(),
+  approver2DisplayNames: z.array(z.string()),
   approvalPolicyVersion: z.string(),
   decision: LeaveDecisionSchema.nullable(),
+  decisions: z.array(LeaveDecisionSchema),
   submittedAt: z.string().datetime(),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
 });
 export type LeaveRequestDto = z.infer<typeof LeaveRequestDtoSchema>;
+
+export const LeaveApprovalRoutePreviewDtoSchema = z.object({
+  approvalSteps: z.union([z.literal(1), z.literal(2)]),
+  approver1DisplayName: z.string().nullable(),
+  approver2DisplayNames: z.array(z.string()),
+});
+export type LeaveApprovalRoutePreviewDto = z.infer<typeof LeaveApprovalRoutePreviewDtoSchema>;
 
 export const LeaveBalanceDtoSchema = z.object({
   leaveType: LeaveTypeSchema,
@@ -98,3 +120,44 @@ export type LeaveDecisionRequest = z.infer<typeof LeaveDecisionRequestSchema>;
 export const LeaveBalanceQuerySchema = z.object({
   year: z.coerce.number().int().min(2000).max(2200).optional(),
 });
+
+/** Days in a requested leave range that already have recorded work. */
+export const LeaveWorkCheckQuerySchema = z.object({
+  startDate: z.string().date(),
+  endDate: z.string().date(),
+});
+export const LeaveWorkCheckDtoSchema = z.object({
+  days: z.array(
+    z.object({
+      workDate: z.string().date(),
+      trackedMinutes: z.number().int().nonnegative(),
+      running: z.boolean(),
+    }),
+  ),
+});
+export type LeaveWorkCheckDto = z.infer<typeof LeaveWorkCheckDtoSchema>;
+
+export const LeaveBalanceImportFormatSchema = z.enum(['permanent', 'contract']);
+export type LeaveBalanceImportFormat = z.infer<typeof LeaveBalanceImportFormatSchema>;
+
+export const LeaveBalanceImportIssueSchema = z.object({
+  rowNumber: z.number().int().positive(),
+  employeeCode: z.string(),
+  reason: z.string(),
+});
+export type LeaveBalanceImportIssue = z.infer<typeof LeaveBalanceImportIssueSchema>;
+
+export const LeaveBalanceImportResponseSchema = z.object({
+  fileName: z.string(),
+  format: LeaveBalanceImportFormatSchema,
+  year: z.number().int(),
+  asOfLabel: z.string().nullable(),
+  totalRows: z.number().int().nonnegative(),
+  employeesUpdated: z.number().int().nonnegative(),
+  balancesWritten: z.number().int().nonnegative(),
+  /** Leave types in the file the app does not track (e.g. Work From Home), with row counts. */
+  ignoredLeaveTypes: z.record(z.string(), z.number().int().nonnegative()),
+  unmatchedEmployeeCodes: z.array(z.string()),
+  errors: z.array(LeaveBalanceImportIssueSchema),
+});
+export type LeaveBalanceImportResponse = z.infer<typeof LeaveBalanceImportResponseSchema>;

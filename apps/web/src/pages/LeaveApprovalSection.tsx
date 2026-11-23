@@ -44,8 +44,9 @@ export function LeaveApprovalSection() {
       <Card
         sx={{
           border: 0,
-          color: '#fff',
-          background: 'linear-gradient(135deg, #22304a, #162238)',
+          color: 'var(--g-fg)',
+          bgcolor: 'var(--g-base)',
+          boxShadow: 'var(--g-raised)',
         }}
       >
         <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
@@ -61,14 +62,15 @@ export function LeaveApprovalSection() {
                   display: 'grid',
                   placeItems: 'center',
                   borderRadius: 2,
-                  bgcolor: 'rgba(123,165,255,.14)',
+                  bgcolor: 'var(--g-base)',
+                  boxShadow: 'var(--g-inset-sm)',
                 }}
               >
-                <CalendarDays size={19} color="#9bbcff" />
+                <CalendarDays size={19} color="var(--g-lv)" />
               </Box>
               <Box>
                 <Typography sx={{ fontSize: 15, fontWeight: 820 }}>Leave queue</Typography>
-                <Typography sx={{ color: 'rgba(255,255,255,.5)', fontSize: 11 }}>
+                <Typography sx={{ color: 'var(--g-muted)', fontSize: 11 }}>
                   Reporting Manager decision
                 </Typography>
               </Box>
@@ -109,7 +111,7 @@ export function LeaveApprovalSection() {
             }}
           >
             <Box>
-              <Inbox size={25} color="#8995a6" />
+              <Inbox size={25} color="var(--g-faint)" />
               <Typography sx={{ mt: 0.6, fontSize: 13, fontWeight: 800 }}>
                 No leave decisions waiting
               </Typography>
@@ -153,8 +155,16 @@ function LeaveApprovalCard({
               {request.endDate !== request.startDate ? ` – ${request.endDate}` : ''} ·{' '}
               {request.requestedDays} day{request.requestedDays === 1 ? '' : 's'}
             </Typography>
-            <Box sx={{ mt: 1.5, p: 1.5, borderRadius: 2, bgcolor: '#f7f9fb' }}>
-              <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
+            <Box
+              sx={{
+                mt: 1.5,
+                p: 1.5,
+                borderRadius: 2,
+                bgcolor: 'var(--g-base)',
+                boxShadow: 'var(--g-inset-sm)',
+              }}
+            >
+              <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
                 Private employee reason
               </Typography>
               <Typography sx={{ mt: 0.25, fontSize: 12 }}>{request.reason}</Typography>
@@ -192,8 +202,8 @@ function LeaveApprovalCard({
               </Button>
             </Stack>
             <Stack direction="row" sx={{ alignItems: 'center', gap: 0.6 }}>
-              <CheckCircle2 size={13} color="#8995a6" />
-              <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
+              <CheckCircle2 size={13} color="var(--g-faint)" />
+              <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
                 Submitted {new Date(request.submittedAt).toLocaleDateString('en-IN')}
               </Typography>
             </Stack>

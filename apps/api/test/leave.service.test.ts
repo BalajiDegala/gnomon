@@ -42,6 +42,7 @@ function employee(overrides: Partial<EmployeeDocument> = {}): EmployeeDocument {
     reportingManagerId: managerEmployeeId,
     departmentId: null,
     locationId: null,
+    profileSource: 'manual',
     status: 'active',
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -68,7 +69,7 @@ describe('leave working-day calculation', () => {
   it('calculates a single working half-day as 0.5', () => {
     expect(
       calculateLeaveWindow({
-        leaveType: 'sick',
+        leaveType: 'casual',
         startDate: '2026-08-03',
         endDate: '2026-08-03',
         dayPart: 'second_half',

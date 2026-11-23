@@ -9,11 +9,14 @@
     "e2e": "playwright test",
     "preview": "vite preview",
     "test": "vitest run src --passWithNoTests",
+    "test:coverage": "vitest run src --passWithNoTests --coverage --coverage.reporter=lcov --coverage.reportsDirectory=../../coverage/web",
     "typecheck": "tsc -b --pretty false"
   },
   "dependencies": {
     "@emotion/react": "latest",
     "@emotion/styled": "latest",
+    "@fontsource-variable/geist-mono": "5.3.0",
+    "@fontsource-variable/jost": "5.3.0",
     "@gnomon/shared": "*",
     "@mui/material": "latest",
     "@tanstack/react-query": "latest",

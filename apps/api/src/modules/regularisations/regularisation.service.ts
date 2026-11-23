@@ -68,6 +68,7 @@ function toDto(
       step: decision.step,
       decision: decision.decision,
       actorDisplayName: decision.actorDisplayName,
+      actorEmployeeId: String(decision.actorEmployeeId),
       actorRole: decision.actorRole,
       comment: decision.comment,
       decidedAt: decision.decidedAt.toISOString(),
@@ -323,6 +324,32 @@ export async function listRegularisationApprovals(
         ? managerEnabled && canApproveManagerStep(user, employee)
         : hrEnabled && canApproveHrStep(user, employee);
     return allowed ? [toDto(request, employee)] : [];
+  });
+}
+
+/** Requests this user has approved or rejected at any step, newest decision first. */
+export async function listRegularisationDecisionHistory(
+  user: AuthUser,
+  limit = 500,
+): Promise<RegularisationRequestDto[]> {
+  await ensureIndexes();
+  const actorEmployeeId = new Types.ObjectId(user.employeeId);
+  const requests = await RegularisationRequest.find({
+    'decisions.actorEmployeeId': actorEmployeeId,
+  })
+    .sort({ updatedAt: -1 })
+    .limit(limit)
+    .lean()
+    .exec();
+  const employees = await Employee.find({
+    _id: { $in: requests.map((request) => request.employeeId) },
+  })
+    .lean()
+    .exec();
+  const employeeById = new Map(employees.map((employee) => [String(employee._id), employee]));
+  return requests.flatMap((request) => {
+    const employee = employeeById.get(String(request.employeeId));
+    return employee ? [toDto(request, employee)] : [];
   });
 }
 

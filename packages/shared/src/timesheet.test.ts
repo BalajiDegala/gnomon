@@ -5,8 +5,8 @@ import { CreateTimeEntryRequestSchema, UpdateShowRequestSchema } from './timeshe
 describe('show timesheet contract', () => {
   const validEntry = {
     showId: '507f1f77bcf86cd799439011',
-    startedAt: '2026-07-27T03:30:00.000Z',
-    endedAt: '2026-07-27T04:30:00.000Z',
+    workDate: '2026-07-27',
+    hours: 1.5,
     comment: 'Prepared the review delivery.',
     percentage: 70,
   };

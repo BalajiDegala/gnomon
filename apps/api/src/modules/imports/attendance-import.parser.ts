@@ -11,6 +11,7 @@ export interface ParsedAttendanceRow {
   rowNumber: number;
   employeeCode: string;
   occurredAt: Date;
+  workDate?: string;
   eventType: AttendanceEventType;
   sourceEventId: string | null;
   deviceId: string | null;
@@ -18,11 +19,119 @@ export interface ParsedAttendanceRow {
   rawPayload: Record<string, string>;
 }
 
-export interface ParsedAttendanceCsv {
+function parseBiometricSummaryTime(workDate: string, value: string): Date | null {
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (!match) return null;
+  return parseAttendanceTimestamp(
+    `${workDate} ${String(Number(match[1])).padStart(2, '0')}:${match[2]}:${match[3] ?? '00'}`,
+  );
+}
+
+function nextCalendarDate(workDate: string): string {
+  return new Date(new Date(`${workDate}T00:00:00.000Z`).getTime() + 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+}
+
+function isValidWorkDate(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+function parseBiometricSummaryRows(records: Record<string, string>[]): ParsedAttendanceCsv {
+  const rows: ParsedAttendanceRow[] = [];
+  const errors: AttendanceImportErrorDto[] = [];
+  let ignoredRows = 0;
+  records.forEach((record, index) => {
+    const rowNumber = index + 2;
+    const employeeCode = (record.employee_code ?? '').trim().toUpperCase().slice(0, 100);
+    const workDate = (record.date ?? '').trim();
+    const inValue = (record.in_time ?? '').trim();
+    const outValue = (record.out_time ?? '').trim();
+    if (!inValue && !outValue) {
+      ignoredRows += 1;
+      return;
+    }
+    if (!employeeCode) {
+      errors.push({ rowNumber, employeeCode: '', reason: 'Employee Code is required' });
+      return;
+    }
+    if (!isValidWorkDate(workDate)) {
+      errors.push({ rowNumber, employeeCode, reason: 'Date must use YYYY-MM-DD' });
+      return;
+    }
+    const rawPayload = Object.fromEntries(
+      Object.entries(record).map(([key, value]) => [key, String(value).slice(0, 2_000)]),
+    );
+    const inAt = inValue ? parseBiometricSummaryTime(workDate, inValue) : null;
+    if (inValue && !inAt) {
+      errors.push({ rowNumber, employeeCode, reason: 'In Time is invalid' });
+    } else if (inAt) {
+      rows.push({
+        rowNumber,
+        employeeCode,
+        occurredAt: inAt,
+        workDate,
+        eventType: 'in',
+        sourceEventId: `${employeeCode}:${workDate}:in`,
+        deviceId: null,
+        deviceName: 'Biometric attendance report',
+        rawPayload,
+      });
+    }
+    if (outValue) {
+      let outAt = parseBiometricSummaryTime(workDate, outValue);
+      if (outAt && inAt && outAt <= inAt) {
+        outAt = parseBiometricSummaryTime(nextCalendarDate(workDate), outValue);
+      }
+      if (!outAt) {
+        errors.push({ rowNumber, employeeCode, reason: 'Out Time is invalid' });
+      } else {
+        rows.push({
+          rowNumber,
+          employeeCode,
+          occurredAt: outAt,
+          workDate,
+          eventType: 'out',
+          sourceEventId: `${employeeCode}:${workDate}:out`,
+          deviceId: null,
+          deviceName: 'Biometric attendance report',
+          rawPayload,
+        });
+      }
+    }
+  });
+  if (records.length === 0) {
+    errors.push({ rowNumber: 1, employeeCode: '', reason: 'CSV contains no attendance rows' });
+  }
+  return {
+    totalRows: records.length,
+    ignoredRows,
+    rows,
+    errors,
+    employeeProfiles: [],
+  };
+}
+
+export interface ParsedEmployeeProfile {
+  employeeCode: string;
+  firstName: string;
+  lastName: string;
+  departmentName: string | null;
+  cardNumber: string | null;
+  lastSeenAt: Date;
+}
+
+export interface ParsedAttendanceFile {
   totalRows: number;
+  ignoredRows: number;
   rows: ParsedAttendanceRow[];
   errors: AttendanceImportErrorDto[];
+  employeeProfiles: ParsedEmployeeProfile[];
 }
+
+export type ParsedAttendanceCsv = ParsedAttendanceFile;
 
 function normalizeHeader(value: string): string {
   return value
@@ -152,7 +261,9 @@ export function parseAttendanceCsv(
   } catch (error) {
     return {
       totalRows: 0,
+      ignoredRows: 0,
       rows: [],
+      employeeProfiles: [],
       errors: [
         {
           rowNumber: 1,
@@ -163,11 +274,16 @@ export function parseAttendanceCsv(
     };
   }
 
+  const biometricSummary =
+    source === 'biometric' &&
+    ['date', 'employee_code', 'in_time', 'out_time'].every((column) => headers.includes(column));
   const missingColumns = REQUIRED_COLUMNS.filter((column) => !headers.includes(column));
-  if (missingColumns.length > 0) {
+  if (!biometricSummary && missingColumns.length > 0) {
     return {
       totalRows: records.length,
+      ignoredRows: 0,
       rows: [],
+      employeeProfiles: [],
       errors: [
         {
           rowNumber: 1,
@@ -181,7 +297,9 @@ export function parseAttendanceCsv(
   if (new Set(headers).size !== headers.length) {
     return {
       totalRows: records.length,
+      ignoredRows: 0,
       rows: [],
+      employeeProfiles: [],
       errors: [{ rowNumber: 1, employeeCode: '', reason: 'CSV contains duplicate columns' }],
     };
   }
@@ -189,7 +307,9 @@ export function parseAttendanceCsv(
   if (records.length > MAX_ROWS) {
     return {
       totalRows: records.length,
+      ignoredRows: 0,
       rows: [],
+      employeeProfiles: [],
       errors: [
         {
           rowNumber: 1,
@@ -199,6 +319,8 @@ export function parseAttendanceCsv(
       ],
     };
   }
+
+  if (biometricSummary) return parseBiometricSummaryRows(records);
 
   const rows: ParsedAttendanceRow[] = [];
   const errors: AttendanceImportErrorDto[] = [];
@@ -251,5 +373,5 @@ export function parseAttendanceCsv(
     errors.push({ rowNumber: 1, employeeCode: '', reason: 'CSV contains no attendance rows' });
   }
 
-  return { totalRows: records.length, rows, errors };
+  return { totalRows: records.length, ignoredRows: 0, rows, errors, employeeProfiles: [] };
 }

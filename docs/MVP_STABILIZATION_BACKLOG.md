@@ -29,17 +29,15 @@ Copying, refreshing, or revisiting a URL restores the same view. Invalid values
 fall back to safe page defaults, and unavailable team audiences are removed.
 Incomplete or sensitive form fields are never written to the URL.
 
-## Priority A: Protect Incomplete Forms
+### Protected incomplete forms
 
-Timesheet comments, leave reasons, regularisation reasons, employee edits, and
-administration forms are currently lost when navigating away or refreshing.
+Timesheet, leave, regularisation, employee, show, holiday, and leave-balance forms
+now warn before discarding unsaved work. Safe drafts are scoped to the signed-in
+employee and restored from session storage. Successful saves and confirmed discards
+clear their drafts.
 
-Acceptance criteria:
-
-- Warn before leaving a dirty form.
-- Preserve safe drafts in session storage where useful.
-- Never persist passwords, security-role forms, or uploaded attendance files.
-- Clear preserved form state after a successful save.
+Passwords, access-role forms, and uploaded attendance files are intentionally never
+persisted.
 
 ## Priority B: Consistent Mutation Feedback
 

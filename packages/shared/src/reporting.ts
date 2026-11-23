@@ -1,7 +1,9 @@
 import { z } from 'zod';
 
+import { CalendarMonthSchema } from './calendar.js';
 import { LeaveDayPartSchema, LeaveStatusSchema, LeaveTypeSchema } from './leave.js';
 import { RegularisationSourceSchema, RegularisationStatusSchema } from './regularisation.js';
+import { WorkContextSchema } from './shift.js';
 
 export const WorkforceReportQuerySchema = z
   .object({
@@ -105,3 +107,133 @@ export const WorkforceReportDtoSchema = z.object({
   timesheets: z.array(TimesheetReportRowSchema),
 });
 export type WorkforceReportDto = z.infer<typeof WorkforceReportDtoSchema>;
+
+export const AttendanceDetailsQuerySchema = z.object({
+  month: CalendarMonthSchema.optional(),
+});
+export type AttendanceDetailsQuery = z.infer<typeof AttendanceDetailsQuerySchema>;
+
+const SourceEndpointSchema = z.object({
+  firstAt: z.string().datetime().nullable(),
+  lastAt: z.string().datetime().nullable(),
+  workedMinutes: z.number().int().nonnegative(),
+  eventCount: z.number().int().nonnegative(),
+});
+
+export const AttendanceDetailsRowSchema = z.object({
+  id: z.string(),
+  employeeId: z.string(),
+  employeeCode: z.string(),
+  employeeDisplayName: z.string(),
+  departmentName: z.string().nullable(),
+  workDate: z.string().date(),
+  status: z.enum([
+    'present',
+    'partial',
+    'absent',
+    'leave',
+    'holiday',
+    'weekend',
+    'pending_regularisation',
+  ]),
+  requiresReview: z.boolean(),
+  biometric: SourceEndpointSchema.extend({
+    status: z.enum(['complete', 'missing_in', 'missing_out', 'invalid', 'none']),
+  }),
+  accessCard: SourceEndpointSchema.extend({
+    status: z.enum(['complete', 'missing_entry', 'missing_exit', 'invalid', 'none']),
+  }),
+  website: z.object({
+    status: z.enum(['running', 'complete', 'incomplete', 'none']),
+    firstAt: z.string().datetime().nullable(),
+    lastAt: z.string().datetime().nullable(),
+    workedMinutes: z.number().int().nonnegative(),
+    sessionCount: z.number().int().nonnegative(),
+  }),
+  timesheets: z.object({
+    totalMinutes: z.number().int().nonnegative(),
+    entryCount: z.number().int().nonnegative(),
+    averageProgress: z.number().int().min(0).max(100),
+  }),
+  payableMinutes: z.number().int().nonnegative(),
+  anomalies: z.array(z.string()),
+  workContext: WorkContextSchema,
+});
+export type AttendanceDetailsRow = z.infer<typeof AttendanceDetailsRowSchema>;
+
+export const AttendanceDetailsMonthAvailabilitySchema = z.object({
+  month: CalendarMonthSchema,
+  attendanceDays: z.number().int().nonnegative(),
+  employeesWithRecords: z.number().int().nonnegative(),
+  biometricDays: z.number().int().nonnegative(),
+  biometricEvents: z.number().int().nonnegative(),
+  accessCardDays: z.number().int().nonnegative(),
+  accessCardEvents: z.number().int().nonnegative(),
+  websiteDays: z.number().int().nonnegative(),
+  websiteSessions: z.number().int().nonnegative(),
+  timesheetDays: z.number().int().nonnegative(),
+  timesheetEntries: z.number().int().nonnegative(),
+});
+export type AttendanceDetailsMonthAvailability = z.infer<
+  typeof AttendanceDetailsMonthAvailabilitySchema
+>;
+
+export const AttendanceDetailsDtoSchema = z.object({
+  month: CalendarMonthSchema,
+  latestRecordedMonth: CalendarMonthSchema.nullable(),
+  availableMonths: z.array(AttendanceDetailsMonthAvailabilitySchema),
+  generatedAt: z.string().datetime(),
+  summary: z.object({
+    scopedEmployees: z.number().int().nonnegative(),
+    employeesWithRecords: z.number().int().nonnegative(),
+    attendanceDays: z.number().int().nonnegative(),
+    completeBiometricDays: z.number().int().nonnegative(),
+    completeAccessCardDays: z.number().int().nonnegative(),
+    websiteSessionDays: z.number().int().nonnegative(),
+    timesheetDays: z.number().int().nonnegative(),
+  }),
+  rows: z.array(AttendanceDetailsRowSchema),
+});
+export type AttendanceDetailsDto = z.infer<typeof AttendanceDetailsDtoSchema>;
+
+/* ------------------------------------------------ team timesheet review */
+
+export const TeamTimesheetQuerySchema = z
+  .object({
+    dateFrom: z.string().date(),
+    dateTo: z.string().date(),
+  })
+  .refine((value) => value.dateFrom <= value.dateTo, {
+    path: ['dateTo'],
+    message: 'The end date must be on or after the start date',
+  });
+export type TeamTimesheetQuery = z.infer<typeof TeamTimesheetQuerySchema>;
+
+export const TeamTimesheetRowSchema = z.object({
+  id: z.string(),
+  employeeId: z.string(),
+  employeeCode: z.string(),
+  employeeDisplayName: z.string(),
+  departmentName: z.string().nullable(),
+  workDate: z.string().date(),
+  showId: z.string(),
+  showCode: z.string(),
+  showName: z.string(),
+  startedAt: z.string().datetime().nullable(),
+  endedAt: z.string().datetime().nullable(),
+  durationMinutes: z.number().int().positive(),
+  percentage: z.number().int().min(10).max(100),
+  comment: z.string(),
+});
+export type TeamTimesheetRow = z.infer<typeof TeamTimesheetRowSchema>;
+
+export const TeamTimesheetDtoSchema = z.object({
+  dateFrom: z.string().date(),
+  dateTo: z.string().date(),
+  generatedAt: z.string().datetime(),
+  /** Every department and show the viewer may filter by, even with no entries in range. */
+  departments: z.array(z.string()),
+  shows: z.array(z.object({ id: z.string(), code: z.string(), name: z.string() })),
+  rows: z.array(TeamTimesheetRowSchema),
+});
+export type TeamTimesheetDto = z.infer<typeof TeamTimesheetDtoSchema>;

@@ -11,6 +11,7 @@ interface FilterBarProps {
   hasActiveFilters: boolean;
   onClear: () => void;
   children?: ReactNode;
+  standalone?: boolean;
 }
 
 export function FilterBar({
@@ -22,18 +23,21 @@ export function FilterBar({
   hasActiveFilters,
   onClear,
   children,
+  standalone = false,
 }: FilterBarProps) {
   return (
     <Stack
       direction={{ xs: 'column', md: 'row' }}
       sx={{
         minHeight: 64,
-        p: 1.25,
+        px: { xs: 1.25, sm: 1.5 },
+        py: 1.35,
         alignItems: { md: 'center' },
         gap: 1.25,
-        borderBottom: '1px solid',
-        borderColor: 'divider',
-        bgcolor: '#fff',
+        borderRadius: standalone ? '18px' : '0 0 16px 16px',
+        bgcolor: 'var(--g-base)',
+        boxShadow: 'var(--g-raised-sm)',
+        border: '1px solid var(--g-border)',
       }}
     >
       {search !== undefined && onSearchChange && searchLabel && (
@@ -62,7 +66,19 @@ export function FilterBar({
           Clear filters
         </Button>
       )}
-      <Typography sx={{ color: 'text.secondary', fontSize: 11.5, whiteSpace: 'nowrap' }}>
+      <Typography
+        sx={{
+          px: 1,
+          py: 0.5,
+          borderRadius: 1.5,
+          bgcolor: 'var(--g-base)',
+          boxShadow: 'var(--g-inset-sm)',
+          color: 'var(--g-fg)',
+          fontSize: 11.5,
+          fontWeight: 700,
+          whiteSpace: 'nowrap',
+        }}
+      >
         {resultCount} {resultLabel}
       </Typography>
     </Stack>

@@ -61,7 +61,7 @@ const regularisationRequestSchema = new Schema<RegularisationRequestDocument>(
     employeeId: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
     managerEmployeeId: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
     workDate: { type: String, required: true, match: /^\d{4}-\d{2}-\d{2}$/ },
-    source: { type: String, enum: ['biometric', 'website'], required: true },
+    source: { type: String, enum: ['biometric', 'access_card', 'website'], required: true },
     missingEvent: { type: String, enum: ['opening', 'closing', 'both'], required: true },
     requestedStart: { type: Date, required: true },
     requestedEnd: { type: Date, required: true },

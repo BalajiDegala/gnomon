@@ -1,3 +1,4 @@
+import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express from 'express';
@@ -12,7 +13,9 @@ import { calendarRouter } from './modules/calendar/calendar.routes.js';
 import { employeeRouter } from './modules/employees/employee.routes.js';
 import { importRouter } from './modules/imports/import.routes.js';
 import { leaveApprovalRouter, leaveRouter } from './modules/leaves/leave.routes.js';
+import { notificationRouter } from './modules/notifications/notification.routes.js';
 import {
+  approvalPolicyAdministrationRouter,
   employeeLocationAdministrationRouter,
   holidayAdministrationRouter,
   leaveBalanceAdministrationRouter,
@@ -25,7 +28,16 @@ import {
   regularisationRouter,
 } from './modules/regularisations/regularisation.routes.js';
 import { securityAdministrationRouter } from './modules/roles/security.routes.js';
+import { ldapAdministrationRouter } from './modules/settings/ldap.routes.js';
+import { smtpAdministrationRouter } from './modules/settings/smtp.routes.js';
+import { tipsAdministrationRouter, tipsRouter } from './modules/settings/tips.routes.js';
+import { shiftAdministrationRouter } from './modules/shifts/shift.routes.js';
 import { showRouter } from './modules/shows/show.routes.js';
+import {
+  generateRequestId,
+  systemEventMiddleware,
+} from './modules/system-events/system-event.middleware.js';
+import { systemEventRouter } from './modules/system-events/system-event.routes.js';
 import { timecardRouter } from './modules/timecard/timecard.routes.js';
 import { timesheetRouter } from './modules/timesheets/timesheet.routes.js';
 import { healthRouter } from './routes/health.routes.js';
@@ -35,21 +47,26 @@ export const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
 app.use(helmet());
+// Large report responses (e.g. a month of attendance) compress well.
+app.use(compression());
 app.use(
   cors({
     origin: env.WEB_ORIGIN,
     credentials: true,
+    exposedHeaders: ['X-Request-Id'],
   }),
 );
 app.use(
   pinoHttp({
     enabled: env.NODE_ENV !== 'test',
+    genReqId: generateRequestId,
     redact: {
       paths: [...sensitiveLogPaths],
       censor: '[REDACTED]',
     },
   }),
 );
+app.use(systemEventMiddleware);
 app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 
@@ -60,12 +77,20 @@ app.use('/api/v1/employees', employeeRouter);
 app.use('/api/v1/imports', importRouter);
 app.use('/api/v1/leaves', leaveRouter);
 app.use('/api/v1/approvals/leaves', leaveApprovalRouter);
+app.use('/api/v1/notifications', notificationRouter);
 app.use('/api/v1/administration/holidays', holidayAdministrationRouter);
+app.use('/api/v1/administration/approval-policies', approvalPolicyAdministrationRouter);
 app.use('/api/v1/administration/locations', locationAdministrationRouter);
 app.use('/api/v1/administration/employee-locations', employeeLocationAdministrationRouter);
 app.use('/api/v1/administration/leave-balances', leaveBalanceAdministrationRouter);
 app.use('/api/v1/administration/security', securityAdministrationRouter);
+app.use('/api/v1/administration/shifts', shiftAdministrationRouter);
+app.use('/api/v1/administration/smtp', smtpAdministrationRouter);
+app.use('/api/v1/administration/ldap', ldapAdministrationRouter);
+app.use('/api/v1/administration/tips', tipsAdministrationRouter);
+app.use('/api/v1/tips', tipsRouter);
 app.use('/api/v1/reconciliation', reconciliationRouter);
+app.use('/api/v1/reports/events', systemEventRouter);
 app.use('/api/v1/reports', reportingRouter);
 app.use('/api/v1/regularisations', regularisationRouter);
 app.use('/api/v1/approvals/regularisations', regularisationApprovalRouter);

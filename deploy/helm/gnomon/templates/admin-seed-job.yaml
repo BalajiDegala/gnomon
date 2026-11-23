@@ -2,7 +2,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ include "gnomon.fullname" . }}-admin-seed-{{ .Values.adminSeed.image.tag | trunc 12 }}
+  name: {{ include "gnomon.fullname" . }}-admin-seed-{{ .Values.adminSeed.image.tag | replace "." "-" | trunc 12 | trimSuffix "-" }}
   labels:
     {{- include "gnomon.labels" . | nindent 4 }}
     app.kubernetes.io/component: admin-seed
@@ -24,6 +24,10 @@ spec:
         - name: seed
           image: "{{ .Values.adminSeed.image.repository }}:{{ .Values.adminSeed.image.tag }}"
           imagePullPolicy: {{ .Values.adminSeed.image.pullPolicy }}
+          {{- with .Values.adminSeed.command }}
+          command:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           env:
             - name: ACCESS_TOKEN_SECRET
               valueFrom:

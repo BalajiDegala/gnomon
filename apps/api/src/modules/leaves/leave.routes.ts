@@ -2,6 +2,7 @@ import {
   CreateLeaveRequestSchema,
   LeaveBalanceQuerySchema,
   LeaveDecisionRequestSchema,
+  LeaveWorkCheckQuerySchema,
 } from '@gnomon/shared';
 import { Router } from 'express';
 import { z } from 'zod';
@@ -12,8 +13,10 @@ import {
   createLeave,
   decideLeave,
   listLeaveApprovals,
+  listLeaveDecisionHistory,
   listMyLeaves,
 } from './leave.service.js';
+import { getRecordedWorkDays } from '../timecard/timecard.service.js';
 
 const RequestParamsSchema = z.object({ requestId: z.string().regex(/^[a-f\d]{24}$/i) });
 
@@ -23,6 +26,13 @@ leaveRouter.use(requireAuth, requirePermission('leave:create'));
 leaveRouter.get('/mine', async (request, response) => {
   const { year } = LeaveBalanceQuerySchema.parse(request.query);
   response.json(await listMyLeaves(request.authUser!, year));
+});
+
+leaveRouter.get('/work-check', async (request, response) => {
+  const { startDate, endDate } = LeaveWorkCheckQuerySchema.parse(request.query);
+  response.json({
+    days: await getRecordedWorkDays(request.authUser!.employeeId, startDate, endDate),
+  });
 });
 
 leaveRouter.post('/', async (request, response) => {
@@ -40,6 +50,10 @@ leaveApprovalRouter.use(requireAuth, requirePermission('leave:approve'));
 
 leaveApprovalRouter.get('/', async (request, response) => {
   response.json({ requests: await listLeaveApprovals(request.authUser!) });
+});
+
+leaveApprovalRouter.get('/history', async (request, response) => {
+  response.json({ requests: await listLeaveDecisionHistory(request.authUser!) });
 });
 
 leaveApprovalRouter.post('/:requestId/decision', async (request, response) => {

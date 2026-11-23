@@ -25,10 +25,22 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-async function parseResponse(response: Response): Promise<AuthResponse> {
-  const body = (await response.json()) as AuthResponse & {
-    error?: { message?: string };
-  };
+export async function parseAuthResponse(response: Response): Promise<AuthResponse> {
+  const contentType = response.headers.get('content-type') ?? '';
+  if (!contentType.toLowerCase().includes('application/json')) {
+    throw new Error(
+      `The API returned ${contentType || 'an unexpected response'} instead of JSON. Check that /api requests are routed to the API server.`,
+    );
+  }
+
+  let body: AuthResponse & { error?: { message?: string } };
+  try {
+    body = (await response.json()) as AuthResponse & {
+      error?: { message?: string };
+    };
+  } catch {
+    throw new Error('The API returned invalid JSON. Check the API server and /api proxy.');
+  }
 
   if (!response.ok) {
     throw new Error(body.error?.message ?? 'The request could not be completed');
@@ -37,13 +49,31 @@ async function parseResponse(response: Response): Promise<AuthResponse> {
   return body;
 }
 
+/**
+ * Server errors carry a short reference (the start of the X-Request-Id) that an
+ * administrator can paste into Reporting → System events.
+ */
+export function errorMessageWithReference(
+  message: string,
+  status: number,
+  requestId: string | null,
+): string {
+  return status >= 500 && requestId ? `${message} (reference ${requestId.slice(0, 8)})` : message;
+}
+
 async function parseApiResponse<T>(response: Response): Promise<T> {
   const body = (await response.json().catch(() => ({}))) as T & {
     error?: { message?: string };
   };
 
   if (!response.ok) {
-    throw new Error(body.error?.message ?? 'The request could not be completed');
+    throw new Error(
+      errorMessageWithReference(
+        body.error?.message ?? 'The request could not be completed',
+        response.status,
+        response.headers.get('x-request-id'),
+      ),
+    );
   }
 
   return body;
@@ -64,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       method: 'POST',
       credentials: 'include',
     });
-    const auth = await parseResponse(response);
+    const auth = await parseAuthResponse(response);
     applyAuth(auth);
     return auth;
   }, [applyAuth]);
@@ -96,7 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(input),
       });
-      applyAuth(await parseResponse(response));
+      applyAuth(await parseAuthResponse(response));
     },
     [applyAuth],
   );

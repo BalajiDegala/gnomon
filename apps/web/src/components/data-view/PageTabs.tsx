@@ -15,14 +15,29 @@ interface PageTabsProps<T extends string> {
 
 export function PageTabs<T extends string>({ value, tabs, onChange, ariaLabel }: PageTabsProps<T>) {
   return (
-    <Box sx={{ borderBottom: '1px solid', borderColor: 'divider' }}>
+    <Box
+      sx={{
+        px: { xs: 0.5, sm: 1 },
+        border: '1px solid var(--g-border)',
+        borderRadius: '16px 16px 0 0',
+        bgcolor: 'var(--g-base)',
+        boxShadow: 'var(--g-raised-sm)',
+      }}
+    >
       <Tabs
         value={value}
         onChange={(_event, nextValue: T) => onChange(nextValue)}
         variant="scrollable"
         scrollButtons="auto"
         aria-label={ariaLabel}
-        sx={{ minHeight: 44 }}
+        sx={{
+          minHeight: 48,
+          '& .MuiTabs-indicator': {
+            height: 3,
+            borderRadius: '3px 3px 0 0',
+            background: 'var(--g-accent)',
+          },
+        }}
       >
         {tabs.map((tab) => (
           <Tab
@@ -41,7 +56,14 @@ export function PageTabs<T extends string>({ value, tabs, onChange, ariaLabel }:
                 )}
               </Stack>
             }
-            sx={{ minHeight: 44, px: 1.5, fontSize: 12.5, fontWeight: 750 }}
+            sx={{
+              minHeight: 48,
+              px: 1.75,
+              fontSize: 12.5,
+              fontWeight: 750,
+              color: 'text.secondary',
+              '&.Mui-selected': { color: 'primary.dark', fontWeight: 820 },
+            }}
           />
         ))}
       </Tabs>

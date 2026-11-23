@@ -1,0 +1,36 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gnomon
+  labels:
+    app.kubernetes.io/name: gnomon
+  annotations:
+    # Matches the API's 10 MB upload limit (attendance and leave balance workbooks).
+    nginx.ingress.kubernetes.io/proxy-body-size: 10m
+    nginx.ingress.kubernetes.io/proxy-read-timeout: '300'
+    nginx.ingress.kubernetes.io/proxy-send-timeout: '300'
+spec:
+  ingressClassName: nginx
+  # For HTTPS: create the TLS secret, uncomment, and set COOKIE_SECURE=true in config/api.env.
+  # tls:
+  #   - hosts:
+  #       - gnomon.d2-india.com
+  #     secretName: gnomon-tls
+  rules:
+    - host: gnomon.d2-india.com
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: gnomon-api
+                port:
+                  name: http
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: gnomon-web
+                port:
+                  name: http

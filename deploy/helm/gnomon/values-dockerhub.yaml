@@ -1,0 +1,53 @@
+# Overlay for deploying from Docker Hub on the dd-test.d2-india.com cluster while
+# Harbor is unavailable. Use together with a private values file that holds secrets:
+#
+#   helm upgrade --install gnomon deploy/helm/gnomon -n gnomon \
+#     -f deploy/helm/gnomon/values-dockerhub.yaml -f /secure/gnomon-private-values.yaml \
+#     --set-string api.image.tag=<tag>,web.image.tag=<tag>,adminSeed.image.tag=<tag>
+#
+# Replace DOCKERHUB_USER below (or override the repositories with --set).
+# See docs/DOCKERHUB_DEPLOYMENT_RUNBOOK.md.
+
+# Private Docker Hub repositories: created with `kubectl create secret docker-registry`.
+imagePullSecrets:
+  - name: dockerhub-registry
+
+api:
+  replicaCount: 2
+  image:
+    repository: docker.io/DOCKERHUB_USER/gnomon-api
+    tag: '0.11.0'
+  webOrigin: http://gnomon.d2-india.com
+
+web:
+  replicaCount: 2
+  image:
+    repository: docker.io/DOCKERHUB_USER/gnomon-web
+    tag: '0.11.0'
+
+# First-admin seed, run from the API image. It RESETS the admin password to the
+# secret's ADMIN_PASSWORD each time it runs (and Helm re-runs it for every new tag),
+# so enable it only for the first install: --set adminSeed.enabled=true
+adminSeed:
+  enabled: false
+  image:
+    repository: docker.io/DOCKERHUB_USER/gnomon-api
+    tag: '0.11.0'
+  command: ['node', 'apps/api/dist/scripts/seed-admin.js']
+
+mongodb:
+  storageClassName: gnomon-local
+  storage: 20Gi
+
+backup:
+  enabled: true
+  storageClassName: gnomon-local
+  volumeName: gnomon-mongodb-backups
+  storage: 50Gi
+
+ingress:
+  host: gnomon.d2-india.com
+
+secrets:
+  # Runtime secret created by hand (see the runbook); keeps secrets out of Helm values.
+  existingSecret: gnomon-runtime

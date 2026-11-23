@@ -1,8 +1,10 @@
 node_modules/
+data
 dist/
 coverage/
 data/
 kubee/
+
 .env
 .env.*
 !.env.example
@@ -15,3 +17,7 @@ test-results/
 blob-report/
 mongo-data/
 private-values*.yaml
+
+# Local handover archives may contain private notes and generated reports.
+/cred
+/docs/backup/**/local-only/

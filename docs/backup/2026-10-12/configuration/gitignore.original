@@ -1,0 +1,16 @@
+node_modules/
+data
+dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+*.tsbuildinfo
+.DS_Store
+.vite/
+playwright-report/
+test-results/
+blob-report/
+mongo-data/
+private-values*.yaml

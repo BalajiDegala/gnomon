@@ -79,8 +79,8 @@ export function LocationAdministrationSection({
                     display: 'grid',
                     placeItems: 'center',
                     borderRadius: 2,
-                    bgcolor: '#e8f7f9',
-                    color: '#137f8d',
+                    bgcolor: 'var(--g-accent-soft)',
+                    color: 'var(--g-accent)',
                   }}
                 >
                   <Building2 size={18} />
@@ -111,19 +111,25 @@ export function LocationAdministrationSection({
                 {directory.locations.map((location) => (
                   <Box
                     key={location.id}
-                    sx={{ p: 1.5, borderRadius: 2, bgcolor: '#f7f9fb', minWidth: 0 }}
+                    sx={{
+                      p: 1.5,
+                      borderRadius: 2,
+                      bgcolor: 'var(--g-base)',
+                      boxShadow: 'var(--g-inset-sm)',
+                      minWidth: 0,
+                    }}
                   >
                     <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 1 }}>
                       <Box sx={{ minWidth: 0 }}>
                         <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 800 }}>
                           {location.name}
                         </Typography>
-                        <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
+                        <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
                           {location.code} · {location.employeeCount} employee
                           {location.employeeCount === 1 ? '' : 's'}
                         </Typography>
                       </Box>
-                      <MapPin size={15} color="#788597" />
+                      <MapPin size={15} color="var(--g-faint)" />
                     </Stack>
                     <Stack direction="row" sx={{ mt: 1, gap: 0.6, flexWrap: 'wrap' }}>
                       {location.canManagePolicy && (
@@ -191,7 +197,7 @@ export function LocationAdministrationSection({
           <Card sx={{ boxShadow: 'none' }}>
             <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
               <Stack direction="row" sx={{ alignItems: 'center', gap: 1.1 }}>
-                <UserRoundCog size={19} color="#6d5bd0" />
+                <UserRoundCog size={19} color="var(--g-pn)" />
                 <Box>
                   <Typography sx={{ fontSize: 15, fontWeight: 820 }}>Employee location</Typography>
                   <Typography sx={{ color: 'text.secondary', fontSize: 11 }}>
@@ -228,11 +234,18 @@ export function LocationAdministrationSection({
                 </Box>
               ) : employeeLocation.employee ? (
                 <Stack spacing={1.5} sx={{ mt: 2 }}>
-                  <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: '#f7f9fb' }}>
+                  <Box
+                    sx={{
+                      p: 1.5,
+                      borderRadius: 2,
+                      bgcolor: 'var(--g-base)',
+                      boxShadow: 'var(--g-inset-sm)',
+                    }}
+                  >
                     <Typography sx={{ fontSize: 12.5, fontWeight: 800 }}>
                       {employeeLocation.employee.employeeDisplayName}
                     </Typography>
-                    <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
+                    <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
                       {employeeLocation.employee.employeeCode} · current:{' '}
                       {employeeLocation.employee.locationName ?? 'Unassigned'}
                     </Typography>

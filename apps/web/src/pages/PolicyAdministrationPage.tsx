@@ -16,9 +16,12 @@ import {
   Typography,
 } from '@mui/material';
 import { CalendarDays, Check, Gauge, Search, Settings2, Trash2 } from 'lucide-react';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 
+import { useAuth } from '../lib/auth';
+import { readFormDraft, useSessionFormDraft } from '../lib/form-drafts';
 import { useEmployeeLeaveBalanceAdministration, useHolidayAdministration } from '../lib/policies';
+import { useUnsavedChanges } from '../lib/unsaved-changes';
 import { leaveTypeLabels } from './LeavePage';
 
 function defaultHolidayDate(): string {
@@ -27,15 +30,58 @@ function defaultHolidayDate(): string {
   return date.toISOString().slice(0, 10);
 }
 
+interface HolidayFormDraft {
+  date: string;
+  name: string;
+}
+
+function isHolidayFormDraft(value: unknown): value is HolidayFormDraft {
+  if (!value || typeof value !== 'object') return false;
+  const draft = value as Partial<HolidayFormDraft>;
+  return typeof draft.date === 'string' && typeof draft.name === 'string';
+}
+
+interface BalanceFormDraft {
+  entitledDays: number;
+  adjustedDays: number;
+  note: string;
+}
+
+function isBalanceFormDraft(value: unknown): value is BalanceFormDraft {
+  if (!value || typeof value !== 'object') return false;
+  const draft = value as Partial<BalanceFormDraft>;
+  return (
+    typeof draft.entitledDays === 'number' &&
+    typeof draft.adjustedDays === 'number' &&
+    typeof draft.note === 'string'
+  );
+}
+
 export function PolicyAdministrationPage() {
-  const [year, setYear] = useState(() => Number(defaultHolidayDate().slice(0, 4)));
+  const { user } = useAuth();
+  const initialHolidayDate = useMemo(defaultHolidayDate, []);
+  const holidayDraftKey = `${user?.employeeId ?? 'anonymous'}:company-holiday`;
+  const recoveredHoliday = useMemo(
+    () => readFormDraft(holidayDraftKey, isHolidayFormDraft),
+    [holidayDraftKey],
+  );
+  const [year, setYear] = useState(() =>
+    Number((recoveredHoliday?.date ?? initialHolidayDate).slice(0, 4)),
+  );
   const holidays = useHolidayAdministration(year);
-  const [holidayDate, setHolidayDate] = useState(defaultHolidayDate);
-  const [holidayName, setHolidayName] = useState('');
+  const [holidayDate, setHolidayDate] = useState(recoveredHoliday?.date ?? initialHolidayDate);
+  const [holidayName, setHolidayName] = useState(recoveredHoliday?.name ?? '');
   const [employeeCode, setEmployeeCode] = useState('');
   const [searchedEmployeeCode, setSearchedEmployeeCode] = useState('');
   const balances = useEmployeeLeaveBalanceAdministration(searchedEmployeeCode, year);
   const canUsePage = holidays.canManage || balances.canManage;
+  const holidayDirty = holidayDate !== initialHolidayDate || Boolean(holidayName);
+  const holidayDraft = useMemo(
+    () => ({ date: holidayDate, name: holidayName }),
+    [holidayDate, holidayName],
+  );
+  const clearHolidayDraft = useSessionFormDraft(holidayDraftKey, holidayDraft, holidayDirty);
+  useUnsavedChanges(holidayDirty);
 
   const saveHoliday = async (event: FormEvent) => {
     event.preventDefault();
@@ -44,6 +90,8 @@ export function PolicyAdministrationPage() {
         date: holidayDate,
         name: holidayName,
       });
+      clearHolidayDraft();
+      setHolidayDate(initialHolidayDate);
       setHolidayName('');
     } catch {
       // The mutation error is rendered by the hook.
@@ -98,7 +146,7 @@ export function PolicyAdministrationPage() {
               sx={{ p: 3 }}
             >
               <Stack direction="row" sx={{ alignItems: 'center', gap: 1, mb: 2.5 }}>
-                <CalendarDays size={19} color="#137f8d" />
+                <CalendarDays size={19} color="var(--g-accent)" />
                 <Box>
                   <Typography sx={{ fontSize: 15, fontWeight: 800 }}>Holiday policy</Typography>
                   <Typography sx={{ color: 'text.secondary', fontSize: 11 }}>
@@ -156,7 +204,7 @@ export function PolicyAdministrationPage() {
               sx={{ justifyContent: 'space-between', alignItems: { md: 'center' }, gap: 2 }}
             >
               <Stack direction="row" sx={{ alignItems: 'center', gap: 1.2 }}>
-                <Gauge size={19} color="#137f8d" />
+                <Gauge size={19} color="var(--g-accent)" />
                 <Box>
                   <Typography sx={{ fontSize: 15, fontWeight: 800 }}>
                     Employee leave balances
@@ -212,6 +260,7 @@ export function PolicyAdministrationPage() {
                     <BalanceEditor
                       key={balance.leaveType}
                       balance={balance}
+                      draftKey={`${user?.employeeId ?? 'anonymous'}:${balances.employee!.employeeId}:${year}:${balance.leaveType}:leave-balance`}
                       disabled={balances.isUpdating}
                       onSave={(input) => balances.update(input)}
                     />
@@ -232,7 +281,7 @@ export function PolicyAdministrationPage() {
                 }}
               >
                 <Box>
-                  <Settings2 size={24} color="#8b97a8" />
+                  <Settings2 size={24} color="var(--g-faint)" />
                   <Typography sx={{ mt: 0.6, color: 'text.secondary', fontSize: 12 }}>
                     Enter an employee code to configure paid leave.
                   </Typography>
@@ -282,7 +331,8 @@ function HolidayList({
                   gap: 1.25,
                   p: 1.4,
                   borderRadius: 2,
-                  bgcolor: '#f7f9fb',
+                  bgcolor: 'var(--g-base)',
+                  boxShadow: 'var(--g-inset-sm)',
                 }}
               >
                 <Box
@@ -292,11 +342,11 @@ function HolidayList({
                     py: 0.6,
                     textAlign: 'center',
                     borderRadius: 1.5,
-                    bgcolor: '#f1edff',
-                    color: '#6852a8',
+                    bgcolor: 'var(--g-pn-soft)',
+                    color: 'var(--g-pn)',
                   }}
                 >
-                  <Typography sx={{ fontSize: 10, fontWeight: 850 }}>
+                  <Typography sx={{ fontSize: 11, fontWeight: 850 }}>
                     {new Date(`${holiday.date}T00:00:00Z`).toLocaleDateString('en-IN', {
                       day: '2-digit',
                       month: 'short',
@@ -308,7 +358,7 @@ function HolidayList({
                   <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 780 }}>
                     {holiday.name}
                   </Typography>
-                  <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
+                  <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
                     Company-wide
                   </Typography>
                 </Box>
@@ -336,30 +386,74 @@ function HolidayList({
 
 function BalanceEditor({
   balance,
+  draftKey,
   disabled,
   onSave,
 }: {
   balance: LeaveBalanceAdministrationDto;
+  draftKey: string;
   disabled: boolean;
   onSave: (input: UpdateLeaveBalanceRequest) => Promise<unknown>;
 }) {
-  const [entitledDays, setEntitledDays] = useState(balance.entitledDays);
-  const [adjustedDays, setAdjustedDays] = useState(balance.adjustedDays);
-  const [note, setNote] = useState(balance.note);
+  const recoveredDraft = useMemo(() => readFormDraft(draftKey, isBalanceFormDraft), [draftKey]);
+  const preserveRecovered = useRef(Boolean(recoveredDraft));
+  const [entitledDays, setEntitledDays] = useState(
+    recoveredDraft?.entitledDays ?? balance.entitledDays,
+  );
+  const [adjustedDays, setAdjustedDays] = useState(
+    recoveredDraft?.adjustedDays ?? balance.adjustedDays,
+  );
+  const [note, setNote] = useState(recoveredDraft?.note ?? balance.note);
+  const [savedValues, setSavedValues] = useState<BalanceFormDraft>({
+    entitledDays: balance.entitledDays,
+    adjustedDays: balance.adjustedDays,
+    note: balance.note,
+  });
   const label = useMemo(() => leaveTypeLabels[balance.leaveType as LeaveType], [balance.leaveType]);
+  const isDirty =
+    entitledDays !== savedValues.entitledDays ||
+    adjustedDays !== savedValues.adjustedDays ||
+    note !== savedValues.note;
+  const draft = useMemo(
+    () => ({ entitledDays, adjustedDays, note }),
+    [adjustedDays, entitledDays, note],
+  );
+  const clearDraft = useSessionFormDraft(draftKey, draft, isDirty);
+  useUnsavedChanges(isDirty);
 
   useEffect(() => {
+    if (preserveRecovered.current) {
+      preserveRecovered.current = false;
+      return;
+    }
     setEntitledDays(balance.entitledDays);
     setAdjustedDays(balance.adjustedDays);
     setNote(balance.note);
+    setSavedValues({
+      entitledDays: balance.entitledDays,
+      adjustedDays: balance.adjustedDays,
+      note: balance.note,
+    });
   }, [balance]);
+
+  const save = async () => {
+    await onSave({
+      leaveType: balance.leaveType,
+      year: balance.year,
+      entitledDays,
+      adjustedDays,
+      note,
+    });
+    setSavedValues({ entitledDays, adjustedDays, note });
+    clearDraft();
+  };
 
   return (
     <Box sx={{ p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 2.5 }}>
       <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 1, mb: 1.5 }}>
         <Box>
           <Typography sx={{ fontSize: 13, fontWeight: 820 }}>{label}</Typography>
-          <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
+          <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
             {balance.pendingDays} pending · {balance.approvedDays} approved
           </Typography>
         </Box>
@@ -402,15 +496,7 @@ function BalanceEditor({
           disabled={
             disabled || entitledDays + adjustedDays < balance.pendingDays + balance.approvedDays
           }
-          onClick={() =>
-            void onSave({
-              leaveType: balance.leaveType,
-              year: balance.year,
-              entitledDays,
-              adjustedDays,
-              note,
-            }).catch(() => undefined)
-          }
+          onClick={() => void save().catch(() => undefined)}
         >
           Save {label.toLowerCase()}
         </Button>

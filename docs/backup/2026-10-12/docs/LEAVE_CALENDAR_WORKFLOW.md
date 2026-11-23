@@ -9,8 +9,9 @@ or statutory leave policy.
 1. Open **Leave** and select casual, sick, earned, or unpaid leave.
 2. Select a start/end date and either full day or, for a single date, first/second
    half.
-3. Enter a private reason and submit to the assigned Reporting Manager.
-4. Track the request as manager review, approved, rejected, or cancelled.
+3. Enter a private reason and submit to the department's assigned first approver.
+4. Track the request through one or two configured approval stages, or until it is
+   approved, rejected, or cancelled.
 5. Open **Calendar** to see reconciled attendance and pending/approved leave for a
    selected month.
 
@@ -46,10 +47,10 @@ backward data compatibility and are not exposed by the current workflow.
 
 `leave_requests` stores:
 
-- employee and snapshotted assigned manager identifiers;
+- employee and snapshotted stage-1/stage-2 approver identifiers;
 - type, date range, day portion, calculated working dates/days, and private reason;
 - status and `LEAVE_V1` policy version;
-- manager decision, actor identifiers/role, comment, and timestamp;
+- ordered decisions, actor identifiers/role, comments, and timestamps;
 - reserved dates and an active-reservation flag.
 
 A partial unique multikey index on employee plus reserved date prevents concurrent
@@ -59,22 +60,32 @@ two approvers cannot decide the same request successfully.
 
 ## Authorization and privacy
 
-| Operation                    | Permission             | Attribute scope                                                      |
-| ---------------------------- | ---------------------- | -------------------------------------------------------------------- |
-| List/create/cancel own leave | `leave:create`         | Authenticated employee only                                          |
-| List/decide leave approvals  | `leave:approve`        | Assigned Reporting Manager and permitted direct-report/company scope |
-| Read personal calendar       | `attendance:self:read` | Authenticated employee only                                          |
+| Operation                    | Permission             | Attribute scope                                         |
+| ---------------------------- | ---------------------- | ------------------------------------------------------- |
+| List/create/cancel own leave | `leave:create`         | Authenticated employee only                             |
+| List/decide leave approvals  | `leave:approve`        | Assigned stage approver or company System Administrator |
+| Read personal calendar       | `attendance:self:read` | Authenticated employee only                             |
 
-Self approval is always rejected. The approval queue returns private reasons only
-after the API confirms the actual reporting relationship and role grant. Personal
+Self approval is always rejected. A second-stage pool is any-of: one decision from an
+assigned pool member completes that stage. The approval queue returns private reasons only
+after the API confirms the snapshotted assignment and role grant. Personal
 calendar responses contain type, portion, status, and duration but deliberately omit
 the reason. Hiding navigation in React is convenience only; every API route enforces
 its permission independently.
 
-The leave policy uses one Reporting Manager decision. Release `0.7.0` adds HR balance
-configuration; HR leave-decision oversight and override remain a later slice.
-Regularisation continues to use its separate two-step Manager then HR/Attendance
-workflow.
+Leave approval uses the department route configured in Site preferences. New requests
+snapshot one or two stages, including every eligible stage-2 pool member, so later
+route changes do not rewrite in-flight approvals. Company System Administrators retain
+the audited override path. Regularisation continues to use its separate two-step
+Manager then HR/Attendance workflow.
+
+Submitting a request creates an in-app notification for stage 1. A stage-1 approval
+moves the request to `pending_hr` and notifies every member of the snapshotted stage-2
+pool; one approval resolves that pool and marks the other pool notifications read. A
+final approval or any rejection notifies the employee. Notification delivery is tied
+to the employee identity, but an approver still needs an active account and a role with
+`leave:approve` to open and decide the request. Site preferences identifies route
+members whose access has not yet been provisioned.
 
 ## Attendance interaction
 
@@ -108,6 +119,10 @@ POST /api/v1/administration/holidays/:holidayId/archive
 
 GET  /api/v1/administration/leave-balances?employeeCode=CODE&year=YYYY
 PUT  /api/v1/administration/leave-balances/:employeeCode
+
+GET  /api/v1/administration/approval-policies
+PUT  /api/v1/administration/approval-policies/:policyId
+POST /api/v1/imports/approval-routes/csv
 ```
 
 Creation and decision bodies are validated by shared Zod contracts. Rejection needs
@@ -132,4 +147,4 @@ checks `NODE_ENV=test` and the `_test` suffix before writing.
 
 - Leave-type catalogue administration
 - HR oversight/override with audit reporting
-- Policy-configurable half-day duration and approval steps
+- Policy-configurable half-day duration

@@ -50,6 +50,10 @@ async function toDirectoryItems(
       | 'email'
       | 'timezone'
       | 'status'
+      | 'attendanceIdentity'
+      | 'profileSource'
+      | 'hrProfile'
+      | 'biometricProfile'
       | 'reportingManagerId'
       | 'locationId'
       | 'updatedAt'
@@ -64,7 +68,7 @@ async function toDirectoryItems(
     .filter((id): id is Types.ObjectId => Boolean(id));
   const [managers, locations] = await Promise.all([
     Employee.find({ _id: { $in: managerIds } })
-      .select({ employeeCode: 1, firstName: 1, lastName: 1 })
+      .select({ employeeCode: 1, firstName: 1, lastName: 1, hrProfile: 1 })
       .lean()
       .exec(),
     Location.find({ _id: { $in: locationIds } })
@@ -85,15 +89,55 @@ async function toDirectoryItems(
       employeeCode: employee.employeeCode,
       firstName: employee.firstName,
       lastName: employee.lastName,
-      displayName: `${employee.firstName} ${employee.lastName}`.trim(),
-      email: employee.email,
+      displayName:
+        employee.hrProfile?.fullName ??
+        employee.biometricProfile?.fullName ??
+        `${employee.firstName} ${employee.lastName}`.trim(),
+      email: employee.hrProfile?.mailId ?? employee.email,
       timezone: employee.timezone,
       status: employee.status,
+      profileSource: employee.profileSource,
+      biometricProfile: employee.biometricProfile
+        ? {
+            ...employee.biometricProfile,
+            importedAt: employee.biometricProfile.importedAt.toISOString(),
+          }
+        : null,
+      hrProfile: employee.hrProfile
+        ? {
+            source: employee.hrProfile.source,
+            userId: employee.hrProfile.userId,
+            mailId: employee.hrProfile.mailId,
+            fullName: employee.hrProfile.fullName,
+            designation: employee.hrProfile.designation,
+            departmentName: employee.hrProfile.departmentName,
+            leaveApprover1Name: employee.hrProfile.leaveApprover1Name,
+            leaveApprover2Name: employee.hrProfile.leaveApprover2Name,
+            approver1EmployeeId: employee.hrProfile.approver1EmployeeId
+              ? String(employee.hrProfile.approver1EmployeeId)
+              : null,
+            approver2EmployeeId: employee.hrProfile.approver2EmployeeId
+              ? String(employee.hrProfile.approver2EmployeeId)
+              : null,
+            emailTriggers: employee.hrProfile.emailTriggers,
+            importedAt: employee.hrProfile.importedAt.toISOString(),
+          }
+        : null,
+      attendanceIdentity: employee.attendanceIdentity
+        ? {
+            source: employee.attendanceIdentity.source,
+            personnelId: employee.attendanceIdentity.personnelId,
+            cardNumber: employee.attendanceIdentity.cardNumber,
+            departmentName: employee.attendanceIdentity.departmentName,
+            lastSeenAt: employee.attendanceIdentity.lastSeenAt.toISOString(),
+          }
+        : null,
       reportingManager: manager
         ? {
             id: String(manager._id),
             employeeCode: manager.employeeCode,
-            displayName: `${manager.firstName} ${manager.lastName}`.trim(),
+            displayName:
+              manager.hrProfile?.fullName ?? `${manager.firstName} ${manager.lastName}`.trim(),
           }
         : null,
       location: location
@@ -110,7 +154,10 @@ export async function listEmployees(
 ): Promise<EmployeeDirectoryDto> {
   await ensureIndexes();
   const scope = await buildEmployeeScopeFilter(user, ['employee:read']);
-  const filters: QueryFilter<EmployeeDocument>[] = [scope];
+  const filters: QueryFilter<EmployeeDocument>[] = [
+    scope,
+    { profileSource: { $in: ['users_csv', 'biometric_csv', 'manual'] } },
+  ];
   if (input.status) filters.push({ status: input.status });
   if (input.search) {
     const search = new RegExp(escapeRegex(input.search), 'i');
@@ -120,11 +167,20 @@ export async function listEmployees(
         { firstName: search },
         { lastName: search },
         { email: search },
+        { 'hrProfile.userId': search },
+        { 'hrProfile.fullName': search },
+        { 'hrProfile.designation': search },
+        { 'hrProfile.departmentName': search },
+        { 'biometricProfile.fullName': search },
+        { 'biometricProfile.designation': search },
+        { 'biometricProfile.departmentName': search },
+        { 'hrProfile.leaveApprover1Name': search },
+        { 'hrProfile.leaveApprover2Name': search },
       ],
     });
   }
   const employees = await Employee.find({ $and: filters })
-    .sort({ status: 1, firstName: 1, lastName: 1, employeeCode: 1 })
+    .sort({ status: 1, 'hrProfile.fullName': 1, firstName: 1, lastName: 1, employeeCode: 1 })
     .limit(500)
     .lean()
     .exec();
@@ -135,23 +191,46 @@ export async function listEmployees(
   };
 }
 
-async function validateManager(managerId: string | null, employeeId?: string): Promise<void> {
-  if (managerId === null) return;
-  if (managerId === employeeId) {
-    throw new HttpError(
-      400,
-      'An employee cannot report to themselves',
-      'INVALID_REPORTING_MANAGER',
-    );
+/**
+ * HR fields live on `hrProfile` (normally filled by the users CSV import). Manual
+ * edits update it in place, or create it for people who were never imported.
+ */
+function buildHrProfileUpdate(
+  before: EmployeeDocument,
+  input: { departmentName?: string; designation?: string },
+): Record<string, unknown> {
+  if (input.departmentName === undefined && input.designation === undefined) return {};
+
+  if (before.hrProfile) {
+    const set: Record<string, unknown> = {};
+    if (input.departmentName !== undefined) set['hrProfile.departmentName'] = input.departmentName;
+    if (input.designation !== undefined) set['hrProfile.designation'] = input.designation;
+    return set;
   }
-  const manager = await Employee.exists({ _id: managerId, status: 'active' });
-  if (!manager) {
-    throw new HttpError(
-      400,
-      'The reporting manager must be an active employee',
-      'INVALID_REPORTING_MANAGER',
-    );
+
+  const departmentName =
+    input.departmentName ??
+    before.biometricProfile?.departmentName ??
+    before.attendanceIdentity?.departmentName;
+  if (!departmentName) {
+    throw new HttpError(400, 'Enter a department for this employee', 'DEPARTMENT_REQUIRED');
   }
+  return {
+    hrProfile: {
+      source: 'users_csv',
+      userId: before.employeeCode.toLowerCase(),
+      mailId: before.email,
+      fullName: `${before.firstName} ${before.lastName}`.trim(),
+      designation: input.designation ?? before.biometricProfile?.designation ?? '',
+      departmentName,
+      leaveApprover1Name: null,
+      leaveApprover2Name: null,
+      approver1EmployeeId: null,
+      approver2EmployeeId: null,
+      emailTriggers: [],
+      importedAt: new Date(),
+    },
+  };
 }
 
 export async function createEmployee(
@@ -162,13 +241,10 @@ export async function createEmployee(
   if (!hasCompanyEmployeePermission(user, 'employee:update')) {
     throw new HttpError(403, 'Creating employees requires company scope', 'SCOPE_FORBIDDEN');
   }
-  await validateManager(input.reportingManagerId);
   try {
     const employee = await Employee.create({
       ...input,
-      reportingManagerId: input.reportingManagerId
-        ? new Types.ObjectId(input.reportingManagerId)
-        : null,
+      reportingManagerId: null,
       status: 'active',
     });
     await EmployeeAuditEvent.create({
@@ -193,7 +269,6 @@ export async function updateEmployee(
 ): Promise<EmployeeDirectoryItemDto> {
   await ensureIndexes();
   await assertEmployeeInScope(user, employeeId, 'employee:update');
-  await validateManager(input.reportingManagerId ?? null, employeeId);
   const before = await Employee.findById(employeeId).lean().exec();
   if (!before) throw new HttpError(404, 'Employee not found', 'EMPLOYEE_NOT_FOUND');
   if (input.email) {
@@ -210,25 +285,28 @@ export async function updateEmployee(
     }
   }
 
+  const { departmentName, designation, ...coreInput } = input;
+  const hrSet = buildHrProfileUpdate(before, { departmentName, designation });
+
   const changes = Object.fromEntries(
-    Object.entries(input).map(([key, value]) => [
-      key,
-      { from: before[key as keyof typeof before], to: value },
-    ]),
+    Object.entries(input).map(([key, value]) => {
+      const hr = before.hrProfile;
+      const previous =
+        key === 'departmentName'
+          ? hr?.departmentName
+          : key === 'designation'
+            ? hr?.designation
+            : before[key as keyof typeof before];
+      return [key, { from: previous ?? null, to: value }];
+    }),
   );
   try {
     const employee = await Employee.findByIdAndUpdate(
       employeeId,
       {
         $set: {
-          ...input,
-          ...(input.reportingManagerId !== undefined
-            ? {
-                reportingManagerId: input.reportingManagerId
-                  ? new Types.ObjectId(input.reportingManagerId)
-                  : null,
-              }
-            : {}),
+          ...coreInput,
+          ...hrSet,
         },
       },
       { returnDocument: 'after', runValidators: true },

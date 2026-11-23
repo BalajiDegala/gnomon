@@ -1,4 +1,10 @@
-import type { LeaveDayPart, LeaveRequestDto, LeaveStatus, LeaveType } from '@gnomon/shared';
+import type {
+  LeaveDayPart,
+  LeaveRequestDto,
+  LeaveStatus,
+  LeaveType,
+  LeaveWorkCheckDto,
+} from '@gnomon/shared';
 import {
   Alert,
   Box,
@@ -29,26 +35,59 @@ import {
   type DataTableColumn,
   type SortDirection,
 } from '../components/data-view/DataTable';
+import { ConfirmDialog } from '../components/ConfirmDialog';
+import { CatchUpBanner } from '../components/CatchUpBanner';
 import { FilterBar } from '../components/data-view/FilterBar';
 import { PageHeader } from '../components/data-view/PageHeader';
 import { PageTabs, type PageTab } from '../components/data-view/PageTabs';
+import { useAuth } from '../lib/auth';
+import { readFormDraft, useSessionFormDraft } from '../lib/form-drafts';
 import { useMyLeaves } from '../lib/leaves';
+import { formatMinutes } from '../lib/timesheets';
+import { confirmDiscardChanges, useUnsavedChanges } from '../lib/unsaved-changes';
 import { parseEnumValue, parseShortSearch, useUrlQueryState } from '../lib/url-query-state';
 
 export const leaveTypeLabels: Record<LeaveType, string> = {
-  casual: 'Casual leave',
-  sick: 'Sick leave',
-  earned: 'Earned leave',
+  casual: 'Casual/Sick leave',
+  earned: 'Privilege leave',
+  comp_off: 'Compensatory off',
   unpaid: 'Unpaid leave',
 };
 
 type LeaveTab = 'all' | LeaveStatus;
 type LeaveSortKey = 'date' | 'type' | 'days' | 'status' | 'submitted';
 
-const leaveTabs = ['all', 'pending_manager', 'approved', 'rejected', 'cancelled'] as const;
+const leaveTabs = [
+  'all',
+  'pending_manager',
+  'pending_hr',
+  'approved',
+  'rejected',
+  'cancelled',
+] as const;
 const leaveSortKeys = ['date', 'type', 'days', 'status', 'submitted'] as const;
 const sortDirections = ['asc', 'desc'] as const;
 const pageSizes = [10, 25, 50, 100] as const;
+
+interface LeaveFormDraft {
+  startDate: string;
+  endDate: string;
+  leaveType: LeaveType;
+  dayPart: LeaveDayPart;
+  reason: string;
+}
+
+function isLeaveFormDraft(value: unknown): value is LeaveFormDraft {
+  if (!value || typeof value !== 'object') return false;
+  const draft = value as Partial<LeaveFormDraft>;
+  return (
+    typeof draft.startDate === 'string' &&
+    typeof draft.endDate === 'string' &&
+    ['casual', 'earned', 'comp_off', 'unpaid'].includes(draft.leaveType ?? '') &&
+    ['full_day', 'first_half', 'second_half'].includes(draft.dayPart ?? '') &&
+    typeof draft.reason === 'string'
+  );
+}
 
 function nextWorkingDate(): string {
   const indiaDate = new Intl.DateTimeFormat('en-CA', {
@@ -88,6 +127,7 @@ function workingDayCount(
 function statusLabel(status: LeaveStatus): string {
   const labels: Record<LeaveStatus, string> = {
     pending_manager: 'Manager review',
+    pending_hr: 'Approver 2 review',
     approved: 'Approved',
     rejected: 'Rejected',
     cancelled: 'Cancelled',
@@ -95,8 +135,9 @@ function statusLabel(status: LeaveStatus): string {
   return labels[status];
 }
 
-function statusColor(status: LeaveStatus): 'warning' | 'success' | 'error' | 'default' {
+function statusColor(status: LeaveStatus): 'warning' | 'info' | 'success' | 'error' | 'default' {
   if (status === 'pending_manager') return 'warning';
+  if (status === 'pending_hr') return 'info';
   if (status === 'approved') return 'success';
   if (status === 'rejected') return 'error';
   return 'default';
@@ -148,8 +189,11 @@ function compareRequests(left: LeaveRequestDto, right: LeaveRequestDto, key: Lea
   return left.submittedAt.localeCompare(right.submittedAt);
 }
 
-export function LeavePage() {
+export function LeavePage({ onOpenCatchUp }: { onOpenCatchUp?: () => void } = {}) {
+  const { user } = useAuth();
   const defaultDate = useMemo(nextWorkingDate, []);
+  const draftKey = `${user?.employeeId ?? 'anonymous'}:leave-request`;
+  const recoveredDraft = useMemo(() => readFormDraft(draftKey, isLeaveFormDraft), [draftKey]);
   const currentYear = Number(defaultDate.slice(0, 4));
   const [year, setYear] = useUrlQueryState('year', currentYear, parseYear);
   const [tab, setTab] = useUrlQueryState<LeaveTab>('tab', 'all', parseLeaveTab);
@@ -164,12 +208,12 @@ export function LeavePage() {
   const [rowsPerPage, setRowsPerPage] = useUrlQueryState('size', 25, parsePageSize);
   const [selectedRequestId, setSelectedRequestId] = useUrlQueryState('request', '', parseRequestId);
   const leaves = useMyLeaves(year);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [startDate, setStartDate] = useState(defaultDate);
-  const [endDate, setEndDate] = useState(defaultDate);
-  const [leaveType, setLeaveType] = useState<LeaveType>('casual');
-  const [dayPart, setDayPart] = useState<LeaveDayPart>('full_day');
-  const [reason, setReason] = useState('');
+  const [createOpen, setCreateOpen] = useState(Boolean(recoveredDraft));
+  const [startDate, setStartDate] = useState(recoveredDraft?.startDate ?? defaultDate);
+  const [endDate, setEndDate] = useState(recoveredDraft?.endDate ?? defaultDate);
+  const [leaveType, setLeaveType] = useState<LeaveType>(recoveredDraft?.leaveType ?? 'casual');
+  const [dayPart, setDayPart] = useState<LeaveDayPart>(recoveredDraft?.dayPart ?? 'full_day');
+  const [reason, setReason] = useState(recoveredDraft?.reason ?? '');
   const holidayDates = useMemo(
     () => new Set(leaves.holidays.map((holiday) => holiday.date)),
     [leaves.holidays],
@@ -178,6 +222,30 @@ export function LeavePage() {
   const selectedBalance = leaves.balances.find((balance) => balance.leaveType === leaveType);
   const selectedRequest =
     leaves.requests.find((request) => request.id === selectedRequestId) ?? null;
+  const formDirty =
+    createOpen &&
+    (startDate !== defaultDate ||
+      endDate !== defaultDate ||
+      leaveType !== 'casual' ||
+      dayPart !== 'full_day' ||
+      Boolean(reason));
+  const draft = useMemo(
+    () => ({ startDate, endDate, leaveType, dayPart, reason }),
+    [dayPart, endDate, leaveType, reason, startDate],
+  );
+  const clearDraft = useSessionFormDraft(draftKey, draft, formDirty);
+  useUnsavedChanges(formDirty);
+
+  const closeCreate = () => {
+    if (formDirty && !confirmDiscardChanges()) return;
+    clearDraft();
+    setStartDate(defaultDate);
+    setEndDate(defaultDate);
+    setLeaveType('casual');
+    setDayPart('full_day');
+    setReason('');
+    setCreateOpen(false);
+  };
 
   useEffect(() => {
     if (endDate < startDate || endDate.slice(0, 4) !== startDate.slice(0, 4)) {
@@ -224,8 +292,13 @@ export function LeavePage() {
       { value: 'all', label: 'All', count: leaves.requests.length },
       {
         value: 'pending_manager',
-        label: 'Manager review',
+        label: 'Approver 1',
         count: leaves.requests.filter((request) => request.status === 'pending_manager').length,
+      },
+      {
+        value: 'pending_hr',
+        label: 'Approver 2',
+        count: leaves.requests.filter((request) => request.status === 'pending_hr').length,
       },
       {
         value: 'approved',
@@ -262,11 +335,29 @@ export function LeavePage() {
     setPageNumber(1);
   };
 
+  const [workConflicts, setWorkConflicts] = useState<LeaveWorkCheckDto['days']>([]);
+
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    // Warn when work is already recorded on a leave day (e.g. worked 2 hours, then fell ill).
+    try {
+      const recorded = await leaves.checkRecordedWork(startDate, endDate);
+      if (recorded.length > 0) {
+        setWorkConflicts(recorded);
+        return;
+      }
+    } catch {
+      // The check is advisory; submit normally if it cannot run.
+    }
+    await submitLeave();
+  };
+
+  const submitLeave = async () => {
+    setWorkConflicts([]);
     try {
       const result = await leaves.create({ leaveType, startDate, endDate, dayPart, reason });
       const requestYear = Number(startDate.slice(0, 4));
+      clearDraft();
       setReason('');
       setCreateOpen(false);
       setYear(requestYear);
@@ -298,7 +389,7 @@ export function LeavePage() {
               ? request.startDate
               : `${request.startDate} - ${request.endDate}`}
           </Typography>
-          <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
+          <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
             {leaveTypeLabels[request.leaveType]} - {dayPartLabel(request.dayPart)}
           </Typography>
         </Box>
@@ -354,7 +445,7 @@ export function LeavePage() {
       width: 88,
       render: (request) => (
         <Stack direction="row" sx={{ justifyContent: 'flex-end', gap: 0.25 }}>
-          {request.status === 'pending_manager' && (
+          {(request.status === 'pending_manager' || request.status === 'pending_hr') && (
             <Tooltip title="Cancel request">
               <IconButton
                 size="small"
@@ -389,6 +480,36 @@ export function LeavePage() {
 
   return (
     <Stack spacing={2.5} sx={{ width: '100%', maxWidth: 1440, mx: 'auto' }}>
+      <ConfirmDialog
+        open={workConflicts.length > 0}
+        title="You already worked on this day"
+        confirmLabel="Apply leave anyway"
+        busy={leaves.isUpdating}
+        onCancel={() => setWorkConflicts([])}
+        onConfirm={() => void submitLeave()}
+      >
+        <Typography sx={{ fontSize: 13.5 }}>Work time is already recorded for:</Typography>
+        <Box component="ul" sx={{ m: 0, pl: 2.5 }}>
+          {workConflicts.map((day) => (
+            <li key={day.workDate}>
+              <Typography sx={{ fontSize: 13.5 }}>
+                <b>{day.workDate}</b> — {formatMinutes(day.trackedMinutes)}
+                {day.running ? ' (timer still running)' : ''}
+              </Typography>
+            </li>
+          ))}
+        </Box>
+        <Typography sx={{ fontSize: 13.5 }}>
+          {dayPart === 'full_day'
+            ? 'You are applying for a full day. If you worked part of the day, a half-day leave may fit better.'
+            : 'Check that the half day you chose does not overlap the time you worked.'}
+        </Typography>
+        {workConflicts.some((day) => day.running) && (
+          <Typography sx={{ fontSize: 13.5, color: 'var(--g-pt)' }}>
+            Remember to stop your timecard if you are leaving now.
+          </Typography>
+        )}
+      </ConfirmDialog>
       <PageHeader
         eyebrow="TIME AWAY"
         title="Leave"
@@ -409,6 +530,8 @@ export function LeavePage() {
         <Alert severity="warning">Your account cannot create leave requests.</Alert>
       )}
       {leaves.error && !createOpen && <Alert severity="error">{leaves.error.message}</Alert>}
+
+      <CatchUpBanner onOpen={onOpenCatchUp} />
 
       <BalanceSummary balances={leaves.balances} />
 
@@ -471,7 +594,7 @@ export function LeavePage() {
         emptyMessage={
           leaves.requests.length
             ? 'Change or clear the status, year, or search filters.'
-            : 'New requests and manager decisions will appear here.'
+            : 'New requests and approval decisions will appear here.'
         }
       />
 
@@ -484,6 +607,7 @@ export function LeavePage() {
         reason={reason}
         requestedDays={requestedDays}
         selectedBalance={selectedBalance}
+        approvalRoute={leaves.approvalRoute}
         hasHoliday={leaves.holidays.some(
           (holiday) => holiday.date >= startDate && holiday.date <= endDate,
         )}
@@ -494,7 +618,7 @@ export function LeavePage() {
         onEndDateChange={setEndDate}
         onDayPartChange={setDayPart}
         onReasonChange={setReason}
-        onClose={() => setCreateOpen(false)}
+        onClose={closeCreate}
         onSubmit={submit}
       />
 
@@ -516,28 +640,45 @@ function BalanceSummary({ balances }: { balances: ReturnType<typeof useMyLeaves>
       sx={{
         display: 'grid',
         gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, 1fr)' },
-        gap: { xs: 1.5, md: 3 },
-        px: 2,
-        py: 1.5,
-        borderTop: '1px solid',
-        borderBottom: '1px solid',
-        borderColor: 'divider',
-        bgcolor: '#fff',
+        gap: 1.5,
       }}
     >
       {balances.map((balance) => (
-        <Box key={balance.leaveType} sx={{ minWidth: 0 }}>
-          <Typography noWrap sx={{ color: 'text.secondary', fontSize: 10.5 }}>
+        <Box
+          key={balance.leaveType}
+          sx={{
+            position: 'relative',
+            minWidth: 0,
+            p: { xs: 1.5, sm: 1.8 },
+            overflow: 'hidden',
+            border: '1px solid',
+            borderColor: 'divider',
+            borderRadius: '18px',
+            bgcolor: 'var(--g-base)',
+            boxShadow: 'var(--g-raised)',
+            '&::after': {
+              content: '""',
+              position: 'absolute',
+              width: 54,
+              height: 54,
+              right: -25,
+              top: -24,
+              borderRadius: '50%',
+              bgcolor: 'var(--g-accent-soft)',
+            },
+          }}
+        >
+          <Typography noWrap sx={{ color: 'primary.dark', fontSize: 11.5, fontWeight: 750 }}>
             {leaveTypeLabels[balance.leaveType]}
           </Typography>
-          <Typography sx={{ mt: 0.2, fontSize: 15, fontWeight: 850 }}>
+          <Typography sx={{ mt: 0.45, fontSize: { xs: 14, sm: 16 }, fontWeight: 850 }}>
             {balance.balanceTracked
               ? balance.availableDays === null
                 ? 'Not set'
                 : `${balance.availableDays} available`
               : 'As approved'}
           </Typography>
-          <Typography sx={{ color: 'text.secondary', fontSize: 9.5 }}>
+          <Typography sx={{ mt: 0.2, color: 'text.secondary', fontSize: 10.5 }}>
             {balance.pendingDays} pending - {balance.approvedDays} approved
           </Typography>
         </Box>
@@ -555,6 +696,7 @@ interface CreateLeaveDialogProps {
   reason: string;
   requestedDays: number;
   selectedBalance: ReturnType<typeof useMyLeaves>['balances'][number] | undefined;
+  approvalRoute: ReturnType<typeof useMyLeaves>['approvalRoute'];
   hasHoliday: boolean;
   isUpdating: boolean;
   error?: string;
@@ -576,6 +718,7 @@ function CreateLeaveDialog({
   reason,
   requestedDays,
   selectedBalance,
+  approvalRoute,
   hasHoliday,
   isUpdating,
   error,
@@ -642,6 +785,17 @@ function CreateLeaveDialog({
                 {startDate === endDate && <MenuItem value="second_half">Second half</MenuItem>}
               </Select>
             </FormControl>
+            <Alert severity={approvalRoute?.approver1DisplayName ? 'info' : 'warning'}>
+              {approvalRoute?.approver1DisplayName ? (
+                <>
+                  <strong>Approval path:</strong> {approvalRoute.approver1DisplayName}
+                  {approvalRoute.approvalSteps === 2 &&
+                    ` → any one of ${approvalRoute.approver2DisplayNames.join(', ')}`}
+                </>
+              ) : (
+                'An approval route is not fully configured for your department.'
+              )}
+            </Alert>
             <TextField
               multiline
               minRows={4}
@@ -653,7 +807,14 @@ function CreateLeaveDialog({
               helperText={`${reason.trim().length}/1000 - minimum 5 characters`}
               required
             />
-            <Box sx={{ p: 1.5, bgcolor: '#f4f8f9', borderRadius: 1.5 }}>
+            <Box
+              sx={{
+                p: 1.5,
+                bgcolor: 'var(--g-base)',
+                boxShadow: 'var(--g-inset-sm)',
+                borderRadius: 1.5,
+              }}
+            >
               <Stack direction="row" sx={{ justifyContent: 'space-between', gap: 1 }}>
                 <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
                   Working-day duration
@@ -662,7 +823,7 @@ function CreateLeaveDialog({
                   {requestedDays} day{requestedDays === 1 ? '' : 's'}
                 </Typography>
               </Stack>
-              <Typography sx={{ mt: 0.5, color: 'text.secondary', fontSize: 10.5 }}>
+              <Typography sx={{ mt: 0.5, color: 'text.secondary', fontSize: 11.5 }}>
                 {selectedBalance?.availableDays === null
                   ? 'Entitlement is not configured yet; approval remains available.'
                   : selectedBalance?.availableDays !== undefined
@@ -670,7 +831,7 @@ function CreateLeaveDialog({
                     : 'Loading balance policy...'}
               </Typography>
               {hasHoliday && (
-                <Typography sx={{ mt: 0.45, color: 'primary.dark', fontSize: 10.5 }}>
+                <Typography sx={{ mt: 0.45, color: 'primary.dark', fontSize: 11.5 }}>
                   Company holidays inside this range are excluded automatically.
                 </Typography>
               )}
@@ -687,7 +848,7 @@ function CreateLeaveDialog({
             disabled={requestedDays <= 0 || reason.trim().length < 5 || isUpdating}
             startIcon={isUpdating ? <CircularProgress size={16} /> : <Send size={17} />}
           >
-            Submit for manager review
+            Submit for approval
           </Button>
         </DialogActions>
       </Box>
@@ -745,25 +906,37 @@ function LeaveDetailsDrawer({
                 ['Day portion', dayPartLabel(request.dayPart)],
                 ['Requested days', String(request.requestedDays)],
                 ['Status', statusLabel(request.status)],
+                [
+                  'Approval route',
+                  `${request.approvalSteps} stage${request.approvalSteps === 1 ? '' : 's'}`,
+                ],
+                ['Approver 1', request.approver1DisplayName],
+                ['Approver 2 pool', request.approver2DisplayName ?? 'Not required'],
                 ['Submitted', new Date(request.submittedAt).toLocaleString('en-IN')],
                 ['Policy', request.approvalPolicyVersion],
               ]}
             />
             <Detail label="Private reason" value={request.reason} />
-            {request.decision && (
+            {request.decisions.length > 0 && (
               <Box sx={{ pt: 2, borderTop: '1px solid', borderColor: 'divider' }}>
-                <Typography sx={{ fontSize: 12.5, fontWeight: 800 }}>
-                  {request.decision.decision === 'approved' ? 'Approved' : 'Rejected'} by{' '}
-                  {request.decision.actorDisplayName}
+                <Typography sx={{ mb: 0.75, fontSize: 12.5, fontWeight: 800 }}>
+                  Approval history
                 </Typography>
-                <Typography sx={{ mt: 0.4, color: 'text.secondary', fontSize: 11.5 }}>
-                  {request.decision.comment || 'No decision comment.'}
-                </Typography>
+                {request.decisions.map((decision) => (
+                  <Box key={`${decision.step}-${decision.decidedAt}`} sx={{ mb: 1 }}>
+                    <Typography sx={{ fontSize: 11.5, fontWeight: 750 }}>
+                      Step {decision.step} {decision.decision} by {decision.actorDisplayName}
+                    </Typography>
+                    <Typography sx={{ color: 'text.secondary', fontSize: 11 }}>
+                      {decision.comment || 'No decision comment.'}
+                    </Typography>
+                  </Box>
+                ))}
               </Box>
             )}
           </Stack>
         )}
-        {request?.status === 'pending_manager' && (
+        {(request?.status === 'pending_manager' || request?.status === 'pending_hr') && (
           <>
             <Divider />
             <Box sx={{ p: 2 }}>
@@ -798,7 +971,7 @@ function DetailGrid({ values }: { values: Array<[string, string]> }) {
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <Box sx={{ minWidth: 0 }}>
-      <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>{label}</Typography>
+      <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>{label}</Typography>
       <Typography sx={{ mt: 0.25, fontSize: 12.5, fontWeight: 700, overflowWrap: 'anywhere' }}>
         {value}
       </Typography>

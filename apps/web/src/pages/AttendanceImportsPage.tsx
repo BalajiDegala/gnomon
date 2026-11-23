@@ -1,4 +1,8 @@
-import type { AttendanceImportSource, ImportBatchDto } from '@gnomon/shared';
+import type {
+  AttendanceImportSource,
+  ImportBatchDto,
+  AttendanceChangePreview,
+} from '@gnomon/shared';
 import {
   Alert,
   Box,
@@ -13,6 +17,11 @@ import {
   Select,
   Stack,
   Typography,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
 } from '@mui/material';
 import {
   AlertTriangle,
@@ -25,10 +34,16 @@ import {
   History,
   RefreshCw,
   UploadCloud,
+  Trash2,
 } from 'lucide-react';
 import { useState, type DragEvent } from 'react';
 
-import { downloadAttendanceTemplate, useAttendanceImports } from '../lib/imports';
+import {
+  downloadAttendanceTemplate,
+  useAttendanceImports,
+  type AttendanceUploadFormat,
+  type AttendanceChangeInput,
+} from '../lib/imports';
 
 interface AttendanceImportsPageProps {
   onBack?: () => void;
@@ -53,6 +68,11 @@ function sourceLabel(source: AttendanceImportSource): string {
   return source === 'biometric' ? 'Biometric' : 'Access card';
 }
 
+function uploadFormatLabel(format: AttendanceUploadFormat): string {
+  if (format === 'door_workbook') return 'Door access workbook';
+  return format === 'biometric' ? 'Biometric CSV' : 'Access-card CSV';
+}
+
 function statusColor(status: ImportBatchDto['status']): 'success' | 'warning' | 'error' | 'info' {
   if (status === 'completed') return 'success';
   if (status === 'partial') return 'warning';
@@ -62,12 +82,58 @@ function statusColor(status: ImportBatchDto['status']): 'success' | 'warning' | 
 
 export function AttendanceImportsPage({ onBack, embedded = false }: AttendanceImportsPageProps) {
   const imports = useAttendanceImports();
-  const [source, setSource] = useState<AttendanceImportSource>('biometric');
+  const [format, setFormat] = useState<AttendanceUploadFormat>('biometric');
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [mode, setMode] = useState<'add' | 'replace'>('add');
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
+  const [reason, setReason] = useState('');
+  const [pendingChange, setPendingChange] = useState<{
+    input: AttendanceChangeInput;
+    preview: AttendanceChangePreview;
+  } | null>(null);
+  const busy = imports.isUploading || imports.isPreviewing || imports.isChanging;
+  const isDoorWorkbook = format === 'door_workbook';
+
+  const reviewChange = async (input: AttendanceChangeInput) => {
+    try {
+      const preview = await imports.previewChange(input);
+      setReason('');
+      setPendingChange({ input, preview });
+    } catch {
+      /* The mutation error is displayed below. */
+    }
+  };
+
+  const confirmChange = async () => {
+    if (!pendingChange) return;
+    try {
+      await imports.applyChange(pendingChange.input, {
+        previewToken: pendingChange.preview.previewToken,
+        reason,
+      });
+      setPendingChange(null);
+    } catch {
+      /* Keep the preview open when the operation fails. */
+    }
+  };
+
+  const submitUpload = async () => {
+    if (!file) return;
+    if (mode === 'replace') {
+      await reviewChange({ kind: 'replace', format, file, period: { from, to } });
+    } else {
+      try {
+        await imports.upload(format, file);
+      } catch {
+        /* Displayed by uploadError. */
+      }
+    }
+  };
 
   const acceptFile = (candidate?: File) => {
-    if (candidate) setFile(candidate);
+    if (candidate && !busy) setFile(candidate);
   };
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
@@ -97,8 +163,8 @@ export function AttendanceImportsPage({ onBack, embedded = false }: AttendanceIm
           Attendance imports
         </Typography>
         <Typography sx={{ maxWidth: 760, color: 'text.secondary', fontSize: 13.5, mt: 0.7 }}>
-          Import biometric and access-card punches as immutable attendance evidence. Duplicate files
-          and rows are detected automatically.
+          Add attendance punches, replace a source for a work-date range, or delete an import from
+          history. Changes recalculate daily attendance and retain the original evidence for audit.
         </Typography>
       </Box>
 
@@ -107,6 +173,17 @@ export function AttendanceImportsPage({ onBack, embedded = false }: AttendanceIm
       )}
       {imports.uploadError && <Alert severity="error">{imports.uploadError.message}</Alert>}
       {imports.historyError && <Alert severity="error">{imports.historyError.message}</Alert>}
+      {imports.changeError && !pendingChange && (
+        <Alert severity="error">{imports.changeError.message}</Alert>
+      )}
+      {imports.changeResult && (
+        <Alert severity="success">
+          {imports.changeResult.removedEvents} punches removed from active attendance;{' '}
+          {imports.changeResult.reconciledTimecards} daily timecards recalculated.
+          {imports.changeResult.batch &&
+            ` ${imports.changeResult.batch.successfulRows} replacement punches imported.`}
+        </Alert>
+      )}
 
       <Box
         sx={{
@@ -122,32 +199,91 @@ export function AttendanceImportsPage({ onBack, embedded = false }: AttendanceIm
               sx={{ justifyContent: 'space-between', alignItems: { sm: 'center' }, gap: 2 }}
             >
               <Box>
-                <Typography sx={{ fontSize: 16, fontWeight: 800 }}>New CSV import</Typography>
-                <Typography sx={{ mt: 0.3, color: 'text.secondary', fontSize: 12 }}>
-                  Maximum 5 MB and 20,000 attendance rows per file.
+                <Typography sx={{ fontSize: 16, fontWeight: 800 }}>
+                  New attendance import
                 </Typography>
+                <Typography sx={{ mt: 0.3, color: 'text.secondary', fontSize: 12 }}>
+                  {isDoorWorkbook
+                    ? 'Maximum 10 MB and 250,000 door transactions per workbook.'
+                    : 'Maximum 5 MB and 20,000 attendance rows per CSV file.'}
+                </Typography>
+                {format === 'biometric' && (
+                  <Typography sx={{ mt: 0.5, color: 'text.secondary', fontSize: 12 }}>
+                    Missing employees are added from the file's employee code and name. Login access
+                    is managed separately.
+                  </Typography>
+                )}
               </Box>
-              <Button
-                variant="outlined"
-                startIcon={<Download size={16} />}
-                onClick={() => downloadAttendanceTemplate(source)}
-              >
-                Download template
-              </Button>
+              {!isDoorWorkbook && (
+                <Button
+                  variant="outlined"
+                  startIcon={<Download size={16} />}
+                  onClick={() => downloadAttendanceTemplate(format)}
+                >
+                  Download template
+                </Button>
+              )}
             </Stack>
 
-            <FormControl fullWidth sx={{ mt: 3 }}>
-              <InputLabel id="attendance-source-label">Attendance source</InputLabel>
+            <FormControl fullWidth sx={{ mt: 3 }} disabled={busy}>
+              <InputLabel id="attendance-source-label">File type</InputLabel>
               <Select
                 labelId="attendance-source-label"
-                label="Attendance source"
-                value={source}
-                onChange={(event) => setSource(event.target.value as AttendanceImportSource)}
+                label="File type"
+                value={format}
+                onChange={(event) => {
+                  setFormat(event.target.value as AttendanceUploadFormat);
+                  setFile(null);
+                }}
               >
-                <MenuItem value="biometric">Biometric machine</MenuItem>
-                <MenuItem value="access_card">Access-card system</MenuItem>
+                <MenuItem value="biometric">Biometric CSV</MenuItem>
+                <MenuItem value="access_card">Access-card CSV</MenuItem>
+                <MenuItem value="door_workbook">Door access workbook</MenuItem>
               </Select>
             </FormControl>
+
+            <FormControl fullWidth sx={{ mt: 2 }} disabled={busy}>
+              <InputLabel id="attendance-action-label">Upload action</InputLabel>
+              <Select
+                labelId="attendance-action-label"
+                label="Upload action"
+                value={mode}
+                onChange={(event) => setMode(event.target.value as 'add' | 'replace')}
+              >
+                <MenuItem value="add">Add new punches</MenuItem>
+                <MenuItem value="replace">Replace attendance for a period</MenuItem>
+              </Select>
+            </FormControl>
+            {mode === 'replace' && (
+              <Stack spacing={2} sx={{ mt: 2 }}>
+                <Alert severity="warning">
+                  Replaces all {format === 'biometric' ? 'biometric' : 'access-card'} punches for
+                  every employee in this work-date range, including punches from other uploads.
+                  Upload the complete corrected data for this source and period. Punches omitted
+                  from the new file will be removed. Other attendance sources are kept.
+                </Alert>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                  <TextField
+                    fullWidth
+                    label="First work date"
+                    type="date"
+                    value={from}
+                    disabled={busy}
+                    slotProps={{ inputLabel: { shrink: true } }}
+                    onChange={(event) => setFrom(event.target.value)}
+                  />
+                  <TextField
+                    fullWidth
+                    label="Last work date"
+                    type="date"
+                    value={to}
+                    disabled={busy}
+                    slotProps={{ inputLabel: { shrink: true } }}
+                    onChange={(event) => setTo(event.target.value)}
+                  />
+                </Stack>
+              </Stack>
+            )}
 
             <Box
               onDragEnter={() => setIsDragging(true)}
@@ -162,9 +298,13 @@ export function AttendanceImportsPage({ onBack, embedded = false }: AttendanceIm
                 placeItems: 'center',
                 textAlign: 'center',
                 border: '1.5px dashed',
-                borderColor: isDragging ? 'primary.main' : file ? '#5bbf91' : 'divider',
+                borderColor: isDragging ? 'primary.main' : file ? 'var(--g-pr)' : 'divider',
                 borderRadius: 3,
-                bgcolor: isDragging ? '#edf9fa' : file ? '#f4fbf7' : '#fafbfd',
+                bgcolor: isDragging
+                  ? 'var(--g-accent-soft)'
+                  : file
+                    ? 'var(--g-pr-soft)'
+                    : 'var(--g-base)',
                 transition: 'all .16s ease',
               }}
             >
@@ -178,69 +318,122 @@ export function AttendanceImportsPage({ onBack, embedded = false }: AttendanceIm
                     display: 'grid',
                     placeItems: 'center',
                     borderRadius: 3,
-                    bgcolor: file ? '#e2f5ea' : '#e8f6f8',
-                    color: file ? '#26855c' : '#147f8d',
+                    bgcolor: 'var(--g-base)',
+                    boxShadow: 'var(--g-raised-sm)',
+                    color: file ? 'var(--g-pr)' : 'var(--g-accent)',
                   }}
                 >
                   {file ? <FileCheck2 size={24} /> : <UploadCloud size={25} />}
                 </Box>
                 <Typography sx={{ fontSize: 14, fontWeight: 800 }}>
-                  {file ? file.name : 'Drop a CSV file here'}
+                  {file ? file.name : `Drop a ${isDoorWorkbook ? 'workbook' : 'CSV file'} here`}
                 </Typography>
                 <Typography sx={{ mt: 0.4, color: 'text.secondary', fontSize: 11.5 }}>
-                  {file
-                    ? `${(file.size / 1024).toFixed(1)} KB selected`
-                    : 'or choose it from this device'}
+                  {file ? `${(file.size / 1024).toFixed(1)} KB selected` : 'or choose it here'}
                 </Typography>
                 <Button component="label" size="small" variant="text" sx={{ mt: 1 }}>
-                  {file ? 'Choose another file' : 'Choose CSV file'}
+                  {file
+                    ? 'Choose another file'
+                    : `Choose ${isDoorWorkbook ? 'workbook' : 'CSV file'}`}
                   <input
                     hidden
                     type="file"
-                    accept=".csv,text/csv"
+                    accept={
+                      isDoorWorkbook
+                        ? '.xls,.xlsx,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                        : '.csv,text/csv'
+                    }
                     onChange={(event) => acceptFile(event.target.files?.[0])}
                   />
                 </Button>
               </Box>
             </Box>
 
-            <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.75, mt: 2 }}>
-              {requiredColumns.map((column) => (
-                <Chip key={column} size="small" color="primary" label={column} variant="outlined" />
-              ))}
-              {optionalColumns.map((column) => (
-                <Chip key={column} size="small" label={`${column} · optional`} variant="outlined" />
-              ))}
-            </Stack>
+            {isDoorWorkbook ? (
+              <Alert severity="info" sx={{ mt: 2 }}>
+                Uses successful card swipes from NORTH/SOUTH ZONE ENTRY only. The earliest In and
+                latest Out per employee workday become attendance; passage and intermediate swipes
+                are ignored.
+              </Alert>
+            ) : format === 'biometric' ? (
+              <Stack spacing={1.25} sx={{ mt: 2 }}>
+                <Alert severity="info">
+                  Accepts event CSVs and monthly biometric summaries with Date, Employee Code, In
+                  Time, and Out Time. Empty Absent and WeeklyOff rows are ignored automatically.
+                </Alert>
+                <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.75 }}>
+                  {['Date', 'Employee Code', 'In Time', 'Out Time'].map((column) => (
+                    <Chip
+                      key={column}
+                      size="small"
+                      color="primary"
+                      label={column}
+                      variant="outlined"
+                    />
+                  ))}
+                </Stack>
+              </Stack>
+            ) : (
+              <Stack direction="row" sx={{ flexWrap: 'wrap', gap: 0.75, mt: 2 }}>
+                {requiredColumns.map((column) => (
+                  <Chip
+                    key={column}
+                    size="small"
+                    color="primary"
+                    label={column}
+                    variant="outlined"
+                  />
+                ))}
+                {optionalColumns.map((column) => (
+                  <Chip
+                    key={column}
+                    size="small"
+                    label={`${column} · optional`}
+                    variant="outlined"
+                  />
+                ))}
+              </Stack>
+            )}
 
             <Button
               fullWidth
               size="large"
               variant="contained"
-              disabled={!file || !imports.canImport || imports.isUploading}
-              startIcon={
-                imports.isUploading ? (
-                  <CircularProgress size={17} color="inherit" />
-                ) : (
-                  <DatabaseZap size={18} />
-                )
+              disabled={
+                !file ||
+                !imports.canImport ||
+                busy ||
+                (mode === 'replace' && (!from || !to || from > to))
               }
-              onClick={() => file && void imports.upload(source, file)}
+              startIcon={
+                busy ? <CircularProgress size={17} color="inherit" /> : <DatabaseZap size={18} />
+              }
+              onClick={() => void submitUpload()}
               sx={{ mt: 3, py: 1.35 }}
             >
-              {imports.isUploading
+              {busy
                 ? 'Validating and importing…'
-                : `Import ${sourceLabel(source)} CSV`}
+                : mode === 'replace'
+                  ? 'Preview replacement'
+                  : `Import ${uploadFormatLabel(format)}`}
             </Button>
           </CardContent>
         </Card>
 
         <Stack spacing={2.5}>
-          <ImportResult result={imports.result} />
+          <ImportResult
+            result={
+              imports.changeResult
+                ? imports.changeResult.batch
+                  ? { batch: imports.changeResult.batch, replayed: false }
+                  : undefined
+                : imports.result
+            }
+          />
           <Card sx={{ boxShadow: 'none' }}>
             <CardContent sx={{ p: 3 }}>
               <Stack direction="row" sx={{ alignItems: 'center', gap: 1.25 }}>
-                <Fingerprint size={19} color="#6d5bd0" />
+                <Fingerprint size={19} color="var(--g-pn)" />
                 <Typography sx={{ fontSize: 14.5, fontWeight: 800 }}>Timestamp handling</Typography>
               </Stack>
               <Typography
@@ -254,7 +447,88 @@ export function AttendanceImportsPage({ onBack, embedded = false }: AttendanceIm
         </Stack>
       </Box>
 
-      <ImportHistory batches={imports.batches} loading={imports.isHistoryLoading} />
+      <ImportHistory
+        batches={imports.batches}
+        loading={imports.isHistoryLoading}
+        canDelete={imports.canImport && !busy}
+        onDelete={(batch) =>
+          void reviewChange({ kind: 'delete', batchId: batch.id, fileName: batch.fileName })
+        }
+      />
+
+      <Dialog
+        open={Boolean(pendingChange)}
+        onClose={() => !imports.isChanging && setPendingChange(null)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>
+          {pendingChange?.input.kind === 'delete'
+            ? 'Delete attendance import?'
+            : 'Replace attendance for this period?'}
+        </DialogTitle>
+        <DialogContent>
+          {pendingChange && (
+            <Stack spacing={2} sx={{ pt: 1 }}>
+              <Typography sx={{ overflowWrap: 'anywhere' }}>
+                {pendingChange.input.kind === 'delete'
+                  ? pendingChange.input.fileName
+                  : pendingChange.input.file.name}
+              </Typography>
+              {pendingChange.input.kind === 'replace' && (
+                <Typography>
+                  {sourceLabel(pendingChange.preview.source)} · {pendingChange.input.period.from} to{' '}
+                  {pendingChange.input.period.to} · all employees
+                </Typography>
+              )}
+              <Alert severity="warning">
+                This removes {pendingChange.preview.existingEvents} active punches affecting{' '}
+                {pendingChange.preview.existingEmployees} employees and{' '}
+                {pendingChange.preview.existingWorkdays} employee workdays.
+                {pendingChange.input.kind === 'replace' &&
+                  ` The new file supplies ${pendingChange.preview.replacementEvents} punch rows.`}
+              </Alert>
+              <Typography variant="body2" color="text.secondary">
+                {pendingChange.input.kind === 'delete'
+                  ? 'Only punches first created by this import are removed. Duplicate rows owned by another import are kept.'
+                  : 'All punches for this source and period are replaced, including rows missing from the corrected file.'}{' '}
+                Daily totals are recalculated. Employee profiles, website sessions, leave and
+                approvals are retained. Removed punches remain in the audit history.
+              </Typography>
+              <TextField
+                autoFocus
+                required
+                label="Reason for this change"
+                value={reason}
+                multiline
+                minRows={2}
+                disabled={imports.isChanging}
+                onChange={(event) => setReason(event.target.value)}
+                helperText="Enter 5–500 characters."
+                slotProps={{ htmlInput: { maxLength: 500 } }}
+              />
+              {imports.changeError && <Alert severity="error">{imports.changeError.message}</Alert>}
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button disabled={imports.isChanging} onClick={() => setPendingChange(null)}>
+            Cancel
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            disabled={imports.isChanging || reason.trim().length < 5}
+            onClick={() => void confirmChange()}
+          >
+            {imports.isChanging
+              ? 'Applying change…'
+              : pendingChange?.input.kind === 'delete'
+                ? 'Delete import'
+                : 'Replace attendance'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Stack>
   );
 }
@@ -300,14 +574,25 @@ function ImportResult({ result }: { result: ReturnType<typeof useAttendanceImpor
           }}
         >
           {[
-            { label: 'Imported', value: batch.successfulRows, color: '#24855e' },
-            { label: 'Duplicates', value: batch.duplicateRows, color: '#7a6ac8' },
-            { label: 'Rejected', value: batch.failedRows, color: '#c45b5f' },
-            { label: 'Total rows', value: batch.totalRows, color: '#526174' },
+            { label: 'Imported', value: batch.successfulRows, color: 'var(--g-pr)' },
+            { label: 'Duplicates', value: batch.duplicateRows, color: 'var(--g-pn)' },
+            { label: 'Ignored', value: batch.ignoredRows, color: 'var(--g-accent)' },
+            { label: 'Rejected', value: batch.failedRows, color: 'var(--g-ab)' },
+            { label: 'Employees added', value: batch.provisionedEmployees, color: 'var(--g-lv)' },
+            { label: 'Timecards updated', value: batch.reconciledTimecards, color: 'var(--g-off)' },
+            { label: 'Total rows', value: batch.totalRows, color: 'var(--g-fg)' },
           ].map(({ label, value, color }) => (
-            <Box key={label} sx={{ p: 1.5, borderRadius: 2, bgcolor: '#f7f9fb' }}>
+            <Box
+              key={label}
+              sx={{
+                p: 1.5,
+                borderRadius: 2,
+                bgcolor: 'var(--g-base)',
+                boxShadow: 'var(--g-inset-sm)',
+              }}
+            >
               <Typography sx={{ color, fontSize: 20, fontWeight: 850 }}>{value}</Typography>
-              <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>{label}</Typography>
+              <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>{label}</Typography>
             </Box>
           ))}
         </Box>
@@ -322,7 +607,7 @@ function ImportResult({ result }: { result: ReturnType<typeof useAttendanceImpor
               >
                 <AlertTriangle
                   size={14}
-                  color="#c45b5f"
+                  color="var(--g-ab)"
                   style={{ marginTop: 2, flex: '0 0 auto' }}
                 />
                 <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
@@ -338,7 +623,17 @@ function ImportResult({ result }: { result: ReturnType<typeof useAttendanceImpor
   );
 }
 
-function ImportHistory({ batches, loading }: { batches: ImportBatchDto[]; loading: boolean }) {
+function ImportHistory({
+  batches,
+  loading,
+  canDelete,
+  onDelete,
+}: {
+  batches: ImportBatchDto[];
+  loading: boolean;
+  canDelete: boolean;
+  onDelete: (batch: ImportBatchDto) => void;
+}) {
   return (
     <Card sx={{ boxShadow: 'none' }}>
       <CardContent sx={{ p: { xs: 2.5, md: 3 } }}>
@@ -352,12 +647,12 @@ function ImportHistory({ batches, loading }: { batches: ImportBatchDto[]; loadin
               Most recent biometric and access-card batches
             </Typography>
           </Box>
-          {loading ? <CircularProgress size={18} /> : <History size={19} color="#748195" />}
+          {loading ? <CircularProgress size={18} /> : <History size={19} color="var(--g-faint)" />}
         </Stack>
 
         {batches.length === 0 && !loading ? (
           <Box sx={{ py: 4, textAlign: 'center' }}>
-            <RefreshCw size={22} color="#98a2b1" />
+            <RefreshCw size={22} color="var(--g-faint)" />
             <Typography sx={{ mt: 0.75, color: 'text.secondary', fontSize: 12 }}>
               No attendance files have been imported yet.
             </Typography>
@@ -369,25 +664,40 @@ function ImportHistory({ batches, loading }: { batches: ImportBatchDto[]; loadin
                 key={batch.id}
                 sx={{
                   display: 'grid',
-                  gridTemplateColumns: { xs: '1fr auto', md: '1.4fr .7fr .7fr .7fr auto' },
+                  gridTemplateColumns: {
+                    xs: '1fr auto',
+                    md: '1.4fr .65fr .65fr .65fr .65fr auto auto',
+                  },
                   gap: 1.5,
                   alignItems: 'center',
                   px: 1.5,
                   py: 1.35,
                   borderRadius: 2,
-                  bgcolor: '#f8fafb',
+                  bgcolor: 'var(--g-base)',
+                  boxShadow: 'var(--g-inset-sm)',
                 }}
               >
                 <Box sx={{ minWidth: 0 }}>
                   <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 750 }}>
                     {batch.fileName}
                   </Typography>
-                  <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
-                    {sourceLabel(batch.source)} · {formatBatchDate(batch.createdAt)}
+                  {batch.removedAt && (
+                    <Typography
+                      sx={{ color: 'text.secondary', fontSize: 11.5, overflowWrap: 'anywhere' }}
+                    >
+                      {batch.removedRows} punches removed · {batch.removalReason}
+                    </Typography>
+                  )}
+                  <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
+                    {batch.importType === 'door_workbook'
+                      ? 'Door access workbook'
+                      : sourceLabel(batch.source)}{' '}
+                    · {formatBatchDate(batch.createdAt)}
                   </Typography>
                 </Box>
                 <HistoryMetric label="Imported" value={batch.successfulRows} />
                 <HistoryMetric label="Duplicate" value={batch.duplicateRows} />
+                <HistoryMetric label="Ignored" value={batch.ignoredRows} />
                 <HistoryMetric label="Rejected" value={batch.failedRows} />
                 <Chip
                   size="small"
@@ -395,6 +705,18 @@ function ImportHistory({ batches, loading }: { batches: ImportBatchDto[]; loadin
                   label={batch.status}
                   icon={batch.status === 'completed' ? <CheckCircle2 size={13} /> : undefined}
                 />
+                <Button
+                  size="small"
+                  color="error"
+                  startIcon={<Trash2 size={14} />}
+                  disabled={
+                    !canDelete || batch.status === 'processing' || batch.status === 'deleted'
+                  }
+                  aria-label={`Delete import ${batch.fileName}`}
+                  onClick={() => onDelete(batch)}
+                >
+                  Delete
+                </Button>
               </Box>
             ))}
           </Stack>
@@ -408,7 +730,7 @@ function HistoryMetric({ label, value }: { label: string; value: number }) {
   return (
     <Box sx={{ display: { xs: 'none', md: 'block' } }}>
       <Typography sx={{ fontSize: 12.5, fontWeight: 750 }}>{value}</Typography>
-      <Typography sx={{ color: 'text.secondary', fontSize: 9.5 }}>{label}</Typography>
+      <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>{label}</Typography>
     </Box>
   );
 }

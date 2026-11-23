@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: gnomon-mongodb
+  labels:
+    app.kubernetes.io/name: gnomon
+    app.kubernetes.io/component: mongodb
+spec:
+  serviceName: gnomon-mongodb
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: gnomon
+      app.kubernetes.io/component: mongodb
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: gnomon
+        app.kubernetes.io/component: mongodb
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: mongodb
+          image: mongo:4.4.29
+          imagePullPolicy: IfNotPresent
+          # MongoDB 4.4 sizes its cache from host RAM, not the container limit.
+          args: ['--wiredTigerCacheSizeGB', '0.5']
+          ports:
+            - name: mongodb
+              containerPort: 27017
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              value: gnomonadmin
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gnomon-secrets
+                  key: MONGO_INITDB_ROOT_PASSWORD
+          readinessProbe:
+            exec:
+              command: ['mongo', '--quiet', '--eval', "db.adminCommand('ping').ok"]
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            exec:
+              command: ['mongo', '--quiet', '--eval', "db.adminCommand('ping').ok"]
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 5
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              cpu: '1'
+              memory: 2Gi
+          volumeMounts:
+            - name: data
+              mountPath: /data/db
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ['ReadWriteOnce']
+        storageClassName: gnomon-local
+        volumeName: gnomon-k8s-mongodb
+        resources:
+          requests:
+            storage: 20Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gnomon-mongodb
+  labels:
+    app.kubernetes.io/name: gnomon
+    app.kubernetes.io/component: mongodb
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: gnomon
+    app.kubernetes.io/component: mongodb
+  ports:
+    - name: mongodb
+      port: 27017
+      targetPort: mongodb

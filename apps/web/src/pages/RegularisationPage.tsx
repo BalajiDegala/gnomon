@@ -27,16 +27,19 @@ import {
   Typography,
 } from '@mui/material';
 import { CalendarClock, ChevronRight, Plus, Send, Trash2, X } from 'lucide-react';
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 
 import {
   DataTable,
   type DataTableColumn,
   type SortDirection,
 } from '../components/data-view/DataTable';
+import { CatchUpBanner } from '../components/CatchUpBanner';
 import { FilterBar } from '../components/data-view/FilterBar';
 import { PageHeader } from '../components/data-view/PageHeader';
 import { PageTabs, type PageTab } from '../components/data-view/PageTabs';
+import { useAuth } from '../lib/auth';
+import { readFormDraft, useSessionFormDraft } from '../lib/form-drafts';
 import { useMyRegularisations } from '../lib/regularisations';
 import { formatIndiaTime } from '../lib/timecard';
 import { currentIndiaWorkDate, formatMinutes, indiaLocalInputToIso } from '../lib/timesheets';
@@ -46,6 +49,7 @@ import {
   parseShortSearch,
   useUrlQueryState,
 } from '../lib/url-query-state';
+import { confirmDiscardChanges, useUnsavedChanges } from '../lib/unsaved-changes';
 
 type RegularisationTab = 'all' | RegularisationStatus;
 type SourceFilter = 'all' | RegularisationSource;
@@ -59,10 +63,32 @@ const regularisationTabs = [
   'rejected',
   'cancelled',
 ] as const;
-const sourceFilters = ['all', 'biometric', 'website'] as const;
+const sourceFilters = ['all', 'biometric', 'access_card', 'website'] as const;
 const sortKeys = ['date', 'source', 'duration', 'status', 'submitted'] as const;
 const sortDirections = ['asc', 'desc'] as const;
 const pageSizes = [10, 25, 50, 100] as const;
+
+interface RegularisationFormDraft {
+  workDate: string;
+  source: RegularisationSource;
+  missingEvent: MissingEvent;
+  requestedStart: string;
+  requestedEnd: string;
+  reason: string;
+}
+
+function isRegularisationFormDraft(value: unknown): value is RegularisationFormDraft {
+  if (!value || typeof value !== 'object') return false;
+  const draft = value as Partial<RegularisationFormDraft>;
+  return (
+    typeof draft.workDate === 'string' &&
+    ['biometric', 'access_card', 'website'].includes(draft.source ?? '') &&
+    ['opening', 'closing', 'both'].includes(draft.missingEvent ?? '') &&
+    typeof draft.requestedStart === 'string' &&
+    typeof draft.requestedEnd === 'string' &&
+    typeof draft.reason === 'string'
+  );
+}
 
 function previousWorkingDate(): string {
   const current = new Date(`${currentIndiaWorkDate()}T00:00:00.000Z`);
@@ -93,12 +119,14 @@ function statusLabel(status: RegularisationStatus): string {
 }
 
 function sourceLabel(source: RegularisationSource): string {
-  return source === 'biometric' ? 'Biometric' : 'Website timecard';
+  if (source === 'biometric') return 'Biometric';
+  if (source === 'access_card') return 'Access card';
+  return 'Website timecard';
 }
 
 function eventLabel(source: RegularisationSource, missingEvent: MissingEvent): string {
-  const opening = source === 'biometric' ? 'in' : 'start';
-  const closing = source === 'biometric' ? 'out' : 'stop';
+  const opening = source === 'biometric' ? 'in' : source === 'access_card' ? 'entry' : 'start';
+  const closing = source === 'biometric' ? 'out' : source === 'access_card' ? 'exit' : 'stop';
   return missingEvent === 'both'
     ? `Missing ${opening} and ${closing}`
     : `Missing ${missingEvent === 'opening' ? opening : closing}`;
@@ -146,10 +174,20 @@ function compareRequests(
   return left.submittedAt.localeCompare(right.submittedAt);
 }
 
-export function RegularisationPage() {
+export function RegularisationPage({ onOpenCatchUp }: { onOpenCatchUp?: () => void } = {}) {
+  const { user } = useAuth();
   const regularisations = useMyRegularisations();
   const defaultWorkDate = useMemo(previousWorkingDate, []);
-  const [workDate, setWorkDate] = useUrlQueryState('date', defaultWorkDate, parseIsoDate);
+  const draftKey = `${user?.employeeId ?? 'anonymous'}:regularisation-request`;
+  const recoveredDraft = useMemo(
+    () => readFormDraft(draftKey, isRegularisationFormDraft),
+    [draftKey],
+  );
+  const [workDate, setWorkDate] = useUrlQueryState(
+    'date',
+    recoveredDraft?.workDate ?? defaultWorkDate,
+    parseIsoDate,
+  );
   const [tab, setTab] = useUrlQueryState<RegularisationTab>('tab', 'all', parseTab);
   const [search, setSearch] = useUrlQueryState('q', '', parseShortSearch);
   const [sourceFilter, setSourceFilter] = useUrlQueryState<SourceFilter>(
@@ -170,16 +208,53 @@ export function RegularisationPage() {
   const [pageNumber, setPageNumber] = useUrlQueryState('page', 1, parsePage);
   const [rowsPerPage, setRowsPerPage] = useUrlQueryState('size', 25, parsePageSize);
   const [selectedRequestId, setSelectedRequestId] = useUrlQueryState('request', '', parseRequestId);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [source, setSource] = useState<RegularisationSource>('biometric');
-  const [missingEvent, setMissingEvent] = useState<MissingEvent>('closing');
-  const [requestedStart, setRequestedStart] = useState(`${workDate}T09:00`);
-  const [requestedEnd, setRequestedEnd] = useState(`${workDate}T18:00`);
-  const [reason, setReason] = useState('');
+  const [createOpen, setCreateOpen] = useState(Boolean(recoveredDraft));
+  const [source, setSource] = useState<RegularisationSource>(recoveredDraft?.source ?? 'biometric');
+  const [missingEvent, setMissingEvent] = useState<MissingEvent>(
+    recoveredDraft?.missingEvent ?? 'closing',
+  );
+  const [requestedStart, setRequestedStart] = useState(
+    recoveredDraft?.requestedStart ?? `${workDate}T09:00`,
+  );
+  const [requestedEnd, setRequestedEnd] = useState(
+    recoveredDraft?.requestedEnd ?? `${workDate}T18:00`,
+  );
+  const [reason, setReason] = useState(recoveredDraft?.reason ?? '');
+  const recoveredOnMount = useRef(Boolean(recoveredDraft && recoveredDraft.workDate === workDate));
   const selectedRequest =
     regularisations.requests.find((request) => request.id === selectedRequestId) ?? null;
+  const formDirty =
+    createOpen &&
+    (workDate !== defaultWorkDate ||
+      source !== 'biometric' ||
+      missingEvent !== 'closing' ||
+      requestedStart !== `${workDate}T09:00` ||
+      requestedEnd !== `${workDate}T18:00` ||
+      Boolean(reason));
+  const draft = useMemo(
+    () => ({ workDate, source, missingEvent, requestedStart, requestedEnd, reason }),
+    [missingEvent, reason, requestedEnd, requestedStart, source, workDate],
+  );
+  const clearDraft = useSessionFormDraft(draftKey, draft, formDirty);
+  useUnsavedChanges(formDirty);
+
+  const closeCreate = () => {
+    if (formDirty && !confirmDiscardChanges()) return;
+    clearDraft();
+    setSource('biometric');
+    setMissingEvent('closing');
+    setReason('');
+    setWorkDate(defaultWorkDate);
+    setRequestedStart(`${defaultWorkDate}T09:00`);
+    setRequestedEnd(`${defaultWorkDate}T18:00`);
+    setCreateOpen(false);
+  };
 
   useEffect(() => {
+    if (recoveredOnMount.current) {
+      recoveredOnMount.current = false;
+      return;
+    }
     setRequestedStart(`${workDate}T09:00`);
     setRequestedEnd(`${workDate}T18:00`);
   }, [workDate]);
@@ -277,6 +352,7 @@ export function RegularisationPage() {
         requestedEnd: indiaLocalInputToIso(requestedEnd),
         reason,
       });
+      clearDraft();
       setReason('');
       setCreateOpen(false);
       setTab('all');
@@ -312,7 +388,7 @@ export function RegularisationPage() {
           <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 800 }}>
             {sourceLabel(request.source)}
           </Typography>
-          <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
+          <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
             {eventLabel(request.source, request.missingEvent)} - {statusLabel(request.status)}
           </Typography>
         </Box>
@@ -423,6 +499,8 @@ export function RegularisationPage() {
       {!regularisations.canCreate && (
         <Alert severity="warning">Your account cannot create regularisation requests.</Alert>
       )}
+
+      <CatchUpBanner onOpen={onOpenCatchUp} />
       {regularisations.error && !createOpen && !selectedRequest && (
         <Alert severity="error">{regularisations.error.message}</Alert>
       )}
@@ -462,6 +540,7 @@ export function RegularisationPage() {
             >
               <MenuItem value="all">All sources</MenuItem>
               <MenuItem value="biometric">Biometric</MenuItem>
+              <MenuItem value="access_card">Access card</MenuItem>
               <MenuItem value="website">Website timecard</MenuItem>
             </Select>
           </FormControl>
@@ -511,7 +590,7 @@ export function RegularisationPage() {
         onRequestedStartChange={setRequestedStart}
         onRequestedEndChange={setRequestedEnd}
         onReasonChange={setReason}
-        onClose={() => setCreateOpen(false)}
+        onClose={closeCreate}
         onSubmit={submit}
       />
 
@@ -598,6 +677,7 @@ function CreateRegularisationDialog({
                   onChange={(event) => onSourceChange(event.target.value as RegularisationSource)}
                 >
                   <MenuItem value="biometric">Biometric</MenuItem>
+                  <MenuItem value="access_card">Access card</MenuItem>
                   <MenuItem value="website">Website timecard</MenuItem>
                 </Select>
               </FormControl>
@@ -610,10 +690,18 @@ function CreateRegularisationDialog({
                   onChange={(event) => onMissingEventChange(event.target.value as MissingEvent)}
                 >
                   <MenuItem value="opening">
-                    {source === 'biometric' ? 'In punch' : 'Start'}
+                    {source === 'biometric'
+                      ? 'In punch'
+                      : source === 'access_card'
+                        ? 'Entry swipe'
+                        : 'Start'}
                   </MenuItem>
                   <MenuItem value="closing">
-                    {source === 'biometric' ? 'Out punch' : 'Stop'}
+                    {source === 'biometric'
+                      ? 'Out punch'
+                      : source === 'access_card'
+                        ? 'Exit swipe'
+                        : 'Stop'}
                   </MenuItem>
                   <MenuItem value="both">Both events</MenuItem>
                 </Select>
@@ -788,7 +876,7 @@ function DetailGrid({ values }: { values: Array<[string, string]> }) {
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <Box sx={{ minWidth: 0 }}>
-      <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>{label}</Typography>
+      <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>{label}</Typography>
       <Typography sx={{ mt: 0.25, fontSize: 12.5, fontWeight: 700, overflowWrap: 'anywhere' }}>
         {value}
       </Typography>

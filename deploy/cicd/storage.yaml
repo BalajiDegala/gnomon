@@ -27,3 +27,30 @@ spec:
               operator: In
               values:
                 - dd-test.d2-india.com
+---
+# MongoDB backup archives written by the gnomon-mongodb-backup CronJob.
+# Create the directory on the node first: mkdir -p /pipedev/k8s-local/gnomon-backups
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: gnomon-mongodb-backups
+spec:
+  capacity:
+    storage: 50Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: gnomon-local
+  claimRef:
+    namespace: gnomon
+    name: gnomon-gnomon-mongodb-backups
+  local:
+    path: /pipedev/k8s-local/gnomon-backups
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - dd-test.d2-india.com

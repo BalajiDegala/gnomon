@@ -68,6 +68,11 @@ export function useRegularisationApprovals() {
     queryFn: () => request<RequestListResponse>('/api/v1/approvals/regularisations'),
     enabled: canApprove,
   });
+  const history = useQuery({
+    queryKey: ['regularisation-approvals', 'history'],
+    queryFn: () => request<RequestListResponse>('/api/v1/approvals/regularisations/history'),
+    enabled: canApprove,
+  });
   const decide = useMutation({
     mutationFn: ({
       requestId,
@@ -86,9 +91,12 @@ export function useRegularisationApprovals() {
   return {
     canApprove,
     requests: query.data?.requests ?? [],
+    history: history.data?.requests ?? [],
     isLoading: query.isLoading,
+    isHistoryLoading: history.isLoading,
     isUpdating: decide.isPending,
     error: query.error ?? decide.error,
+    historyError: history.error,
     decide: (requestId: string, input: RegularisationDecisionRequest) =>
       decide.mutateAsync({ requestId, input }),
   };

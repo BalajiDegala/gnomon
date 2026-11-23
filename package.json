@@ -16,6 +16,7 @@
     "release:local-images": "bash scripts/build-import-local-images.sh",
     "seed:demo": "npm run seed:demo --workspace @gnomon/api",
     "test": "npm run build --workspace @gnomon/shared && npm run test --workspaces --if-present",
+    "test:coverage": "npm run build --workspace @gnomon/shared && npm run test:coverage --workspace @gnomon/api && npm run test:coverage --workspace @gnomon/web && npm run test:coverage --workspace @gnomon/shared",
     "typecheck": "npm run build --workspace @gnomon/shared && npm run typecheck --workspaces --if-present"
   },
   "engines": {
@@ -25,6 +26,7 @@
     "esbuild": "0.28.1"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^4.1.11",
     "concurrently": "latest",
     "cross-env": "^10.1.0",
     "esbuild": "0.28.1",

@@ -54,6 +54,12 @@ spec:
                 secretKeyRef:
                   name: {{ include "gnomon.secretName" . }}
                   key: MONGODB_URI
+            - name: SETTINGS_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "gnomon.secretName" . }}
+                  key: SETTINGS_ENCRYPTION_KEY
+                  optional: true
           startupProbe:
             httpGet:
               path: /api/v1/health/live

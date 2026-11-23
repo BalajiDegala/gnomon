@@ -1,0 +1,69 @@
+# Local storage only: no dynamic provisioner. Each PersistentVolume is a
+# directory on one node, pre-created by an admin, and pinned to its claim.
+#
+# On the storage node (dd-test.d2-india.com):
+#   sudo mkdir -p /pipedev/k8s-local/gnomon-mongodb /pipedev/k8s-local/gnomon-backups
+#   sudo chmod 0755 /pipedev/k8s-local/gnomon-mongodb /pipedev/k8s-local/gnomon-backups
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gnomon-local
+provisioner: kubernetes.io/no-provisioner
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: gnomon-k8s-mongodb
+  labels:
+    app.kubernetes.io/part-of: gnomon
+    app.kubernetes.io/component: mongodb
+spec:
+  capacity:
+    storage: 20Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: gnomon-local
+  claimRef:
+    namespace: gnomon
+    name: data-gnomon-mongodb-0
+  local:
+    path: /pipedev/k8s-local/gnomon-mongodb
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - dd-test.d2-india.com
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: gnomon-k8s-backups
+  labels:
+    app.kubernetes.io/part-of: gnomon
+    app.kubernetes.io/component: mongodb-backup
+spec:
+  capacity:
+    storage: 50Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: gnomon-local
+  claimRef:
+    namespace: gnomon
+    name: gnomon-mongodb-backups
+  local:
+    path: /pipedev/k8s-local/gnomon-backups
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: kubernetes.io/hostname
+              operator: In
+              values:
+                - dd-test.d2-india.com

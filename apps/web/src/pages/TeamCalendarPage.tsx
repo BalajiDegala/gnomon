@@ -13,37 +13,32 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
-  TextField,
   Tooltip,
   Typography,
 } from '@mui/material';
 import { ArrowLeft, ChevronLeft, ChevronRight, UsersRound } from 'lucide-react';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 
 import { currentIndiaMonth, useManagedCalendar } from '../lib/calendar';
 import { parseYearMonth, useUrlQueryState } from '../lib/url-query-state';
+import { calendarCodes, legendCodes } from '../lib/calendar-codes';
+import { MonthPicker } from '../components/data-view/MonthPicker';
 
 interface TeamCalendarPageProps {
   onBack: () => void;
 }
 
 const weekdayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const pageSize = 25;
 
-const availabilityTones = {
-  available: { background: '#e6f7ef', color: '#19764d', short: 'A', label: 'Available' },
-  partial: { background: '#fff4df', color: '#a86616', short: 'P', label: 'Partial day' },
-  unavailable: { background: '#fdebec', color: '#b43f48', short: 'U', label: 'Unavailable' },
-  pending: { background: '#fff0dc', color: '#a35d0d', short: '?', label: 'Pending' },
-  no_record: { background: '#f1f3f6', color: '#697587', short: '—', label: 'No record' },
-  non_working: { background: '#f1edff', color: '#6852a8', short: 'Off', label: 'Non-working' },
-  not_assigned: {
-    background: '#f7f8fa',
-    color: '#a2a9b3',
-    short: '·',
-    label: 'Not assigned',
-  },
-} as const;
+function parsePage(value: string): number | null {
+  const page = Number(value);
+  return Number.isInteger(page) && page >= 1 ? page : null;
+}
+
+const availabilityTones = calendarCodes;
 
 function moveMonth(month: string, offset: number): string {
   const [year, monthNumber] = month.split('-').map(Number) as [number, number];
@@ -60,11 +55,15 @@ function monthLabel(month: string): string {
 
 function dayDetail(day: ManagedCalendarDayDto): string {
   if (day.holiday) return `${day.holiday.name} · Holiday`;
-  if (day.leave) {
+  if (
+    day.leave &&
+    (day.availability === 'leave' ||
+      day.availability === 'pending' ||
+      day.availability === 'partial')
+  ) {
     const part = day.leave.dayPart === 'full_day' ? 'Full day' : 'Half day';
     return `${day.leave.status === 'approved' ? 'Approved' : 'Pending'} leave · ${part}`;
   }
-  if (day.attendanceStatus) return day.attendanceStatus.replaceAll('_', ' ');
   return availabilityTones[day.availability].label;
 }
 
@@ -103,7 +102,7 @@ function MobileMemberCalendar({ member }: { member: ManagedCalendarMemberDto }) 
     <Card sx={{ boxShadow: 'none' }}>
       <CardContent sx={{ p: 2 }}>
         <Typography sx={{ fontSize: 14, fontWeight: 820 }}>{member.displayName}</Typography>
-        <Typography sx={{ color: 'text.secondary', fontSize: 10.5, mb: 1.5 }}>
+        <Typography sx={{ color: 'text.secondary', fontSize: 11.5, mb: 1.5 }}>
           {member.employeeCode}
         </Typography>
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 0.55 }}>
@@ -124,13 +123,39 @@ function MobileMemberCalendar({ member }: { member: ManagedCalendarMemberDto }) 
 export function TeamCalendarPage({ onBack }: TeamCalendarPageProps) {
   const defaultMonth = useMemo(currentIndiaMonth, []);
   const [month, setMonth] = useUrlQueryState('month', defaultMonth, parseYearMonth);
-  const managed = useManagedCalendar(month);
+  const [page, setPage] = useUrlQueryState('page', 1, parsePage);
+  const selectedLatestRecordedMonth = useRef(false);
+  const managed = useManagedCalendar(month, page, pageSize);
   const calendar = managed.calendar;
   const allDays = calendar?.members.flatMap((member) => member.days) ?? [];
-  const unavailableDays = allDays.filter((day) => day.availability === 'unavailable').length;
-  const partialDays = allDays.filter((day) => day.availability === 'partial').length;
-  const pendingDays = allDays.filter((day) => day.availability === 'pending').length;
+  const countOf = (availability: keyof typeof availabilityTones) =>
+    allDays.filter((day) => day.availability === availability).length;
+  const pageCounts = (['present', 'absent', 'partial', 'leave', 'pending'] as const).map(
+    (availability) => ({ availability, count: countOf(availability) }),
+  );
   const headerDays = calendar?.members[0]?.days ?? [];
+  const selectMonth = (value: string) => {
+    setMonth(value);
+    setPage(1);
+  };
+
+  useEffect(() => {
+    if (
+      selectedLatestRecordedMonth.current ||
+      month !== defaultMonth ||
+      !calendar?.latestRecordedMonth ||
+      calendar.latestRecordedMonth === month ||
+      calendar.members.some((member) => member.days.some((day) => day.attendanceStatus !== null))
+    ) {
+      return;
+    }
+    selectedLatestRecordedMonth.current = true;
+    selectMonth(calendar.latestRecordedMonth);
+  }, [calendar, defaultMonth, month]);
+
+  useEffect(() => {
+    if (calendar?.totalPages && page > calendar.totalPages) setPage(calendar.totalPages);
+  }, [calendar?.totalPages, page, setPage]);
 
   return (
     <Stack spacing={3} sx={{ width: '100%', maxWidth: 1500, mx: 'auto' }}>
@@ -147,8 +172,8 @@ export function TeamCalendarPage({ onBack }: TeamCalendarPageProps) {
           Team calendar
         </Typography>
         <Typography sx={{ maxWidth: 820, color: 'text.secondary', fontSize: 13.5, mt: 0.7 }}>
-          Direct-report availability across attendance and leave. Leave reasons are never included
-          in this view.
+          Direct-report attendance and leave, using the same statuses as Attendance details. Leave
+          reasons are never included in this view.
         </Typography>
       </Box>
 
@@ -156,6 +181,13 @@ export function TeamCalendarPage({ onBack }: TeamCalendarPageProps) {
         <Alert severity="warning">Your account cannot read team attendance.</Alert>
       )}
       {managed.error && <Alert severity="error">{managed.error.message}</Alert>}
+      {calendar?.latestRecordedMonth &&
+        month === calendar.latestRecordedMonth &&
+        month !== defaultMonth && (
+          <Alert severity="info">
+            The current month has no attendance records, so the latest recorded month is shown.
+          </Alert>
+        )}
 
       <Card sx={{ boxShadow: 'none' }}>
         <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
@@ -167,35 +199,28 @@ export function TeamCalendarPage({ onBack }: TeamCalendarPageProps) {
               <Button
                 aria-label="Previous month"
                 color="inherit"
-                onClick={() => setMonth(moveMonth(month, -1))}
+                onClick={() => selectMonth(moveMonth(month, -1))}
                 sx={{ minWidth: 38, px: 0.75 }}
               >
                 <ChevronLeft size={18} />
               </Button>
               <Box sx={{ minWidth: { sm: 180 }, textAlign: 'center' }}>
                 <Typography sx={{ fontSize: 17, fontWeight: 850 }}>{monthLabel(month)}</Typography>
-                <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
+                <Typography sx={{ color: 'text.secondary', fontSize: 11.5 }}>
                   Asia/Kolkata
                 </Typography>
               </Box>
               <Button
                 aria-label="Next month"
                 color="inherit"
-                onClick={() => setMonth(moveMonth(month, 1))}
+                onClick={() => selectMonth(moveMonth(month, 1))}
                 sx={{ minWidth: 38, px: 0.75 }}
               >
                 <ChevronRight size={18} />
               </Button>
             </Stack>
             <Stack direction={{ xs: 'column', sm: 'row' }} sx={{ gap: 1.25 }}>
-              <TextField
-                type="month"
-                label="Calendar month"
-                value={month}
-                onChange={(event) => setMonth(event.target.value)}
-                slotProps={{ inputLabel: { shrink: true } }}
-                size="small"
-              />
+              <MonthPicker label="Calendar month" value={month} onChange={selectMonth} />
             </Stack>
           </Stack>
 
@@ -203,33 +228,21 @@ export function TeamCalendarPage({ onBack }: TeamCalendarPageProps) {
             <Chip
               icon={<UsersRound size={14} />}
               size="small"
-              label={`${calendar?.members.length ?? 0} people`}
+              label={`${calendar?.totalMembers ?? 0} people`}
               variant="outlined"
             />
-            <Chip
-              size="small"
-              label={`${unavailableDays} unavailable`}
-              sx={{
-                bgcolor: availabilityTones.unavailable.background,
-                color: availabilityTones.unavailable.color,
-              }}
-            />
-            <Chip
-              size="small"
-              label={`${partialDays} partial`}
-              sx={{
-                bgcolor: availabilityTones.partial.background,
-                color: availabilityTones.partial.color,
-              }}
-            />
-            <Chip
-              size="small"
-              label={`${pendingDays} pending`}
-              sx={{
-                bgcolor: availabilityTones.pending.background,
-                color: availabilityTones.pending.color,
-              }}
-            />
+            {pageCounts.map(({ availability, count }) => (
+              <Chip
+                key={availability}
+                size="small"
+                label={`${availabilityTones[availability].short} · ${count} ${availabilityTones[availability].label}`}
+                sx={{
+                  fontWeight: 700,
+                  bgcolor: availabilityTones[availability].background,
+                  color: availabilityTones[availability].color,
+                }}
+              />
+            ))}
           </Stack>
         </CardContent>
       </Card>
@@ -259,7 +272,7 @@ export function TeamCalendarPage({ onBack }: TeamCalendarPageProps) {
                       left: 0,
                       zIndex: 3,
                       minWidth: 190,
-                      bgcolor: '#fff',
+                      bgcolor: 'var(--g-base)',
                       fontWeight: 800,
                     }}
                   >
@@ -272,13 +285,13 @@ export function TeamCalendarPage({ onBack }: TeamCalendarPageProps) {
                       sx={{
                         minWidth: 40,
                         px: 0.4,
-                        bgcolor: day.weekday > 5 ? '#f6f4fb' : '#fafbfc',
+                        bgcolor: day.weekday > 5 ? 'var(--g-off-soft)' : 'var(--g-base)',
                       }}
                     >
                       <Typography sx={{ color: 'text.secondary', fontSize: 8 }}>
                         {weekdayLabels[day.weekday - 1]?.slice(0, 1)}
                       </Typography>
-                      <Typography sx={{ fontSize: 10.5, fontWeight: 820 }}>
+                      <Typography sx={{ fontSize: 11.5, fontWeight: 820 }}>
                         {Number(day.date.slice(-2))}
                       </Typography>
                     </TableCell>
@@ -288,11 +301,13 @@ export function TeamCalendarPage({ onBack }: TeamCalendarPageProps) {
               <TableBody>
                 {calendar.members.map((member) => (
                   <TableRow key={member.employeeId} hover>
-                    <TableCell sx={{ position: 'sticky', left: 0, zIndex: 2, bgcolor: '#fff' }}>
+                    <TableCell
+                      sx={{ position: 'sticky', left: 0, zIndex: 2, bgcolor: 'var(--g-base)' }}
+                    >
                       <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 780 }}>
                         {member.displayName}
                       </Typography>
-                      <Typography sx={{ color: 'text.secondary', fontSize: 9.5 }}>
+                      <Typography sx={{ color: 'text.secondary', fontSize: 10.5 }}>
                         {member.employeeCode}
                       </Typography>
                     </TableCell>
@@ -311,18 +326,27 @@ export function TeamCalendarPage({ onBack }: TeamCalendarPageProps) {
               <MobileMemberCalendar key={member.employeeId} member={member} />
             ))}
           </Stack>
+          <TablePagination
+            component="div"
+            count={calendar.totalMembers}
+            page={calendar.page - 1}
+            rowsPerPage={calendar.pageSize}
+            rowsPerPageOptions={[calendar.pageSize]}
+            onPageChange={(_event, nextPage) => setPage(nextPage + 1)}
+            labelDisplayedRows={({ from, to, count }) => `${from}–${to} of ${count} people`}
+          />
         </>
       )}
 
       <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
-        {Object.entries(availabilityTones)
-          .filter(([status]) => status !== 'not_assigned')
+        {legendCodes
+          .map((status) => [status, availabilityTones[status]] as const)
           .map(([status, tone]) => (
             <Chip
               key={status}
               size="small"
-              label={tone.label}
-              sx={{ bgcolor: tone.background, color: tone.color }}
+              label={`${tone.short} = ${tone.label}`}
+              sx={{ bgcolor: tone.background, color: tone.color, fontWeight: 700 }}
             />
           ))}
       </Stack>

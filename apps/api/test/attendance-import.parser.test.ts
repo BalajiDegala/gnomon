@@ -55,6 +55,26 @@ describe('attendance CSV parsing', () => {
     expect(result.rows).toEqual([]);
     expect(result.errors[0]?.reason).toContain('occurred_at');
   });
+
+  it('converts a biometric attendance summary into in and out evidence', () => {
+    const result = parseAttendanceCsv(
+      [
+        'Date,Employee Code,Employee Name,Department,In Time,Out Time,Status,Punch Records',
+        '2026-06-24,DDIH500,Raman Kumar,Roto,14:46:12,0:03:18,Present,punches',
+        '2026-06-25,DDIH500,Raman Kumar,Roto,09:00:00,,Present (No OutPunch),punches',
+        '2026-06-26,DDIH500,Raman Kumar,Roto,,,Absent,',
+      ].join('\n'),
+      'biometric',
+    );
+
+    expect(result.errors).toEqual([]);
+    expect(result.totalRows).toBe(3);
+    expect(result.ignoredRows).toBe(1);
+    expect(result.rows).toHaveLength(3);
+    expect(result.rows.map((row) => row.eventType)).toEqual(['in', 'out', 'in']);
+    expect(result.rows[0]?.workDate).toBe('2026-06-24');
+    expect(result.rows[1]?.occurredAt.toISOString()).toBe('2026-06-24T18:33:18.000Z');
+  });
 });
 
 describe('attendance timestamp and event normalization', () => {

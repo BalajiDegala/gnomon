@@ -97,6 +97,22 @@ describe('calculateDailyReconciliation', () => {
     expect(result.calculated.anomalies).toContain('source_time_mismatch');
   });
 
+  it('does not require review only because optional website evidence is absent', () => {
+    const result = calculate({
+      events: [
+        { source: 'biometric', eventType: 'in', occurredAt: new Date('2026-07-27T03:30:00Z') },
+        { source: 'biometric', eventType: 'out', occurredAt: new Date('2026-07-27T12:30:00Z') },
+        { source: 'access_card', eventType: 'entry', occurredAt: new Date('2026-07-27T03:29:00Z') },
+        { source: 'access_card', eventType: 'exit', occurredAt: new Date('2026-07-27T12:31:00Z') },
+      ],
+    });
+
+    expect(result.sourceSummary.website.status).toBe('none');
+    expect(result.calculated.anomalies).not.toContain('missing_web_start');
+    expect(result.calculated.anomalies).not.toContain('missing_web_stop');
+    expect(result.calculated.requiresReview).toBe(false);
+  });
+
   it('flags show time that is outside website presence', () => {
     const result = calculate({
       now: new Date('2026-07-27T06:00:00Z'),
@@ -139,6 +155,136 @@ describe('calculateDailyReconciliation', () => {
     expect(result.calculated.primarySource).toBe('website');
     expect(result.calculated.attendanceEnd).toBe('2026-07-27T06:00:00.000Z');
     expect(result.calculated.anomalies).toEqual([]);
+  });
+
+  it('starts every working day as LOP before any evidence arrives', () => {
+    const openDay = calculate({ now: new Date('2026-07-27T03:00:00Z') });
+    expect(openDay.calculated.workdayClosed).toBe(false);
+    expect(openDay.calculated.status).toBe('absent');
+    expect(openDay.calculated.requiresReview).toBe(false);
+
+    const closedDay = calculate();
+    expect(closedDay.calculated.status).toBe('absent');
+  });
+
+  it('lifts the LOP default to partial as soon as any evidence arrives', () => {
+    const result = calculate({
+      now: new Date('2026-07-27T04:00:00Z'),
+      events: [
+        { source: 'biometric', eventType: 'in', occurredAt: new Date('2026-07-27T03:30:00Z') },
+      ],
+    });
+    expect(result.calculated.status).toBe('partial');
+  });
+
+  it('accepts a work-from-home timecard without biometric or access-card punches', () => {
+    const result = calculate({
+      sessions: [
+        {
+          startedAt: new Date('2026-07-27T03:30:00Z'),
+          stoppedAt: new Date('2026-07-27T12:30:00Z'),
+          status: 'completed',
+          shiftName: 'Standard shift',
+          shiftStartTime: '09:00',
+          shiftEndTime: '18:00',
+          workMode: 'home',
+        },
+      ],
+    });
+
+    expect(result.workContext).toMatchObject({ shiftName: 'Standard shift', workMode: 'home' });
+    expect(result.calculated.primarySource).toBe('website');
+    expect(result.calculated.status).toBe('present');
+    expect(result.calculated.anomalies).not.toEqual(
+      expect.arrayContaining(['missing_biometric_in']),
+    );
+    expect(result.calculated.anomalies).not.toContain('missing_access_entry');
+    expect(() =>
+      DailyReconciliationDtoSchema.parse({ id: 'daily-timecard', ...result }),
+    ).not.toThrow();
+  });
+
+  it('keeps a short work-from-home day partial rather than LOP', () => {
+    const result = calculate({
+      sessions: [
+        {
+          startedAt: new Date('2026-07-27T03:30:00Z'),
+          stoppedAt: new Date('2026-07-27T07:30:00Z'),
+          status: 'completed',
+          workMode: 'home',
+        },
+      ],
+    });
+    expect(result.calculated.status).toBe('partial');
+    expect(result.calculated.anomalies).toEqual(['insufficient_hours']);
+  });
+
+  it('still flags missing punches for an office day recorded only on the website', () => {
+    const result = calculate({
+      sessions: [
+        {
+          startedAt: new Date('2026-07-27T03:30:00Z'),
+          stoppedAt: new Date('2026-07-27T12:30:00Z'),
+          status: 'completed',
+          workMode: 'office',
+        },
+      ],
+    });
+    expect(result.calculated.status).toBe('partial');
+    expect(result.calculated.anomalies).toEqual(
+      expect.arrayContaining(['missing_biometric_in', 'missing_access_entry']),
+    );
+  });
+
+  it('adds home time to office time when someone leaves early and continues from home', () => {
+    const result = calculate({
+      events: [
+        { source: 'biometric', eventType: 'in', occurredAt: new Date('2026-07-27T03:30:00Z') },
+        { source: 'biometric', eventType: 'out', occurredAt: new Date('2026-07-27T08:30:00Z') },
+      ],
+      sessions: [
+        {
+          startedAt: new Date('2026-07-27T03:30:00Z'),
+          stoppedAt: new Date('2026-07-27T08:30:00Z'),
+          status: 'completed',
+          shiftName: 'Standard shift',
+          workMode: 'office',
+        },
+        {
+          startedAt: new Date('2026-07-27T09:30:00Z'),
+          stoppedAt: new Date('2026-07-27T13:30:00Z'),
+          status: 'completed',
+          shiftName: 'Standard shift',
+          workMode: 'home',
+        },
+      ],
+    });
+    // 5 hours at the office (biometric) + 4 hours at home (website).
+    expect(result.calculated.grossMinutes).toBe(540);
+    expect(result.calculated.status).toBe('present');
+    expect(result.calculated.anomalies).not.toContain('insufficient_hours');
+    expect(result.calculated.attendanceEnd).toBe('2026-07-27T13:30:00.000Z');
+    expect(result.workContext.workModes).toEqual(['office', 'home']);
+  });
+
+  it('keeps a mixed day partial while the home session is still running', () => {
+    const result = calculate({
+      now: new Date('2026-07-27T12:00:00Z'),
+      events: [
+        { source: 'biometric', eventType: 'in', occurredAt: new Date('2026-07-27T03:30:00Z') },
+        { source: 'biometric', eventType: 'out', occurredAt: new Date('2026-07-27T08:30:00Z') },
+      ],
+      sessions: [
+        {
+          startedAt: new Date('2026-07-27T09:30:00Z'),
+          stoppedAt: null,
+          status: 'running',
+          workMode: 'home',
+        },
+      ],
+    });
+    expect(result.calculated.grossMinutes).toBe(300 + 150);
+    expect(result.calculated.status).toBe('partial');
   });
 
   it('does not mark a closed weekend as absent', () => {

@@ -1,0 +1,41 @@
+# Plain-Kubernetes deployment of Gnomon (no Helm). Apply with:
+#   kubectl apply -k deploy/kubernetes
+# Change the release by editing `images` below (or `kustomize edit set image`).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: gnomon
+
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: gnomon
+      app.kubernetes.io/managed-by: kubectl
+
+resources:
+  - namespace.yaml
+  - storage.yaml
+  - mongodb.yaml
+  - api.yaml
+  - web.yaml
+  - mongodb-backup.yaml
+  - ingress.yaml
+
+# Hashed names: editing these files rolls the pods that use them automatically.
+configMapGenerator:
+  - name: gnomon-api-config
+    envs:
+      - config/api.env
+  - name: gnomon-web-nginx
+    files:
+      - default.conf=config/nginx-default.conf
+
+# Images come from private Docker Hub repositories (pull secret: dockerhub-registry).
+# Replace DOCKERHUB_USER and set newTag to the tag printed by
+# scripts/push-dockerhub-images.sh. See docs/DOCKERHUB_DEPLOYMENT_RUNBOOK.md.
+images:
+  - name: gnomon-api
+    newName: docker.io/DOCKERHUB_USER/gnomon-api
+    newTag: 0.11.0
+  - name: gnomon-web
+    newName: docker.io/DOCKERHUB_USER/gnomon-web
+    newTag: 0.11.0

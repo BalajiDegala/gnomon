@@ -3,3 +3,4 @@ dist
 coverage
 package-lock.json
 deploy/helm/**/templates/
+docs/backup/

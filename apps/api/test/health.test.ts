@@ -37,6 +37,16 @@ describe('protected routes', () => {
     expect(response.body.error.code).toBe('AUTHENTICATION_REQUIRED');
   });
 
+  it('requires authentication for the users CSV import', async () => {
+    const response = await request(app)
+      .post('/api/v1/imports/users/csv')
+      .set('content-type', 'text/csv')
+      .send('Emp ID,User ID');
+
+    expect(response.status).toBe(401);
+    expect(response.body.error.code).toBe('AUTHENTICATION_REQUIRED');
+  });
+
   it('requires authentication for shows and timesheets', async () => {
     const [
       shows,
@@ -52,6 +62,7 @@ describe('protected routes', () => {
       locations,
       employeeLocations,
       managedCalendar,
+      attendanceDetails,
     ] = await Promise.all([
       request(app).get('/api/v1/shows'),
       request(app).get('/api/v1/timesheets'),
@@ -66,6 +77,7 @@ describe('protected routes', () => {
       request(app).get('/api/v1/administration/locations'),
       request(app).get('/api/v1/administration/employee-locations?employeeCode=DDI0001'),
       request(app).get('/api/v1/calendar/managed'),
+      request(app).get('/api/v1/reports/attendance-details'),
     ]);
 
     expect(shows.status).toBe(401);
@@ -81,6 +93,7 @@ describe('protected routes', () => {
     expect(locations.status).toBe(401);
     expect(employeeLocations.status).toBe(401);
     expect(managedCalendar.status).toBe(401);
+    expect(attendanceDetails.status).toBe(401);
     expect(shows.body.error.code).toBe('AUTHENTICATION_REQUIRED');
     expect(timesheets.body.error.code).toBe('AUTHENTICATION_REQUIRED');
     expect(reconciliation.body.error.code).toBe('AUTHENTICATION_REQUIRED');
@@ -94,5 +107,6 @@ describe('protected routes', () => {
     expect(locations.body.error.code).toBe('AUTHENTICATION_REQUIRED');
     expect(employeeLocations.body.error.code).toBe('AUTHENTICATION_REQUIRED');
     expect(managedCalendar.body.error.code).toBe('AUTHENTICATION_REQUIRED');
+    expect(attendanceDetails.body.error.code).toBe('AUTHENTICATION_REQUIRED');
   });
 });

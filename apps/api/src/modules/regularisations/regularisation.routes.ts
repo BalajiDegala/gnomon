@@ -12,6 +12,7 @@ import {
   decideRegularisation,
   listMyRegularisations,
   listRegularisationApprovals,
+  listRegularisationDecisionHistory,
 } from './regularisation.service.js';
 
 const RequestParamsSchema = z.object({ requestId: z.string().regex(/^[a-f\d]{24}$/i) });
@@ -40,6 +41,10 @@ regularisationApprovalRouter.use(requireAuth, requirePermission('regularisation:
 
 regularisationApprovalRouter.get('/', async (request, response) => {
   response.json({ requests: await listRegularisationApprovals(request.authUser!) });
+});
+
+regularisationApprovalRouter.get('/history', async (request, response) => {
+  response.json({ requests: await listRegularisationDecisionHistory(request.authUser!) });
 });
 
 regularisationApprovalRouter.post('/:requestId/decision', async (request, response) => {

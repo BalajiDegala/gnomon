@@ -1,5 +1,6 @@
 import type {
   CreateTimeEntryRequest,
+  TimeEntryDto,
   TimesheetDayDto,
   TimesheetOption,
   UpdateTimeEntryRequest,
@@ -48,6 +49,7 @@ export function useTimesheetDay(workDate: string) {
 
   const applyDay = async (response: DayResponse) => {
     queryClient.setQueryData(['timesheet-day', response.day.workDate], response);
+    await queryClient.invalidateQueries({ queryKey: ['timesheet-range'] });
     await queryClient.invalidateQueries({ queryKey: ['timecard', 'today'] });
   };
   const create = useMutation({
@@ -90,5 +92,22 @@ export function useTimesheetDay(workDate: string) {
       update.reset();
       remove.reset();
     },
+  };
+}
+
+/** Own entries for a date range (week/month views). */
+export function useTimesheetRange(from: string, to: string) {
+  const { request, user } = useAuth();
+  const canRead = user?.permissions.includes('timesheet:create') ?? false;
+  const query = useQuery({
+    queryKey: ['timesheet-range', from, to],
+    queryFn: () =>
+      request<{ entries: TimeEntryDto[] }>(`/api/v1/timesheets/entries?from=${from}&to=${to}`),
+    enabled: canRead && from <= to,
+  });
+  return {
+    entries: query.data?.entries ?? [],
+    isLoading: query.isLoading,
+    error: query.error,
   };
 }

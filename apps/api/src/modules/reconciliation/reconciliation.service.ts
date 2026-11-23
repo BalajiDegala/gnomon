@@ -14,6 +14,7 @@ import { HttpError } from '../../middleware/errors.js';
 import { AttendanceEvent, type AttendanceEventType } from '../attendance/attendance-event.model.js';
 import { LeaveRequest } from '../leaves/leave.model.js';
 import { findApplicableHoliday } from '../policies/holiday-applicability.service.js';
+import { workContextFromSessions, type WorkContextSource } from '../timecard/timecard.service.js';
 import { WorkSession } from '../timecard/work-session.model.js';
 import { TimeEntry } from '../timesheets/time-entry.model.js';
 import { RegularisationRequest } from '../regularisations/regularisation.model.js';
@@ -27,15 +28,14 @@ export interface ReconciliationAttendanceEvent {
   occurredAt: Date;
 }
 
-export interface ReconciliationWorkSession {
-  startedAt: Date;
+export interface ReconciliationWorkSession extends WorkContextSource {
   stoppedAt: Date | null;
   status: WorkSessionStatus;
 }
 
 export interface ReconciliationTimeEntry {
-  startedAt: Date;
-  endedAt: Date;
+  startedAt: Date | null;
+  endedAt: Date | null;
   durationMinutes: number;
   percentage: number;
 }
@@ -207,7 +207,7 @@ function summarizeWebsite(
   };
 }
 
-function isWorkingDay(workDate: string): boolean {
+export function isWorkingDay(workDate: string): boolean {
   const weekday = new Date(`${workDate}T00:00:00.000Z`).getUTCDay() || 7;
   return defaultWorkdayPolicy.workingWeekdays.includes(weekday);
 }
@@ -254,6 +254,17 @@ export function calculateDailyReconciliation(
         )
       : 0,
   };
+  const workContext = workContextFromSessions(input.sessions);
+  // Work mode is chosen per session. A day with only home sessions and no
+  // office punches uses the website timecard as its evidence; missing punches
+  // are expected, not errors. A mixed day (office first, then home, e.g. after
+  // leaving early) adds the home-session time to the office time.
+  const homeSessions = input.sessions.filter((session) => session.workMode === 'home');
+  const home = summarizeWebsite(homeSessions, input.now, window.end);
+  const officeEvidence = biometric.eventCount > 0 || accessCard.eventCount > 0;
+  const workingFromHome = homeSessions.length > 0 && !officeEvidence;
+  const mixedDay = homeSessions.length > 0 && officeEvidence;
+  const officeSummary = biometric.eventCount > 0 ? biometric : accessCard;
   const primarySource = selectPrimarySource(biometric, accessCard, website);
   const primarySummary =
     primarySource === 'biometric'
@@ -263,11 +274,17 @@ export function calculateDailyReconciliation(
         : primarySource === 'website'
           ? website
           : null;
-  const grossMinutes = primarySummary?.workedMinutes ?? 0;
+  const grossMinutes = mixedDay
+    ? officeSummary.workedMinutes + home.workedMinutes
+    : (primarySummary?.workedMinutes ?? 0);
   const attendanceStart = primarySummary?.firstAt ?? null;
-  const attendanceEnd =
-    primarySource === 'website' && website.status === 'running'
-      ? new Date(Math.min(input.now.getTime(), window.end.getTime())).toISOString()
+  const liveEnd = new Date(Math.min(input.now.getTime(), window.end.getTime())).toISOString();
+  const attendanceEnd = mixedDay
+    ? home.status === 'running'
+      ? liveEnd
+      : (home.lastAt ?? primarySummary?.lastAt ?? null)
+    : primarySource === 'website' && website.status === 'running'
+      ? liveEnd
       : (primarySummary?.lastAt ?? null);
   const anomalies = new Set<ReconciliationAnomaly>();
 
@@ -276,14 +293,22 @@ export function calculateDailyReconciliation(
   }
 
   if (workingDay && workdayClosed) {
-    if (!biometric.firstAt) anomalies.add('missing_biometric_in');
-    if (!biometric.lastAt) anomalies.add('missing_biometric_out');
-    if (!accessCard.firstAt) anomalies.add('missing_access_entry');
-    if (!accessCard.lastAt) anomalies.add('missing_access_exit');
-    if (!website.firstAt) anomalies.add('missing_web_start');
-    if (!website.lastAt || website.status === 'incomplete') anomalies.add('missing_web_stop');
+    if (!workingFromHome) {
+      if (!biometric.firstAt) anomalies.add('missing_biometric_in');
+      if (!biometric.lastAt) anomalies.add('missing_biometric_out');
+      if (!accessCard.firstAt) anomalies.add('missing_access_entry');
+      if (!accessCard.lastAt) anomalies.add('missing_access_exit');
+    }
+    // Website timecards are optional supporting evidence. If an employee starts a
+    // website session it still participates in reconciliation, but an entirely
+    // absent website session must not turn a complete biometric/access-card day
+    // into a review exception.
+    if (website.sessionCount > 0 && !website.firstAt) anomalies.add('missing_web_start');
+    if (website.sessionCount > 0 && (!website.lastAt || website.status === 'incomplete')) {
+      anomalies.add('missing_web_stop');
+    }
     if (grossMinutes < defaultWorkdayPolicy.requiredMinutes) anomalies.add('insufficient_hours');
-  } else {
+  } else if (!workingFromHome) {
     if (biometric.status === 'missing_in') anomalies.add('missing_biometric_in');
     if (accessCard.status === 'missing_entry') anomalies.add('missing_access_entry');
   }
@@ -306,8 +331,11 @@ export function calculateDailyReconciliation(
   if (
     input.timeEntries.some(
       (entry) =>
+        // Hours-only entries have no clock window, so there is nothing to compare.
+        entry.startedAt !== null &&
+        entry.endedAt !== null &&
         !sessionWindows.some(
-          (session) => entry.startedAt >= session.start && entry.endedAt <= session.end,
+          (session) => entry.startedAt! >= session.start && entry.endedAt! <= session.end,
         ),
     )
   ) {
@@ -325,20 +353,29 @@ export function calculateDailyReconciliation(
     anomalies.add('show_time_exceeds_presence');
   }
 
+  // Every working day starts as LOP ('absent'). Any biometric, access-card or
+  // website-timecard evidence lifts it to partial; complete evidence that covers
+  // the required hours makes it present.
+  const hasEvidence =
+    biometric.eventCount > 0 || accessCard.eventCount > 0 || website.sessionCount > 0;
+  const meetsRequiredHours = grossMinutes >= defaultWorkdayPolicy.requiredMinutes;
   let status: DailyAttendanceStatus = 'partial';
   if (!workingDay) status = 'weekend';
+  else if (!hasEvidence) status = 'absent';
   else if (
-    biometric.status === 'complete' &&
-    grossMinutes >= defaultWorkdayPolicy.requiredMinutes
+    mixedDay &&
+    officeSummary.status === 'complete' &&
+    home.status === 'complete' &&
+    meetsRequiredHours
   ) {
     status = 'present';
-  } else if (
-    workdayClosed &&
-    biometric.eventCount === 0 &&
-    accessCard.eventCount === 0 &&
-    website.sessionCount === 0
+  } else if (!mixedDay && biometric.status === 'complete' && meetsRequiredHours) status = 'present';
+  else if (
+    workingFromHome &&
+    website.status === 'complete' &&
+    website.workedMinutes >= defaultWorkdayPolicy.requiredMinutes
   ) {
-    status = 'absent';
+    status = 'present';
   }
 
   const anomalyList = [...anomalies];
@@ -353,6 +390,7 @@ export function calculateDailyReconciliation(
       requiredMinutes: defaultWorkdayPolicy.requiredMinutes,
     },
     sourceSummary: { biometric, accessCard, website, showEntries },
+    workContext,
     calculated: {
       primarySource,
       attendanceStart,
@@ -390,12 +428,21 @@ export async function reconcileDailyTimecard(
   }
   const [events, sessions, timeEntries, regularisations, approvedLeave, holiday] =
     await Promise.all([
-      AttendanceEvent.find({ employeeId, workDate })
+      AttendanceEvent.find({ employeeId, workDate, removedAt: null })
         .select({ source: 1, eventType: 1, occurredAt: 1 })
         .lean()
         .exec(),
       WorkSession.find({ employeeId, workDate })
-        .select({ startedAt: 1, stoppedAt: 1, status: 1 })
+        .select({
+          startedAt: 1,
+          stoppedAt: 1,
+          status: 1,
+          shiftId: 1,
+          shiftName: 1,
+          shiftStartTime: 1,
+          shiftEndTime: 1,
+          workMode: 1,
+        })
         .lean()
         .exec(),
       TimeEntry.find({ employeeId, workDate })

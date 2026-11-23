@@ -16,6 +16,7 @@ export const permissionCodes = [
   'imports:create',
   'policy:manage',
   'audit:read',
+  'system:events:read',
 ] as const;
 
 export const PermissionCodeSchema = z.enum(permissionCodes);
@@ -24,6 +25,7 @@ export type PermissionCode = z.infer<typeof PermissionCodeSchema>;
 export const roleCodes = [
   'EMPLOYEE',
   'REPORTING_MANAGER',
+  'LEAVE_APPROVER',
   'SHOW_MANAGER',
   'HR',
   'ATTENDANCE_ADMIN',
