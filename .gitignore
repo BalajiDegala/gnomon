@@ -2,8 +2,9 @@ node_modules/
 data
 dist/
 coverage/
-kubee/
 data/
+kubee/
+
 .env
 .env.*
 !.env.example
