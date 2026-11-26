@@ -5,7 +5,7 @@ import type {
   LeaveDayPart,
   LeaveType,
 } from '@gnomon/shared';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from './auth';
 
@@ -28,6 +28,35 @@ export function useAttendanceActionItems() {
     error: query.error,
     refresh: () => queryClient.invalidateQueries({ queryKey }),
   };
+}
+
+/** Confirm that a timecard stopped automatically at 07:00 really ended then. */
+export function useConfirmAutoStop() {
+  const { request } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (sessionId: string) =>
+      request<{ workDate: string }>(`/api/v1/timecard/sessions/${sessionId}/confirm-stop`, {
+        method: 'POST',
+      }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey });
+      void queryClient.invalidateQueries({ queryKey: ['timecard'] });
+      void queryClient.invalidateQueries({ queryKey: ['calendar'] });
+    },
+  });
+}
+
+/**
+ * The exit instant for an "HH:MM" India time chosen after a session started:
+ * on the start's calendar day, or the next morning when it is earlier.
+ */
+export function exitInstantAfter(startedAt: string, time: string): Date {
+  const start = new Date(startedAt);
+  const startDay = new Date(start.getTime() + 330 * 60_000).toISOString().slice(0, 10);
+  let exit = new Date(`${startDay}T${time}:00+05:30`);
+  if (exit <= start) exit = new Date(exit.getTime() + 86_400_000);
+  return exit;
 }
 
 export type ActionChoice = 'leave' | 'regularisation';

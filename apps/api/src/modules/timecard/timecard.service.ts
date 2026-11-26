@@ -10,10 +10,11 @@ import {
 import { Types } from 'mongoose';
 
 import { describeEvent } from '../system-events/request-context.js';
-import { recordEvent } from '../system-events/system-event.service.js';
 import { HttpError } from '../../middleware/errors.js';
 import { LeaveRequest } from '../leaves/leave.model.js';
+import { reconcileDailyTimecard } from '../reconciliation/reconciliation.service.js';
 import { listShifts, resolveShiftForStart } from '../shifts/shift.service.js';
+import { autoStopSession } from './auto-stop.service.js';
 import { WorkSession, type WorkSessionDocument } from './work-session.model.js';
 
 export interface ClientMetadata {
@@ -159,30 +160,12 @@ export async function startTimecard(
     throw new HttpError(409, 'Your timecard is already running', 'TIMECARD_ALREADY_RUNNING');
   }
   if (runningSession) {
-    // A session left open on an earlier day must not block today's work. Close it
-    // without a stop time: that day stays incomplete and still needs regularisation.
-    await WorkSession.updateOne(
-      { _id: runningSession._id, status: 'running' },
-      { $set: { status: 'force_stopped', stopMetadata: metadata } },
-    ).exec();
-    recordEvent({
-      category: 'timecard',
-      action: 'timecard.stale_session_closed',
-      severity: 'warn',
-      message: `Closed a session left open since ${runningSession.workDate}; that day needs regularisation`,
-      subject: {
-        type: 'work_session',
-        id: String(runningSession._id),
-        employeeCode: null,
-        label: runningSession.workDate,
-      },
-      metadata: {
-        employeeId,
-        workDate: runningSession.workDate,
-        startedAt: runningSession.startedAt,
-        startedFrom: runningSession.startMetadata,
-      },
-    });
+    // A session left open on an earlier day must not block today's work (the
+    // 07:00 job may not have run yet). Stop it at 07:00 like the job does; the
+    // employee confirms it or corrects the exit time from Catch-up.
+    if (await autoStopSession(runningSession)) {
+      await reconcileDailyTimecard(employeeId, runningSession.workDate, now).catch(() => undefined);
+    }
   }
 
   // The shift is declared once per work date: later sessions inherit it. The

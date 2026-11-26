@@ -1,0 +1,1005 @@
+{
+  "origin": "http://localhost:8081",
+  "fileName": "11th_sep_to_25th_sep.csv",
+  "fileSha256": "f16d355b2ab720c28e87f76245e6c4b568ee9d898157dbf27dbb18e5365ff3be",
+  "previousFileSha256": "bf31be1b3f7438077efa70f4cc8810e79e55aa483f86d1bae7d7a7f9c0c4e785",
+  "totalRows": 3747,
+  "ignoredRows": 1598,
+  "events": 4024,
+  "uniqueEvents": 4024,
+  "parseErrors": [],
+  "employeeCodes": 251,
+  "employeesWithPunches": 241,
+  "matchedExistingEmployees": 238,
+  "provisionableEmployees": [
+    {
+      "employeeCode": "DDIC397",
+      "fullName": "Sourabh Vilas Khaire",
+      "departmentName": "Texturing",
+      "designation": "Senior Texturing Artist",
+      "companyName": "DDI"
+    },
+    {
+      "employeeCode": "DDIC398",
+      "fullName": "Karishma Suhas Mirashi",
+      "departmentName": "CG",
+      "designation": "Senior lookdev",
+      "companyName": "DDI"
+    },
+    {
+      "employeeCode": "H727",
+      "fullName": "H727",
+      "departmentName": "Default",
+      "designation": null,
+      "companyName": "Default"
+    }
+  ],
+  "rejectionReasons": [],
+  "commonCodesWithPreviousFile": 219,
+  "newCodesVsPreviousFile": [
+    "DDIC382",
+    "DDIC383",
+    "DDIC384",
+    "DDIC385",
+    "DDIC386",
+    "DDIC387",
+    "DDIC388",
+    "DDIC389",
+    "DDIC390",
+    "DDIC391",
+    "DDIC392",
+    "DDIC393",
+    "DDIC394",
+    "DDIC395",
+    "DDIC396",
+    "DDIC397",
+    "DDIC398",
+    "DDIH725",
+    "DDIH726",
+    "DDIH727",
+    "DDIH728",
+    "DDIH729",
+    "DDIH730",
+    "DDIH731",
+    "DDIH732",
+    "DDIH733",
+    "DDIH734",
+    "DDIH735",
+    "DDIH736",
+    "DDII063",
+    "DDII064",
+    "H727"
+  ],
+  "namesChangedVsPreviousFile": [
+    {
+      "code": "DDIC153",
+      "oldName": "Pitchumani Krishnamoorthy",
+      "newName": "Pitchumani Krishnamoort"
+    },
+    {
+      "code": "DDIC361",
+      "oldName": "Avinash Lakanapuram",
+      "newName": "Lakanapuram Avinash"
+    },
+    {
+      "code": "DDIH216",
+      "oldName": "Venkat Narsimha Reddy Gaddampally",
+      "newName": "Venkat Narsimha Reddy G"
+    },
+    {
+      "code": "DDIH244",
+      "oldName": "Jitesh",
+      "newName": "Jitesh Morde"
+    },
+    {
+      "code": "DDIH254",
+      "oldName": "Rajashekar Reddy Bollaram",
+      "newName": "Rajashekar Reddy Bollar"
+    },
+    {
+      "code": "DDIH300",
+      "oldName": "Krishnakishore Chintanippu",
+      "newName": "Krishnakishore Chintani"
+    },
+    {
+      "code": "DDIH324",
+      "oldName": "Somu Sundara Kannappa Tirunalveli",
+      "newName": "Somu Sundara Kannappa T"
+    },
+    {
+      "code": "DDIH371",
+      "oldName": "Durga Santosh Kumar Kotipalli",
+      "newName": "Durga Santosh Kumar Kot"
+    },
+    {
+      "code": "DDIH384",
+      "oldName": "Phaneendra Naga Kumar Vutukuri",
+      "newName": "Phaneendra Naga Kumar V"
+    },
+    {
+      "code": "DDIH428",
+      "oldName": "Abhishek Ashok Waingankar",
+      "newName": "Abhishek Ashok Waingank"
+    },
+    {
+      "code": "DDIH438",
+      "oldName": "Vigneshwar Reddy Dhannaram",
+      "newName": "Vigneshwar Reddy Dhanna"
+    },
+    {
+      "code": "DDIH442",
+      "oldName": "Chaitanya Krupakar Krishna Adireddy",
+      "newName": "Chaitanya Krupakar Kris"
+    },
+    {
+      "code": "DDIH446",
+      "oldName": "Jayachandra Reddy Bheemagani",
+      "newName": "Jayachandra Reddy Bheem"
+    },
+    {
+      "code": "DDIH530",
+      "oldName": "Vishwjeet Sahebrao Kamble",
+      "newName": "Vishwjeet Sahebrao Kamb"
+    },
+    {
+      "code": "DDIH564",
+      "oldName": "Katam Reddy Kishan Reddy",
+      "newName": "Katam Reddy Kishan Redd"
+    },
+    {
+      "code": "DDIH581",
+      "oldName": "Manikanta N S K Kumar Mattaparti",
+      "newName": "Manikanta N S K Kumar M"
+    },
+    {
+      "code": "DDIH587",
+      "oldName": "Sandeep Kumar Kalakoti Reddy",
+      "newName": "Sandeep Kumar Kalakoti"
+    },
+    {
+      "code": "DDIH623",
+      "oldName": "Sai Venkata Praveen Nagireddy",
+      "newName": "Sai Venkata Praveen Nag"
+    },
+    {
+      "code": "DDIH651",
+      "oldName": "Yuga Veera Naga Raju Neela",
+      "newName": "Yuga Veera Naga Raju Ne"
+    },
+    {
+      "code": "DDIH676",
+      "oldName": "Durga Prasad Varma Angani",
+      "newName": "Durga Prasad Varma Anga"
+    },
+    {
+      "code": "DDIH681",
+      "oldName": "Koteswara Rao Yarramuthala",
+      "newName": "Koteswara Rao Yarramuth"
+    },
+    {
+      "code": "DDII061",
+      "oldName": "PullentiSai Shruthi",
+      "newName": "I061"
+    }
+  ],
+  "matchedNameDifferences": [
+    {
+      "sourceCode": "DDIC153",
+      "sourceName": "Pitchumani Krishnamoort",
+      "matchedCode": "DDIC153",
+      "candidateNames": [
+        "Pitchumani Krishnamoorthy",
+        "Pitchumani Krishnamoorthy",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIC286",
+      "sourceName": "Kuchilllapati Jayavardh",
+      "matchedCode": "DDIC286",
+      "candidateNames": [
+        "Kuchilllapati Jayavardhana",
+        "Kuchilllapati Jayavardhana",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIC290",
+      "sourceName": "Manohar Kolla",
+      "matchedCode": "DDIC290",
+      "candidateNames": [
+        "Kolla Manohar",
+        "Kolla Manohar",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIC303",
+      "sourceName": "Dupakuntla Jyothi Praka",
+      "matchedCode": "DDIC303",
+      "candidateNames": [
+        "Dupakuntla Jyothi Prakash",
+        "Dupakuntla Jyothi Prakash",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIC320",
+      "sourceName": "Shanmukh Kameswararao M",
+      "matchedCode": "DDIC320",
+      "candidateNames": [
+        "Muliki Shanmukh Kameswararao",
+        "Muliki Shanmukh Kameswararao",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIC321",
+      "sourceName": "Sridhar Pathuri",
+      "matchedCode": "DDIC321",
+      "candidateNames": [
+        "Pathuri Sridhar",
+        "Pathuri Sridhar",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIC338",
+      "sourceName": "Kokkera Nagasrinivasa R",
+      "matchedCode": "DDIC338",
+      "candidateNames": [
+        "Kokkera Nagasrinivasa Rao",
+        "Kokkera Nagasrinivasa Rao",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIC377",
+      "sourceName": "Praful Dnyaneshwar Land",
+      "matchedCode": "DDIC377",
+      "candidateNames": [
+        "Praful Dnyaneshwar Lande",
+        "Praful Dnyaneshwar Lande",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIC381",
+      "sourceName": "Krushna Ramraoji Kulsan",
+      "matchedCode": "DDIC381",
+      "candidateNames": [
+        "Krushna Ramraoji Kulsange",
+        "Krushna Ramraoji Kulsange",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIC382",
+      "sourceName": "Sai Jyothi Swaroop Srip",
+      "matchedCode": "DDIC382",
+      "candidateNames": [
+        "Sai Jyothi Swaroop Sripuram",
+        "Sai Jyothi Swaroop Sripuram",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIC384",
+      "sourceName": "Divakar Ravindra Janvek",
+      "matchedCode": "DDIC384",
+      "candidateNames": [
+        "Divakar Ravindra Janvekar",
+        "Divakar Ravindra Janvekar",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIC393",
+      "sourceName": "Sathya Swaroop A",
+      "matchedCode": "7393",
+      "candidateNames": [
+        "A Sathya Swaroop",
+        "",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH005",
+      "sourceName": "Upendra Kumar",
+      "matchedCode": "DDIH005",
+      "candidateNames": [
+        "Upendra Kumar Singh",
+        "Upendra Kumar Singh",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH070",
+      "sourceName": "Shaikh Nagur",
+      "matchedCode": "DDIH070",
+      "candidateNames": [
+        "Nagur Shaik",
+        "Nagur Shaik",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH078",
+      "sourceName": "Sastry Bommakanti",
+      "matchedCode": "DDIH078",
+      "candidateNames": [
+        "Sastry SVSP Bommakanti",
+        "Sastry SVSP Bommakanti",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH086",
+      "sourceName": "Balachender Arrolla",
+      "matchedCode": "DDIH086",
+      "candidateNames": [
+        "Arrolla Balachender",
+        "Arrolla Balachender",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH109",
+      "sourceName": "Venkata Sai Donthireddy",
+      "matchedCode": "DDIH109",
+      "candidateNames": [
+        "Donthireddy Venkata Sai",
+        "Donthireddy Venkata Sai",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH216",
+      "sourceName": "Venkat Narsimha Reddy G",
+      "matchedCode": "DDIH216",
+      "candidateNames": [
+        "Gaddampally Venkat Narasimha Reddy",
+        "Gaddampally Venkat Narasimha Reddy",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH254",
+      "sourceName": "Rajashekar Reddy Bollar",
+      "matchedCode": "DDIH254",
+      "candidateNames": [
+        "Rajashekar Reddy Bollaram",
+        "Rajashekar Reddy Bollaram",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH268",
+      "sourceName": "Vinayak Sandupatla",
+      "matchedCode": "DDIH268",
+      "candidateNames": [
+        "Sandupatla Vinayak",
+        "Sandupatla Vinayak",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH282",
+      "sourceName": "Rama Narasimha Yarakala",
+      "matchedCode": "DDIH282",
+      "candidateNames": [
+        "Yarakala Rama Narasimha Rao",
+        "Yarakala Rama Narasimha Rao",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH300",
+      "sourceName": "Krishnakishore Chintani",
+      "matchedCode": "DDIH300",
+      "candidateNames": [
+        "Krishna Kishore Chintanippu",
+        "Krishna Kishore Chintanippu",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH324",
+      "sourceName": "Somu Sundara Kannappa T",
+      "matchedCode": "DDIH324",
+      "candidateNames": [
+        "Somu Sundara Kannappa Tirunalveli",
+        "Somu Sundara Kannappa Tirunalveli",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH349",
+      "sourceName": "Rakesh Das",
+      "matchedCode": "DDIH349",
+      "candidateNames": [
+        "Rakesh Kumar Das",
+        "Rakesh Kumar Das",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH371",
+      "sourceName": "Durga Santosh Kumar Kot",
+      "matchedCode": "DDIH371",
+      "candidateNames": [
+        "Durga Santosh Kumar Kotipalli",
+        "Durga Santosh Kumar Kotipalli",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH384",
+      "sourceName": "Phaneendra Naga Kumar V",
+      "matchedCode": "DDIH384",
+      "candidateNames": [
+        "Vutukuri Phaneendra Naga Kumar",
+        "Vutukuri Phaneendra Naga Kumar",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH406",
+      "sourceName": "Sanjay Raj Pantulu",
+      "matchedCode": "DDIH406",
+      "candidateNames": [
+        "Sanjay Raj P",
+        "Sanjay Raj P",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH408",
+      "sourceName": "Naveen Posham",
+      "matchedCode": "DDIH408",
+      "candidateNames": [
+        "Posham Naveen",
+        "Posham Naveen",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH410",
+      "sourceName": "Tulasi Rao Gujju",
+      "matchedCode": "DDIH410",
+      "candidateNames": [
+        "Gujju Tulasi Rao",
+        "Gujju Tulasi Rao",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH428",
+      "sourceName": "Abhishek Ashok Waingank",
+      "matchedCode": "DDIH428",
+      "candidateNames": [
+        "Abhishek Waingankar",
+        "Abhishek Waingankar",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH438",
+      "sourceName": "Vigneshwar Reddy Dhanna",
+      "matchedCode": "DDIH438",
+      "candidateNames": [
+        "Dhannaram Vigneshwar Reddy",
+        "Dhannaram Vigneshwar Reddy",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH442",
+      "sourceName": "Chaitanya Krupakar Kris",
+      "matchedCode": "DDIH442",
+      "candidateNames": [
+        "Chaitanya Adireddy",
+        "Chaitanya Adireddy",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH445",
+      "sourceName": "Boran Uddin",
+      "matchedCode": "DDIH445",
+      "candidateNames": [
+        "MD.Boran Uddin",
+        "MD.Boran Uddin",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH446",
+      "sourceName": "Jayachandra Reddy Bheem",
+      "matchedCode": "DDIH446",
+      "candidateNames": [
+        "Jaya Chandra Reddy",
+        "Jaya Chandra Reddy",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH447",
+      "sourceName": "Pravardhan P",
+      "matchedCode": "DDIH447",
+      "candidateNames": [
+        "Pravardhan Jain",
+        "Pravardhan Jain",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH454",
+      "sourceName": "Nithesh Murari",
+      "matchedCode": "DDIH454",
+      "candidateNames": [
+        "Murari Nithesh",
+        "Murari Nithesh",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH500",
+      "sourceName": "Raman Kumar Gaur",
+      "matchedCode": "DDIH500",
+      "candidateNames": [
+        "Raman Kumar",
+        "Raman Kumar",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH527",
+      "sourceName": "Muralidhara Karigowda",
+      "matchedCode": "DDIH527",
+      "candidateNames": [
+        "Muralidhara K",
+        "Muralidhara K",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH530",
+      "sourceName": "Vishwjeet Sahebrao Kamb",
+      "matchedCode": "DDIH530",
+      "candidateNames": [
+        "Vishwjeet Kamble",
+        "Vishwjeet Kamble",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH549",
+      "sourceName": "Bapanapati Dileep Kumar",
+      "matchedCode": "DDIH549",
+      "candidateNames": [
+        "Bapanati Dileep Kumar",
+        "Bapanati Dileep Kumar",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH550",
+      "sourceName": "Mohammad Irfan",
+      "matchedCode": "DDIH550",
+      "candidateNames": [
+        "Mohammed Irfan",
+        "Mohammed Irfan",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH552",
+      "sourceName": "Sridhar Chilakamari",
+      "matchedCode": "DDIH552",
+      "candidateNames": [
+        "Sridhar Chilakamarri",
+        "Sridhar Chilakamarri",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH564",
+      "sourceName": "Katam Reddy Kishan Redd",
+      "matchedCode": "DDIH564",
+      "candidateNames": [
+        "Katam Reddy Kishan Reddy",
+        "Katam Reddy Kishan Reddy",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH572",
+      "sourceName": "Akshay Javvaji",
+      "matchedCode": "DDIH572",
+      "candidateNames": [
+        "Javaji Akshay",
+        "Javaji Akshay",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH573",
+      "sourceName": "Murali Krishna Uppala",
+      "matchedCode": "DDIH573",
+      "candidateNames": [
+        "Murali krishna Upala",
+        "Murali krishna Upala",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH577",
+      "sourceName": "Adi Lakshmi Jamudugani",
+      "matchedCode": "DDIH577",
+      "candidateNames": [
+        "Jamdugani Adilaxmi",
+        "Jamdugani Adilaxmi",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH581",
+      "sourceName": "Manikanta N S K Kumar M",
+      "matchedCode": "DDIH581",
+      "candidateNames": [
+        "Manikanta N S K Kumar Mattaparti",
+        "Manikanta N S K Kumar Mattaparti",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH586",
+      "sourceName": "Tejas Yesupogu",
+      "matchedCode": "DDIH586",
+      "candidateNames": [
+        "Tejas Yesopogam",
+        "Tejas Yesopogam",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH587",
+      "sourceName": "Sandeep Kumar Kalakoti",
+      "matchedCode": "DDIH587",
+      "candidateNames": [
+        "Kalakoti Sandeep Kumar",
+        "Kalakoti Sandeep Kumar",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH591",
+      "sourceName": "Sai Vikas Gangavath",
+      "matchedCode": "DDIH591",
+      "candidateNames": [
+        "Gangavath Sai Vikas",
+        "Gangavath Sai Vikas",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH606",
+      "sourceName": "Shanmukha Vijay Dulam",
+      "matchedCode": "DDIH606",
+      "candidateNames": [
+        "Dulam Shanmukha Vijay",
+        "Dulam Shanmukha Vijay",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH614",
+      "sourceName": "Ramu Pochampally",
+      "matchedCode": "DDIH614",
+      "candidateNames": [
+        "Pochampally Ramu",
+        "Pochampally Ramu",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH615",
+      "sourceName": "Eshwar Prasad Sunkara",
+      "matchedCode": "DDIH615",
+      "candidateNames": [
+        "S.Eshwar Prasad",
+        "S.Eshwar Prasad",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH620",
+      "sourceName": "Nagaraju Bhukya",
+      "matchedCode": "DDIH620",
+      "candidateNames": [
+        "Bhukya Nagaraju",
+        "Bhukya Nagaraju",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH623",
+      "sourceName": "Sai Venkata Praveen Nag",
+      "matchedCode": "DDIH623",
+      "candidateNames": [
+        "Sai Venkata Praveen Nagireedy",
+        "Sai Venkata Praveen Nagireedy",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH626",
+      "sourceName": "Aravind Lokani",
+      "matchedCode": "DDIH626",
+      "candidateNames": [
+        "Lokani Aravind",
+        "Lokani Aravind",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH641",
+      "sourceName": "Chenna Reddy Vennapusa",
+      "matchedCode": "DDIH641",
+      "candidateNames": [
+        "Chenna Vennapusa Reddy",
+        "Chenna Vennapusa Reddy",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH642",
+      "sourceName": "Siva Shankar Baitageri",
+      "matchedCode": "DDIH642",
+      "candidateNames": [
+        "Baitageri Sivashankar",
+        "Baitageri Sivashankar",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH651",
+      "sourceName": "Yuga Veera Naga Raju Ne",
+      "matchedCode": "DDIH651",
+      "candidateNames": [
+        "Yuga Veera Naga Raju Neela",
+        "Yuga Veera Naga Raju Neela",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH652",
+      "sourceName": "Shankar Swami",
+      "matchedCode": "DDIH652",
+      "candidateNames": [
+        "Shankar Bandu Swami",
+        "Shankar Bandu Swami",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH655",
+      "sourceName": "Hari Krishna Mandla",
+      "matchedCode": "DDIH655",
+      "candidateNames": [
+        "Mandla Hari Krishna",
+        "Mandla Hari Krishna",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH657",
+      "sourceName": "Balaji Tumpala",
+      "matchedCode": "DDIH657",
+      "candidateNames": [
+        "Tumpala Balaji",
+        "Tumpala Balaji",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH663",
+      "sourceName": "Sai Kumar Nakkapothu",
+      "matchedCode": "DDIH663",
+      "candidateNames": [
+        "Nakkapothu Sai Kumar",
+        "Nakkapothu Sai Kumar",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH667",
+      "sourceName": "Donikena Abhishek",
+      "matchedCode": "DDIH667",
+      "candidateNames": [
+        "Abhishek Donikena",
+        "Abhishek Donikena",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH669",
+      "sourceName": "Raghavender Boeni",
+      "matchedCode": "DDIH669",
+      "candidateNames": [
+        "Boeni Raghavender",
+        "Boeni Raghavender",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH673",
+      "sourceName": "Saikumar Reddy Dantu",
+      "matchedCode": "DDIH673",
+      "candidateNames": [
+        "Sai krishna Reddy Dantu",
+        "Sai krishna Reddy Dantu",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH676",
+      "sourceName": "Durga Prasad Varma Anga",
+      "matchedCode": "DDIH676",
+      "candidateNames": [
+        "Angani Durga Prasad Varma",
+        "Angani Durga Prasad Varma",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH679",
+      "sourceName": "Mani Murali Sutapalli",
+      "matchedCode": "DDIH679",
+      "candidateNames": [
+        "Sutapalli Mani Murali",
+        "Sutapalli Mani Murali",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH681",
+      "sourceName": "Koteswara Rao Yarramuth",
+      "matchedCode": "DDIH681",
+      "candidateNames": [
+        "Koteswara Rao Yarramuthala",
+        "Koteswara Rao Yarramuthala",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH689",
+      "sourceName": "Gopi Tilak",
+      "matchedCode": "DDIH689",
+      "candidateNames": [
+        "Gopi Tilak Kurra",
+        "Gopi Tilak Kurra",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH713",
+      "sourceName": "Anand Alaturthi",
+      "matchedCode": "DDIH713",
+      "candidateNames": [
+        "Anand A",
+        "Anand A",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH715",
+      "sourceName": "Venkateswara Rao Maddal",
+      "matchedCode": "DDIH715",
+      "candidateNames": [
+        "Venkateswara Rao Maddala",
+        "Venkateswara Rao Maddala",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH722",
+      "sourceName": "Md.Akbar",
+      "matchedCode": "DDIH722",
+      "candidateNames": [
+        "Akbar Mohammed",
+        "Akbar Mohammed",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH731",
+      "sourceName": "Puthenparampil Naveen J",
+      "matchedCode": "DDIH731",
+      "candidateNames": [
+        "Puthenparampil Naveen Joseph",
+        "Puthenparampil Naveen Joseph",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDIH735",
+      "sourceName": "Vaibhav Dadarao Deshmuk",
+      "matchedCode": "9735",
+      "candidateNames": [
+        "Vaibhav Dadarao Deshmukh",
+        "",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "DDII061",
+      "sourceName": "I061",
+      "matchedCode": "DDII061",
+      "candidateNames": [
+        "Pullenti Sai Shruthi",
+        "Pullenti Sai Shruthi",
+        ""
+      ]
+    }
+  ],
+  "mappingChanges": [],
+  "previousFileEventsFound": 9196,
+  "previousFileEventsMissing": [],
+  "existingEvents": 17908,
+  "existingActiveBiometricEvents": 9196,
+  "existingBiometricEventsInNewPeriod": 0,
+  "duplicateNewEvents": 0,
+  "existingBatches": [
+    {
+      "id": "6ab517e1de10f9b82e040bea",
+      "fileName": "biometrix.csv",
+      "source": "biometric",
+      "status": "completed",
+      "periodStart": "2026-06-01T02:13:05.000Z",
+      "periodEnd": "2026-06-30T15:49:53.000Z",
+      "successfulRows": 744,
+      "duplicateRows": 8452
+    },
+    {
+      "id": "6aad555b318904ff4feb2fe1",
+      "fileName": "biometrix.csv",
+      "source": "biometric",
+      "status": "deleted",
+      "periodStart": "2026-06-01T02:13:05.000Z",
+      "periodEnd": "2026-06-30T15:49:53.000Z",
+      "successfulRows": 8452,
+      "duplicateRows": 0
+    },
+    {
+      "id": "6aad5558318904ff4feb2fcd",
+      "fileName": "11.xls",
+      "source": "access_card",
+      "status": "deleted",
+      "periodStart": "2026-09-10T18:44:19.000Z",
+      "periodEnd": "2026-09-11T04:22:43.000Z",
+      "successfulRows": 260,
+      "duplicateRows": 0
+    }
+  ],
+  "juneSummary": {
+    "scopedEmployees": 276,
+    "employeesWithRecords": 238,
+    "attendanceDays": 4626,
+    "completeBiometricDays": 4568,
+    "completeAccessCardDays": 0,
+    "websiteSessionDays": 0,
+    "timesheetDays": 0
+  },
+  "septemberSummary": {
+    "scopedEmployees": 276,
+    "employeesWithRecords": 0,
+    "attendanceDays": 0,
+    "completeBiometricDays": 0,
+    "completeAccessCardDays": 0,
+    "websiteSessionDays": 0,
+    "timesheetDays": 0
+  },
+  "existingEmployeeCount": 277
+}

@@ -1,0 +1,1372 @@
+[
+  {
+    "employeeCode": "DDHK051",
+    "workDate": "2026-09-12",
+    "inAt": "2026-09-12T11:33:13.000Z"
+  },
+  {
+    "employeeCode": "DDHK051",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T02:22:47.000Z"
+  },
+  {
+    "employeeCode": "DDHK093",
+    "workDate": "2026-09-19",
+    "inAt": "2026-09-19T02:26:16.000Z"
+  },
+  {
+    "employeeCode": "DDIC153",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:34:36.000Z"
+  },
+  {
+    "employeeCode": "DDIC279",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:36:47.000Z"
+  },
+  {
+    "employeeCode": "DDIC280",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T06:30:12.000Z"
+  },
+  {
+    "employeeCode": "DDIC283",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T02:57:23.000Z"
+  },
+  {
+    "employeeCode": "DDIC288",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:03:58.000Z"
+  },
+  {
+    "employeeCode": "DDIC290",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:29:20.000Z"
+  },
+  {
+    "employeeCode": "DDIC297",
+    "workDate": "2026-09-11",
+    "inAt": "2026-09-11T03:54:03.000Z"
+  },
+  {
+    "employeeCode": "DDIC297",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T05:30:50.000Z"
+  },
+  {
+    "employeeCode": "DDIC300",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:35:33.000Z"
+  },
+  {
+    "employeeCode": "DDIC302",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:07:16.000Z"
+  },
+  {
+    "employeeCode": "DDIC303",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:45:21.000Z"
+  },
+  {
+    "employeeCode": "DDIC307",
+    "workDate": "2026-09-18",
+    "inAt": "2026-09-18T03:37:01.000Z"
+  },
+  {
+    "employeeCode": "DDIC307",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T05:30:32.000Z"
+  },
+  {
+    "employeeCode": "DDIC308",
+    "workDate": "2026-09-11",
+    "inAt": "2026-09-11T15:00:35.000Z"
+  },
+  {
+    "employeeCode": "DDIC308",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:16:17.000Z"
+  },
+  {
+    "employeeCode": "DDIC313",
+    "workDate": "2026-09-23",
+    "inAt": "2026-09-23T12:57:46.000Z"
+  },
+  {
+    "employeeCode": "DDIC317",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T06:33:52.000Z"
+  },
+  {
+    "employeeCode": "DDIC321",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T06:00:04.000Z"
+  },
+  {
+    "employeeCode": "DDIC324",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:38:28.000Z"
+  },
+  {
+    "employeeCode": "DDIC326",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:02:39.000Z"
+  },
+  {
+    "employeeCode": "DDIC332",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T05:26:01.000Z"
+  },
+  {
+    "employeeCode": "DDIC338",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:09:15.000Z"
+  },
+  {
+    "employeeCode": "DDIC342",
+    "workDate": "2026-09-16",
+    "inAt": "2026-09-16T03:24:06.000Z"
+  },
+  {
+    "employeeCode": "DDIC342",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:22:13.000Z"
+  },
+  {
+    "employeeCode": "DDIC350",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:23:50.000Z"
+  },
+  {
+    "employeeCode": "DDIC351",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:03:01.000Z"
+  },
+  {
+    "employeeCode": "DDIC364",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:37:52.000Z"
+  },
+  {
+    "employeeCode": "DDIC366",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:07:52.000Z"
+  },
+  {
+    "employeeCode": "DDIC368",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:12:10.000Z"
+  },
+  {
+    "employeeCode": "DDIC371",
+    "workDate": "2026-09-11",
+    "inAt": "2026-09-11T13:19:14.000Z"
+  },
+  {
+    "employeeCode": "DDIC376",
+    "workDate": "2026-09-11",
+    "inAt": "2026-09-11T02:22:26.000Z"
+  },
+  {
+    "employeeCode": "DDIC376",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:25:09.000Z"
+  },
+  {
+    "employeeCode": "DDIC377",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:21:45.000Z"
+  },
+  {
+    "employeeCode": "DDIC378",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:12:34.000Z"
+  },
+  {
+    "employeeCode": "DDIC379",
+    "workDate": "2026-09-22",
+    "inAt": "2026-09-22T03:17:53.000Z"
+  },
+  {
+    "employeeCode": "DDIC380",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:22:58.000Z"
+  },
+  {
+    "employeeCode": "DDIC381",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:21:39.000Z"
+  },
+  {
+    "employeeCode": "DDIC382",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T05:08:12.000Z"
+  },
+  {
+    "employeeCode": "DDIC383",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:33:33.000Z"
+  },
+  {
+    "employeeCode": "DDIC384",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:22:20.000Z"
+  },
+  {
+    "employeeCode": "DDIC385",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:15:25.000Z"
+  },
+  {
+    "employeeCode": "DDIC386",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:52:51.000Z"
+  },
+  {
+    "employeeCode": "DDIC387",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:40:09.000Z"
+  },
+  {
+    "employeeCode": "DDIC388",
+    "workDate": "2026-09-11",
+    "inAt": "2026-09-11T03:43:52.000Z"
+  },
+  {
+    "employeeCode": "DDIC388",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:24:01.000Z"
+  },
+  {
+    "employeeCode": "DDIC389",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:23:55.000Z"
+  },
+  {
+    "employeeCode": "DDIC390",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:22:28.000Z"
+  },
+  {
+    "employeeCode": "DDIC393",
+    "workDate": "2026-09-24",
+    "inAt": "2026-09-24T03:35:26.000Z"
+  },
+  {
+    "employeeCode": "DDIC393",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:28:50.000Z"
+  },
+  {
+    "employeeCode": "DDIC394",
+    "workDate": "2026-09-12",
+    "inAt": "2026-09-12T00:05:40.000Z"
+  },
+  {
+    "employeeCode": "DDIC394",
+    "workDate": "2026-09-15",
+    "inAt": "2026-09-15T15:27:37.000Z"
+  },
+  {
+    "employeeCode": "DDIC394",
+    "workDate": "2026-09-19",
+    "inAt": "2026-09-19T00:46:55.000Z"
+  },
+  {
+    "employeeCode": "DDIC394",
+    "workDate": "2026-09-21",
+    "inAt": "2026-09-21T15:37:30.000Z"
+  },
+  {
+    "employeeCode": "DDIC394",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T05:59:33.000Z"
+  },
+  {
+    "employeeCode": "DDIC395",
+    "workDate": "2026-09-12",
+    "inAt": "2026-09-12T00:05:47.000Z"
+  },
+  {
+    "employeeCode": "DDIC395",
+    "workDate": "2026-09-15",
+    "inAt": "2026-09-15T15:00:57.000Z"
+  },
+  {
+    "employeeCode": "DDIC395",
+    "workDate": "2026-09-18",
+    "inAt": "2026-09-17T23:53:39.000Z"
+  },
+  {
+    "employeeCode": "DDIC395",
+    "workDate": "2026-09-21",
+    "inAt": "2026-09-21T15:17:20.000Z"
+  },
+  {
+    "employeeCode": "DDIC395",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T10:34:09.000Z"
+  },
+  {
+    "employeeCode": "DDIC396",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:15:11.000Z"
+  },
+  {
+    "employeeCode": "DDIC397",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:20:19.000Z"
+  },
+  {
+    "employeeCode": "DDIC398",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:22:46.000Z"
+  },
+  {
+    "employeeCode": "DDIH009",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:25:21.000Z"
+  },
+  {
+    "employeeCode": "DDIH020",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T09:37:08.000Z"
+  },
+  {
+    "employeeCode": "DDIH054",
+    "workDate": "2026-09-12",
+    "inAt": "2026-09-12T00:31:01.000Z"
+  },
+  {
+    "employeeCode": "DDIH054",
+    "workDate": "2026-09-16",
+    "inAt": "2026-09-16T15:16:17.000Z"
+  },
+  {
+    "employeeCode": "DDIH054",
+    "workDate": "2026-09-19",
+    "inAt": "2026-09-19T00:21:23.000Z"
+  },
+  {
+    "employeeCode": "DDIH054",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:11:01.000Z"
+  },
+  {
+    "employeeCode": "DDIH070",
+    "workDate": "2026-09-11",
+    "inAt": "2026-09-11T15:45:32.000Z"
+  },
+  {
+    "employeeCode": "DDIH070",
+    "workDate": "2026-09-12",
+    "inAt": "2026-09-12T01:21:18.000Z"
+  },
+  {
+    "employeeCode": "DDIH070",
+    "workDate": "2026-09-21",
+    "inAt": "2026-09-21T15:46:54.000Z"
+  },
+  {
+    "employeeCode": "DDIH070",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T00:31:17.000Z"
+  },
+  {
+    "employeeCode": "DDIH078",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:24:38.000Z"
+  },
+  {
+    "employeeCode": "DDIH086",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:13:45.000Z"
+  },
+  {
+    "employeeCode": "DDIH098",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:15:50.000Z"
+  },
+  {
+    "employeeCode": "DDIH104",
+    "workDate": "2026-09-12",
+    "inAt": "2026-09-12T01:42:54.000Z"
+  },
+  {
+    "employeeCode": "DDIH104",
+    "workDate": "2026-09-15",
+    "inAt": "2026-09-15T15:07:49.000Z"
+  },
+  {
+    "employeeCode": "DDIH104",
+    "workDate": "2026-09-19",
+    "inAt": "2026-09-19T00:22:31.000Z"
+  },
+  {
+    "employeeCode": "DDIH104",
+    "workDate": "2026-09-21",
+    "inAt": "2026-09-21T15:28:57.000Z"
+  },
+  {
+    "employeeCode": "DDIH104",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T00:43:45.000Z"
+  },
+  {
+    "employeeCode": "DDIH109",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:24:48.000Z"
+  },
+  {
+    "employeeCode": "DDIH125",
+    "workDate": "2026-09-15",
+    "inAt": "2026-09-15T15:17:46.000Z"
+  },
+  {
+    "employeeCode": "DDIH125",
+    "workDate": "2026-09-19",
+    "inAt": "2026-09-18T23:36:59.000Z"
+  },
+  {
+    "employeeCode": "DDIH131",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:43:13.000Z"
+  },
+  {
+    "employeeCode": "DDIH140",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:57:29.000Z"
+  },
+  {
+    "employeeCode": "DDIH147",
+    "workDate": "2026-09-12",
+    "inAt": "2026-09-12T00:27:24.000Z"
+  },
+  {
+    "employeeCode": "DDIH147",
+    "workDate": "2026-09-15",
+    "inAt": "2026-09-15T16:11:49.000Z"
+  },
+  {
+    "employeeCode": "DDIH147",
+    "workDate": "2026-09-19",
+    "inAt": "2026-09-19T00:35:47.000Z"
+  },
+  {
+    "employeeCode": "DDIH147",
+    "workDate": "2026-09-21",
+    "inAt": "2026-09-21T16:05:18.000Z"
+  },
+  {
+    "employeeCode": "DDIH147",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T00:22:13.000Z"
+  },
+  {
+    "employeeCode": "DDIH150",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:39:48.000Z"
+  },
+  {
+    "employeeCode": "DDIH155",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:34:54.000Z"
+  },
+  {
+    "employeeCode": "DDIH159",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:56:43.000Z"
+  },
+  {
+    "employeeCode": "DDIH216",
+    "workDate": "2026-09-12",
+    "inAt": "2026-09-12T00:27:29.000Z"
+  },
+  {
+    "employeeCode": "DDIH216",
+    "workDate": "2026-09-15",
+    "inAt": "2026-09-15T16:01:28.000Z"
+  },
+  {
+    "employeeCode": "DDIH216",
+    "workDate": "2026-09-19",
+    "inAt": "2026-09-19T00:35:41.000Z"
+  },
+  {
+    "employeeCode": "DDIH216",
+    "workDate": "2026-09-21",
+    "inAt": "2026-09-21T15:46:23.000Z"
+  },
+  {
+    "employeeCode": "DDIH216",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T00:22:20.000Z"
+  },
+  {
+    "employeeCode": "DDIH250",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:07:13.000Z"
+  },
+  {
+    "employeeCode": "DDIH254",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:01:19.000Z"
+  },
+  {
+    "employeeCode": "DDIH268",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:32:47.000Z"
+  },
+  {
+    "employeeCode": "DDIH275",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:04:44.000Z"
+  },
+  {
+    "employeeCode": "DDIH282",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:36:01.000Z"
+  },
+  {
+    "employeeCode": "DDIH324",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:06:10.000Z"
+  },
+  {
+    "employeeCode": "DDIH328",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:19:00.000Z"
+  },
+  {
+    "employeeCode": "DDIH332",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:31:10.000Z"
+  },
+  {
+    "employeeCode": "DDIH334",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:26:40.000Z"
+  },
+  {
+    "employeeCode": "DDIH349",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:39:44.000Z"
+  },
+  {
+    "employeeCode": "DDIH365",
+    "workDate": "2026-09-23",
+    "inAt": "2026-09-23T13:55:44.000Z"
+  },
+  {
+    "employeeCode": "DDIH365",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:36:19.000Z"
+  },
+  {
+    "employeeCode": "DDIH370",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:41:33.000Z"
+  },
+  {
+    "employeeCode": "DDIH371",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:26:24.000Z"
+  },
+  {
+    "employeeCode": "DDIH382",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:03:31.000Z"
+  },
+  {
+    "employeeCode": "DDIH383",
+    "workDate": "2026-09-21",
+    "inAt": "2026-09-21T08:17:15.000Z"
+  },
+  {
+    "employeeCode": "DDIH383",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:53:48.000Z"
+  },
+  {
+    "employeeCode": "DDIH384",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:33:00.000Z"
+  },
+  {
+    "employeeCode": "DDIH392",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T05:18:27.000Z"
+  },
+  {
+    "employeeCode": "DDIH393",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:28:01.000Z"
+  },
+  {
+    "employeeCode": "DDIH398",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:19:03.000Z"
+  },
+  {
+    "employeeCode": "DDIH400",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:06:18.000Z"
+  },
+  {
+    "employeeCode": "DDIH406",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:36:14.000Z"
+  },
+  {
+    "employeeCode": "DDIH408",
+    "workDate": "2026-09-22",
+    "inAt": "2026-09-22T04:05:28.000Z"
+  },
+  {
+    "employeeCode": "DDIH409",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T02:33:41.000Z"
+  },
+  {
+    "employeeCode": "DDIH410",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:50:35.000Z"
+  },
+  {
+    "employeeCode": "DDIH418",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:52:33.000Z"
+  },
+  {
+    "employeeCode": "DDIH428",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:52:39.000Z"
+  },
+  {
+    "employeeCode": "DDIH436",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:06:31.000Z"
+  },
+  {
+    "employeeCode": "DDIH438",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:51:00.000Z"
+  },
+  {
+    "employeeCode": "DDIH442",
+    "workDate": "2026-09-12",
+    "inAt": "2026-09-12T00:26:27.000Z"
+  },
+  {
+    "employeeCode": "DDIH442",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:40:44.000Z"
+  },
+  {
+    "employeeCode": "DDIH445",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:15:59.000Z"
+  },
+  {
+    "employeeCode": "DDIH446",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:51:51.000Z"
+  },
+  {
+    "employeeCode": "DDIH447",
+    "workDate": "2026-09-12",
+    "inAt": "2026-09-12T00:26:39.000Z"
+  },
+  {
+    "employeeCode": "DDIH447",
+    "workDate": "2026-09-15",
+    "inAt": "2026-09-15T15:04:04.000Z"
+  },
+  {
+    "employeeCode": "DDIH447",
+    "workDate": "2026-09-18",
+    "inAt": "2026-09-18T00:12:40.000Z"
+  },
+  {
+    "employeeCode": "DDIH452",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:08:48.000Z"
+  },
+  {
+    "employeeCode": "DDIH454",
+    "workDate": "2026-09-12",
+    "inAt": "2026-09-11T23:36:04.000Z"
+  },
+  {
+    "employeeCode": "DDIH454",
+    "workDate": "2026-09-15",
+    "inAt": "2026-09-15T15:10:12.000Z"
+  },
+  {
+    "employeeCode": "DDIH454",
+    "workDate": "2026-09-19",
+    "inAt": "2026-09-19T00:42:14.000Z"
+  },
+  {
+    "employeeCode": "DDIH454",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:40:39.000Z"
+  },
+  {
+    "employeeCode": "DDIH456",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T02:40:38.000Z"
+  },
+  {
+    "employeeCode": "DDIH466",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:48:09.000Z"
+  },
+  {
+    "employeeCode": "DDIH471",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:05:04.000Z"
+  },
+  {
+    "employeeCode": "DDIH472",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:21:27.000Z"
+  },
+  {
+    "employeeCode": "DDIH474",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:11:41.000Z"
+  },
+  {
+    "employeeCode": "DDIH485",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:28:25.000Z"
+  },
+  {
+    "employeeCode": "DDIH489",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T02:55:46.000Z"
+  },
+  {
+    "employeeCode": "DDIH495",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:16:17.000Z"
+  },
+  {
+    "employeeCode": "DDIH496",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:40:48.000Z"
+  },
+  {
+    "employeeCode": "DDIH500",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:32:52.000Z"
+  },
+  {
+    "employeeCode": "DDIH501",
+    "workDate": "2026-09-21",
+    "inAt": "2026-09-21T15:21:22.000Z"
+  },
+  {
+    "employeeCode": "DDIH501",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T00:43:50.000Z"
+  },
+  {
+    "employeeCode": "DDIH503",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:13:35.000Z"
+  },
+  {
+    "employeeCode": "DDIH508",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:21:43.000Z"
+  },
+  {
+    "employeeCode": "DDIH511",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:23:36.000Z"
+  },
+  {
+    "employeeCode": "DDIH513",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:15:46.000Z"
+  },
+  {
+    "employeeCode": "DDIH525",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:46:51.000Z"
+  },
+  {
+    "employeeCode": "DDIH526",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:58:26.000Z"
+  },
+  {
+    "employeeCode": "DDIH527",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:54:11.000Z"
+  },
+  {
+    "employeeCode": "DDIH530",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:19:15.000Z"
+  },
+  {
+    "employeeCode": "DDIH533",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:21:56.000Z"
+  },
+  {
+    "employeeCode": "DDIH543",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:41:17.000Z"
+  },
+  {
+    "employeeCode": "DDIH547",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:40:42.000Z"
+  },
+  {
+    "employeeCode": "DDIH548",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:34:21.000Z"
+  },
+  {
+    "employeeCode": "DDIH549",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:34:47.000Z"
+  },
+  {
+    "employeeCode": "DDIH550",
+    "workDate": "2026-09-12",
+    "inAt": "2026-09-12T00:23:25.000Z"
+  },
+  {
+    "employeeCode": "DDIH550",
+    "workDate": "2026-09-15",
+    "inAt": "2026-09-15T15:38:27.000Z"
+  },
+  {
+    "employeeCode": "DDIH550",
+    "workDate": "2026-09-16",
+    "inAt": "2026-09-16T00:17:46.000Z"
+  },
+  {
+    "employeeCode": "DDIH550",
+    "workDate": "2026-09-17",
+    "inAt": "2026-09-17T15:29:08.000Z"
+  },
+  {
+    "employeeCode": "DDIH550",
+    "workDate": "2026-09-19",
+    "inAt": "2026-09-19T00:13:24.000Z"
+  },
+  {
+    "employeeCode": "DDIH550",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:48:53.000Z"
+  },
+  {
+    "employeeCode": "DDIH552",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:23:57.000Z"
+  },
+  {
+    "employeeCode": "DDIH553",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:47:00.000Z"
+  },
+  {
+    "employeeCode": "DDIH558",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:10:56.000Z"
+  },
+  {
+    "employeeCode": "DDIH567",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:01:47.000Z"
+  },
+  {
+    "employeeCode": "DDIH571",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:08:02.000Z"
+  },
+  {
+    "employeeCode": "DDIH572",
+    "workDate": "2026-09-15",
+    "inAt": "2026-09-15T15:04:10.000Z"
+  },
+  {
+    "employeeCode": "DDIH572",
+    "workDate": "2026-09-19",
+    "inAt": "2026-09-19T00:11:37.000Z"
+  },
+  {
+    "employeeCode": "DDIH572",
+    "workDate": "2026-09-21",
+    "inAt": "2026-09-21T14:33:20.000Z"
+  },
+  {
+    "employeeCode": "DDIH572",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T00:15:27.000Z"
+  },
+  {
+    "employeeCode": "DDIH573",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:21:46.000Z"
+  },
+  {
+    "employeeCode": "DDIH577",
+    "workDate": "2026-09-24",
+    "inAt": "2026-09-24T07:43:54.000Z"
+  },
+  {
+    "employeeCode": "DDIH577",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:45:12.000Z"
+  },
+  {
+    "employeeCode": "DDIH581",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:07:17.000Z"
+  },
+  {
+    "employeeCode": "DDIH586",
+    "workDate": "2026-09-21",
+    "inAt": "2026-09-21T15:45:23.000Z"
+  },
+  {
+    "employeeCode": "DDIH586",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T00:15:24.000Z"
+  },
+  {
+    "employeeCode": "DDIH591",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:48:15.000Z"
+  },
+  {
+    "employeeCode": "DDIH596",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:21:30.000Z"
+  },
+  {
+    "employeeCode": "DDIH598",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:04:53.000Z"
+  },
+  {
+    "employeeCode": "DDIH602",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:46:22.000Z"
+  },
+  {
+    "employeeCode": "DDIH603",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:28:30.000Z"
+  },
+  {
+    "employeeCode": "DDIH606",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:55:52.000Z"
+  },
+  {
+    "employeeCode": "DDIH607",
+    "workDate": "2026-09-21",
+    "inAt": "2026-09-21T14:39:07.000Z"
+  },
+  {
+    "employeeCode": "DDIH607",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T01:33:06.000Z"
+  },
+  {
+    "employeeCode": "DDIH608",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:23:30.000Z"
+  },
+  {
+    "employeeCode": "DDIH611",
+    "workDate": "2026-09-23",
+    "inAt": "2026-09-23T12:59:44.000Z"
+  },
+  {
+    "employeeCode": "DDIH611",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:26:49.000Z"
+  },
+  {
+    "employeeCode": "DDIH614",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:54:41.000Z"
+  },
+  {
+    "employeeCode": "DDIH618",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:54:51.000Z"
+  },
+  {
+    "employeeCode": "DDIH620",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:00:03.000Z"
+  },
+  {
+    "employeeCode": "DDIH623",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:04:30.000Z"
+  },
+  {
+    "employeeCode": "DDIH624",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:11:12.000Z"
+  },
+  {
+    "employeeCode": "DDIH626",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:37:47.000Z"
+  },
+  {
+    "employeeCode": "DDIH632",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:26:59.000Z"
+  },
+  {
+    "employeeCode": "DDIH633",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:38:32.000Z"
+  },
+  {
+    "employeeCode": "DDIH634",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:11:07.000Z"
+  },
+  {
+    "employeeCode": "DDIH639",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:50:48.000Z"
+  },
+  {
+    "employeeCode": "DDIH646",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:12:03.000Z"
+  },
+  {
+    "employeeCode": "DDIH650",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:07:04.000Z"
+  },
+  {
+    "employeeCode": "DDIH651",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:29:48.000Z"
+  },
+  {
+    "employeeCode": "DDIH652",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:39:55.000Z"
+  },
+  {
+    "employeeCode": "DDIH653",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:43:26.000Z"
+  },
+  {
+    "employeeCode": "DDIH655",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:36:42.000Z"
+  },
+  {
+    "employeeCode": "DDIH657",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:19:20.000Z"
+  },
+  {
+    "employeeCode": "DDIH663",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T02:34:00.000Z"
+  },
+  {
+    "employeeCode": "DDIH667",
+    "workDate": "2026-09-11",
+    "inAt": "2026-09-11T15:25:10.000Z"
+  },
+  {
+    "employeeCode": "DDIH667",
+    "workDate": "2026-09-12",
+    "inAt": "2026-09-12T01:41:55.000Z"
+  },
+  {
+    "employeeCode": "DDIH667",
+    "workDate": "2026-09-15",
+    "inAt": "2026-09-15T15:14:35.000Z"
+  },
+  {
+    "employeeCode": "DDIH667",
+    "workDate": "2026-09-19",
+    "inAt": "2026-09-19T00:46:37.000Z"
+  },
+  {
+    "employeeCode": "DDIH667",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T02:24:48.000Z"
+  },
+  {
+    "employeeCode": "DDIH669",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:42:58.000Z"
+  },
+  {
+    "employeeCode": "DDIH673",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:44:04.000Z"
+  },
+  {
+    "employeeCode": "DDIH675",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T05:36:03.000Z"
+  },
+  {
+    "employeeCode": "DDIH676",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:30:29.000Z"
+  },
+  {
+    "employeeCode": "DDIH677",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:56:07.000Z"
+  },
+  {
+    "employeeCode": "DDIH679",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:01:15.000Z"
+  },
+  {
+    "employeeCode": "DDIH683",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:24:16.000Z"
+  },
+  {
+    "employeeCode": "DDIH685",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:50:22.000Z"
+  },
+  {
+    "employeeCode": "DDIH689",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:46:28.000Z"
+  },
+  {
+    "employeeCode": "DDIH690",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:25:39.000Z"
+  },
+  {
+    "employeeCode": "DDIH692",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:04:50.000Z"
+  },
+  {
+    "employeeCode": "DDIH693",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:52:44.000Z"
+  },
+  {
+    "employeeCode": "DDIH694",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:50:18.000Z"
+  },
+  {
+    "employeeCode": "DDIH696",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:15:04.000Z"
+  },
+  {
+    "employeeCode": "DDIH699",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:25:27.000Z"
+  },
+  {
+    "employeeCode": "DDIH702",
+    "workDate": "2026-09-11",
+    "inAt": "2026-09-11T12:53:01.000Z"
+  },
+  {
+    "employeeCode": "DDIH702",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:03:26.000Z"
+  },
+  {
+    "employeeCode": "DDIH703",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T05:18:09.000Z"
+  },
+  {
+    "employeeCode": "DDIH707",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:13:57.000Z"
+  },
+  {
+    "employeeCode": "DDIH714",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:16:05.000Z"
+  },
+  {
+    "employeeCode": "DDIH715",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:12:50.000Z"
+  },
+  {
+    "employeeCode": "DDIH717",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:14:17.000Z"
+  },
+  {
+    "employeeCode": "DDIH718",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:18:54.000Z"
+  },
+  {
+    "employeeCode": "DDIH719",
+    "workDate": "2026-09-11",
+    "inAt": "2026-09-11T18:07:00.000Z"
+  },
+  {
+    "employeeCode": "DDIH719",
+    "workDate": "2026-09-12",
+    "inAt": "2026-09-12T04:10:19.000Z"
+  },
+  {
+    "employeeCode": "DDIH719",
+    "workDate": "2026-09-15",
+    "inAt": "2026-09-15T17:38:33.000Z"
+  },
+  {
+    "employeeCode": "DDIH719",
+    "workDate": "2026-09-19",
+    "inAt": "2026-09-19T01:48:03.000Z"
+  },
+  {
+    "employeeCode": "DDIH719",
+    "workDate": "2026-09-21",
+    "inAt": "2026-09-21T18:11:18.000Z"
+  },
+  {
+    "employeeCode": "DDIH719",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:04:07.000Z"
+  },
+  {
+    "employeeCode": "DDIH720",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:39:52.000Z"
+  },
+  {
+    "employeeCode": "DDIH721",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T06:49:12.000Z"
+  },
+  {
+    "employeeCode": "DDIH722",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:05:21.000Z"
+  },
+  {
+    "employeeCode": "DDIH724",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:31:14.000Z"
+  },
+  {
+    "employeeCode": "DDIH725",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:37:41.000Z"
+  },
+  {
+    "employeeCode": "DDIH726",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:02:15.000Z"
+  },
+  {
+    "employeeCode": "DDIH729",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:36:29.000Z"
+  },
+  {
+    "employeeCode": "DDIH730",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:35:42.000Z"
+  },
+  {
+    "employeeCode": "DDIH731",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:55:56.000Z"
+  },
+  {
+    "employeeCode": "DDIH732",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:08:39.000Z"
+  },
+  {
+    "employeeCode": "DDIH733",
+    "workDate": "2026-09-12",
+    "inAt": "2026-09-12T00:05:58.000Z"
+  },
+  {
+    "employeeCode": "DDIH733",
+    "workDate": "2026-09-15",
+    "inAt": "2026-09-15T15:11:32.000Z"
+  },
+  {
+    "employeeCode": "DDIH733",
+    "workDate": "2026-09-19",
+    "inAt": "2026-09-19T00:46:46.000Z"
+  },
+  {
+    "employeeCode": "DDIH733",
+    "workDate": "2026-09-21",
+    "inAt": "2026-09-21T15:13:14.000Z"
+  },
+  {
+    "employeeCode": "DDIH733",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T06:20:27.000Z"
+  },
+  {
+    "employeeCode": "DDIH734",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T04:07:22.000Z"
+  },
+  {
+    "employeeCode": "DDIH735",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T07:22:23.000Z"
+  },
+  {
+    "employeeCode": "DDIH736",
+    "workDate": "2026-09-18",
+    "inAt": "2026-09-18T03:22:48.000Z"
+  },
+  {
+    "employeeCode": "DDIH736",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:24:07.000Z"
+  },
+  {
+    "employeeCode": "DDII061",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:59:09.000Z"
+  },
+  {
+    "employeeCode": "DDII062",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T03:37:35.000Z"
+  },
+  {
+    "employeeCode": "DDII063",
+    "workDate": "2026-09-25",
+    "inAt": "2026-09-25T09:07:30.000Z"
+  }
+]

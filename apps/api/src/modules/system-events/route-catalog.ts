@@ -47,6 +47,13 @@ const entries: CatalogEntry[] = [
   // Timecard and timesheets
   {
     method: 'POST',
+    pattern: '/timecard/sessions/:sessionId/confirm-stop',
+    category: 'timecard',
+    action: 'timecard.auto_stop_confirmed',
+    message: 'Confirmed automatic 07:00 stop',
+  },
+  {
+    method: 'POST',
     pattern: '/timecard/start',
     category: 'timecard',
     action: 'timecard.start',
@@ -187,6 +194,39 @@ const entries: CatalogEntry[] = [
     message: 'Deleted attendance import',
     subject: 'import_batch',
   },
+  {
+    method: 'PUT',
+    pattern: '/availability/me',
+    category: 'employee',
+    action: 'availability.mode_changed',
+    message: 'Changed availability mode',
+    capture: ['mode'],
+  },
+  {
+    method: 'POST',
+    pattern: '/announcements',
+    category: 'notification',
+    action: 'announcement.sent',
+    message: 'Sent a message to employees',
+    capture: ['title', 'audience', 'durationDays'],
+  },
+  {
+    method: 'POST',
+    pattern: '/announcements/:announcementId/read',
+    category: 'notification',
+    action: 'announcement.read',
+    message: 'Read a message',
+    subject: 'announcement',
+    quietOnSuccess: true,
+  },
+  {
+    method: 'DELETE',
+    pattern: '/announcements/:announcementId',
+    category: 'notification',
+    action: 'announcement.withdrawn',
+    message: 'Withdrew a message',
+    subject: 'announcement',
+  },
   // Employees and access
   {
     method: 'POST',
@@ -201,6 +241,14 @@ const entries: CatalogEntry[] = [
     category: 'employee',
     action: 'employee.updated',
     message: 'Updated employee',
+    subject: 'employee',
+  },
+  {
+    method: 'DELETE',
+    pattern: '/employees/:employeeId',
+    category: 'employee',
+    action: 'employee.deleted',
+    message: 'Deleted employee',
     subject: 'employee',
   },
   {

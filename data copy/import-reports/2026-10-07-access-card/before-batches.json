@@ -1,0 +1,2609 @@
+[
+  {
+    "_id": "6aad5558318904ff4feb2fcd",
+    "source": "access_card",
+    "importType": "door_workbook",
+    "fileName": "11.xls",
+    "fileHash": "09078b1626f1bc4ba0b43aa53b083c7e4a0e390d6267f469afcde0fec568afdd:removed:6ab51519efdae64f12453f36",
+    "periodStart": "2026-09-10T18:44:19.000Z",
+    "periodEnd": "2026-09-11T04:22:43.000Z",
+    "totalRows": 951,
+    "successfulRows": 260,
+    "failedRows": 0,
+    "duplicateRows": 0,
+    "ignoredRows": 691,
+    "provisionedEmployees": 19,
+    "reconciledTimecards": 195,
+    "status": "deleted",
+    "importedBy": "6aad551246b7ea319cdac801",
+    "errorsTruncated": false,
+    "errors": [],
+    "createdAt": "2026-09-18T15:14:32.140Z",
+    "updatedAt": "2026-09-24T12:18:34.010Z",
+    "__v": 0,
+    "removalReason": "fgnfgng",
+    "removedAt": "2026-09-24T12:18:34.009Z",
+    "removedRows": 260
+  },
+  {
+    "_id": "6aad555b318904ff4feb2fe1",
+    "source": "biometric",
+    "importType": "csv",
+    "fileName": "biometrix.csv",
+    "fileHash": "bf31be1b3f7438077efa70f4cc8810e79e55aa483f86d1bae7d7a7f9c0c4e785:removed:6ab514d3efdae64f12453f34",
+    "periodStart": "2026-06-01T02:13:05.000Z",
+    "periodEnd": "2026-06-30T15:49:53.000Z",
+    "totalRows": 7235,
+    "successfulRows": 8452,
+    "failedRows": 744,
+    "duplicateRows": 0,
+    "ignoredRows": 2608,
+    "provisionedEmployees": 0,
+    "reconciledTimecards": 4248,
+    "status": "deleted",
+    "importedBy": "6aad551246b7ea319cdac801",
+    "errorsTruncated": true,
+    "errors": [
+      {
+        "rowNumber": 32,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 32,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 34,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 34,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 35,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 35,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 36,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 36,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 37,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 37,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 39,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 39,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 40,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 40,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 42,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 42,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 43,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 43,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 44,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 46,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 46,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 47,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 47,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 48,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 49,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 49,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 50,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 50,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 51,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 53,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 53,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 54,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 54,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 55,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 55,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 56,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 56,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 57,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 57,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 58,
+        "employeeCode": "DDHK093",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 182,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 182,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 184,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 184,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 185,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 185,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 186,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 186,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 187,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 187,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 190,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 190,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 191,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 191,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 192,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 192,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 193,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 193,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 194,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 194,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 196,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 196,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 197,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 197,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 198,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 198,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 199,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 199,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 200,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 200,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 204,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 204,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 205,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 205,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 206,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 206,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 207,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 207,
+        "employeeCode": "DDIC281",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 242,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 242,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 244,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 244,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 245,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 245,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 246,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 246,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 249,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 249,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 250,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 250,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 251,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 251,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 252,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 252,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 253,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 253,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 256,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 256,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 257,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 257,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 260,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 260,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 263,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 265,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 265,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 266,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 266,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 267,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 267,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 270,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 270,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 271,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 271,
+        "employeeCode": "DDIC284",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 572,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 572,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 574,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 574,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 579,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 579,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 580,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 580,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 581,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 581,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 582,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 582,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 583,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 583,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 584,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 584,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 587,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 587,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 588,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 588,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 589,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 589,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 590,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 590,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 591,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 591,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 593,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 593,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 594,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 594,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 595,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 595,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 596,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 596,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 597,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 597,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 600,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 600,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 601,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 601,
+        "employeeCode": "DDIC304",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 875,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 875,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 876,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 876,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 879,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 879,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 880,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 880,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 881,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 881,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 882,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 882,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 883,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 883,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 887,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 887,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 888,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 888,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 889,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 889,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 890,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 890,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 893,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 893,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 895,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 895,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 896,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 896,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 897,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 897,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 898,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 898,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 900,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 900,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 901,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 901,
+        "employeeCode": "DDIC327",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 964,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 964,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 965,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 965,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 966,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 966,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 969,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 969,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 970,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 970,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 971,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 971,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 972,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 972,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 973,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 973,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 976,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 976,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 977,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 977,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 978,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 978,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 979,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 979,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 980,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 980,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 983,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 983,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 984,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 984,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 985,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 985,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 986,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 986,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 990,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 990,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 991,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 991,
+        "employeeCode": "DDIC330",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1082,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1082,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1084,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1084,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1085,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1085,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1086,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1086,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1087,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1087,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1089,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1089,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1090,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1090,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1091,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1091,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1092,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1092,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1093,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1093,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1094,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1094,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1096,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1096,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1097,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1097,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1098,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1098,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1100,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1100,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1103,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1103,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1104,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1104,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1105,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1105,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1106,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1106,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1107,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1107,
+        "employeeCode": "DDIC340",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1202,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1202,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1204,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1204,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1205,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1205,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1206,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1206,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1209,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1209,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1210,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1210,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1211,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1211,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1212,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1212,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1213,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1213,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1216,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1216,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1217,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1217,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1218,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1218,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1219,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1219,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1220,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1220,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1223,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1223,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1224,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1224,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1225,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1225,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1226,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1226,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1227,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1227,
+        "employeeCode": "DDIC348",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1322,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1322,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1323,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1324,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1324,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1325,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1325,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1326,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1326,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1329,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1329,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1330,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1330,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1331,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1331,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1332,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1332,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1333,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1333,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1336,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1336,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1337,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1337,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1338,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1338,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1339,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1339,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1340,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1340,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1341,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1341,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1343,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1343,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1344,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1344,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1345,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1346,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1346,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1347,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1347,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1348,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1348,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1350,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1350,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1351,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1351,
+        "employeeCode": "DDIC357",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1502,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1502,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1504,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1504,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1505,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1505,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1506,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1506,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1507,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1507,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1509,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1509,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1510,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1510,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1511,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1511,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1512,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1512,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1513,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1513,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1514,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1514,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1516,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1516,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1517,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1517,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1518,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1518,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1519,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1519,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1520,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1520,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1521,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1521,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1523,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1523,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1524,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1524,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1526,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1526,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1527,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1527,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1530,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1530,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1531,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1531,
+        "employeeCode": "DDIC369",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1532,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1532,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1534,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1534,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1535,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1535,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1536,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1536,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1539,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1539,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1540,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1540,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1541,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1541,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1542,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1542,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1543,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1543,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1546,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1546,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1547,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1547,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1548,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1548,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1549,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1549,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1550,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1550,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1553,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1553,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1554,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1554,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1555,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1555,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1556,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1556,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1557,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1557,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1560,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1560,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1561,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1561,
+        "employeeCode": "DDIC370",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1592,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1592,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1594,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1594,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1595,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1595,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1596,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1596,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1599,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1599,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1600,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1600,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1601,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1601,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1602,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1602,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1603,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1603,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1604,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1604,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1606,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1606,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1607,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1607,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1608,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1608,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1609,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1609,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1613,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1613,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1614,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1614,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1615,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1615,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1620,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1620,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1621,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1621,
+        "employeeCode": "DDIC372",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1622,
+        "employeeCode": "DDIC373",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1622,
+        "employeeCode": "DDIC373",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1624,
+        "employeeCode": "DDIC373",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1624,
+        "employeeCode": "DDIC373",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1625,
+        "employeeCode": "DDIC373",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1625,
+        "employeeCode": "DDIC373",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1626,
+        "employeeCode": "DDIC373",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1626,
+        "employeeCode": "DDIC373",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1627,
+        "employeeCode": "DDIC373",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1627,
+        "employeeCode": "DDIC373",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1629,
+        "employeeCode": "DDIC373",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1629,
+        "employeeCode": "DDIC373",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1630,
+        "employeeCode": "DDIC373",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1630,
+        "employeeCode": "DDIC373",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1631,
+        "employeeCode": "DDIC373",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1631,
+        "employeeCode": "DDIC373",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1632,
+        "employeeCode": "DDIC373",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1632,
+        "employeeCode": "DDIC373",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1634,
+        "employeeCode": "DDIC373",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1634,
+        "employeeCode": "DDIC373",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1636,
+        "employeeCode": "DDIC373",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1636,
+        "employeeCode": "DDIC373",
+        "reason": "No active employee matches this employee code"
+      },
+      {
+        "rowNumber": 1637,
+        "employeeCode": "DDIC373",
+        "reason": "No active employee matches this employee code"
+      }
+    ],
+    "createdAt": "2026-09-18T15:14:35.121Z",
+    "updatedAt": "2026-09-24T12:17:24.755Z",
+    "__v": 1,
+    "removalReason": "jhj,hj,jh,jh",
+    "removedAt": "2026-09-24T12:17:24.755Z",
+    "removedRows": 8452
+  },
+  {
+    "_id": "6ab517e1de10f9b82e040bea",
+    "source": "biometric",
+    "importType": "csv",
+    "fileName": "biometrix.csv",
+    "fileHash": "bf31be1b3f7438077efa70f4cc8810e79e55aa483f86d1bae7d7a7f9c0c4e785",
+    "periodStart": "2026-06-01T02:13:05.000Z",
+    "periodEnd": "2026-06-30T15:49:53.000Z",
+    "totalRows": 7235,
+    "successfulRows": 744,
+    "failedRows": 0,
+    "duplicateRows": 8452,
+    "ignoredRows": 2608,
+    "provisionedEmployees": 20,
+    "reconciledTimecards": 4626,
+    "status": "completed",
+    "importedBy": "6aad551246b7ea319cdac801",
+    "removedRows": 0,
+    "removedAt": null,
+    "removalReason": null,
+    "changeId": null,
+    "errorsTruncated": false,
+    "errors": [],
+    "createdAt": "2026-09-24T12:30:25.827Z",
+    "updatedAt": "2026-09-24T13:00:49.132Z",
+    "__v": 2
+  },
+  {
+    "_id": "6aba6f7e9c194dbdb9a46018",
+    "source": "biometric",
+    "importType": "csv",
+    "fileName": "11th_sep_to_25th_sep.csv",
+    "fileHash": "f16d355b2ab720c28e87f76245e6c4b568ee9d898157dbf27dbb18e5365ff3be",
+    "periodStart": "2026-09-11T00:38:48.000Z",
+    "periodEnd": "2026-09-25T11:24:51.000Z",
+    "totalRows": 3747,
+    "successfulRows": 4024,
+    "failedRows": 0,
+    "duplicateRows": 0,
+    "ignoredRows": 1598,
+    "provisionedEmployees": 3,
+    "reconciledTimecards": 2149,
+    "status": "completed",
+    "importedBy": "6aad551246b7ea319cdac801",
+    "removedRows": 0,
+    "removedAt": null,
+    "removalReason": null,
+    "changeId": null,
+    "errorsTruncated": false,
+    "errors": [],
+    "createdAt": "2026-09-28T13:45:34.689Z",
+    "updatedAt": "2026-09-28T13:46:00.451Z",
+    "__v": 0
+  }
+]

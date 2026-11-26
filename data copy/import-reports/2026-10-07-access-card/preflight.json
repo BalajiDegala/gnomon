@@ -1,0 +1,523 @@
+{
+  "fileName": "12th to 22nd sep 2026.xls",
+  "sha256": "590684fba663e2c1a468b84754fe7a6757badf2d4f4dc572ff588940084be22b",
+  "totalRows": 100000,
+  "ignoredRows": 90409,
+  "selectedEvents": 9591,
+  "parseErrors": [],
+  "workDates": {
+    "from": "2026-08-21",
+    "to": "2026-09-22"
+  },
+  "eventsByMonth": {
+    "2026-08": 2906,
+    "2026-09": 6685
+  },
+  "personnelWithEvents": 499,
+  "workdays": 4847,
+  "existingEmployeeMatches": 253,
+  "newProfiles": 247,
+  "nameDifferenceCount": 24,
+  "activeCardEvents": 0,
+  "imports": [
+    {
+      "_id": "6aad5558318904ff4feb2fcd",
+      "fileName": "11.xls",
+      "successfulRows": 260,
+      "status": "deleted",
+      "removedAt": "2026-09-24T12:18:34.009Z",
+      "removedRows": 260
+    }
+  ],
+  "nameDifferences": [
+    {
+      "sourceCode": "7285",
+      "sourceName": "Santhosh N",
+      "matchedCode": "DDIC285",
+      "names": [
+        "N.Santosh N.Santosh",
+        "N.Santosh",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "11108",
+      "sourceName": "Deepak Kumar Security",
+      "matchedCode": "11108",
+      "names": [
+        "Deepak Kumar",
+        "",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "9020",
+      "sourceName": "Harees Pola",
+      "matchedCode": "DDIH020",
+      "names": [
+        "Hareesh Pola",
+        "Hareesh Pola",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "9547",
+      "sourceName": "Santosh Kumar Pappala",
+      "matchedCode": "DDIH547",
+      "names": [
+        "Pappala Santosh Kumar",
+        "Pappala Santosh Kumar",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "9098",
+      "sourceName": "Nageswara Rao Bodimisetti",
+      "matchedCode": "DDIH098",
+      "names": [
+        "Nageswara Rao",
+        "Nageswara Rao",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "11105",
+      "sourceName": "Bobi Deol Security",
+      "matchedCode": "11105",
+      "names": [
+        "Bobi Deol",
+        "",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "9673",
+      "sourceName": "Saikumar Reddy Dantu",
+      "matchedCode": "DDIH673",
+      "names": [
+        "Sai krishna Reddy Dantu",
+        "Sai krishna Reddy Dantu",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "7297",
+      "sourceName": "Ammancha Srinivas Srinivas",
+      "matchedCode": "DDIC297",
+      "names": [
+        "Ammancha Srinivas",
+        "Ammancha Srinivas",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "9408",
+      "sourceName": "Naveen Posham",
+      "matchedCode": "DDIH408",
+      "names": [
+        "Posham Naveen",
+        "Posham Naveen",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "9606",
+      "sourceName": "Shanmukha Vijay Dulam",
+      "matchedCode": "DDIH606",
+      "names": [
+        "Dulam Shanmukha Vijay",
+        "Dulam Shanmukha Vijay",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "9567",
+      "sourceName": "Durga prasad M",
+      "matchedCode": "DDIH567",
+      "names": [
+        "Durga prasad Mommileti",
+        "Durga prasad Mommileti",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "9454",
+      "sourceName": "Nithesh Murrari",
+      "matchedCode": "DDIH454",
+      "names": [
+        "Murari Nithesh",
+        "Murari Nithesh",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "9410",
+      "sourceName": "Tulasi Rao Gujju",
+      "matchedCode": "DDIH410",
+      "names": [
+        "Gujju Tulasi Rao",
+        "Gujju Tulasi Rao",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "9724",
+      "sourceName": "Yadagiri K",
+      "matchedCode": "DDIH724",
+      "names": [
+        "K Yadagiri",
+        "K Yadagiri",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "9655",
+      "sourceName": "Hari Krishna Mandla",
+      "matchedCode": "DDIH655",
+      "names": [
+        "Mandla Hari Krishna",
+        "Mandla Hari Krishna",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "11107",
+      "sourceName": "Ramesh Mahapatra Housekeeping",
+      "matchedCode": "11107",
+      "names": [
+        "Ramesh mahapatra",
+        "",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "11103",
+      "sourceName": "Rahim Udin House keeping",
+      "matchedCode": "11103",
+      "names": [
+        "House keeping House keeping",
+        "",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "11106",
+      "sourceName": "Shambhu House Keeping",
+      "matchedCode": "11106",
+      "names": [
+        "House Keeping House Keeping",
+        "",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "11102",
+      "sourceName": "Dhanamma k House keeping",
+      "matchedCode": "11102",
+      "names": [
+        "Dhanamma K",
+        "",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "9498",
+      "sourceName": "Rimpa Mukherjee Mukherjee",
+      "matchedCode": "DDIH498",
+      "names": [
+        "Rimpa Mukherjee",
+        "Rimpa Mukherjee",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "9549",
+      "sourceName": "Dileep Kumar Bapanati",
+      "matchedCode": "DDIH549",
+      "names": [
+        "Bapanati Dileep Kumar",
+        "Bapanati Dileep Kumar",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "9615",
+      "sourceName": "Eshwar Prasad S",
+      "matchedCode": "DDIH615",
+      "names": [
+        "S.Eshwar Prasad",
+        "S.Eshwar Prasad",
+        ""
+      ]
+    },
+    {
+      "sourceCode": "7397",
+      "sourceName": "Sourabh Vilas Khaire Khaire",
+      "matchedCode": "DDIC397",
+      "names": [
+        "Sourabh Vilas Khaire",
+        "",
+        "Sourabh Vilas Khaire"
+      ]
+    },
+    {
+      "sourceCode": "9663",
+      "sourceName": "Sai Kumar Nakkapothu",
+      "matchedCode": "DDIH663",
+      "names": [
+        "Nakkapothu Sai Kumar",
+        "Nakkapothu Sai Kumar",
+        ""
+      ]
+    }
+  ],
+  "newProfileCodes": [
+    "11109",
+    "9543",
+    "11110",
+    "1000008",
+    "1000004",
+    "1000006",
+    "9705",
+    "667",
+    "733",
+    "735",
+    "650",
+    "641",
+    "639",
+    "721",
+    "680",
+    "730",
+    "707",
+    "692",
+    "699",
+    "642",
+    "900107",
+    "646",
+    "677",
+    "676",
+    "713",
+    "685",
+    "683",
+    "732",
+    "728",
+    "731",
+    "675",
+    "715",
+    "714",
+    "718",
+    "669",
+    "726",
+    "653",
+    "657",
+    "693",
+    "651",
+    "703",
+    "694",
+    "696",
+    "679",
+    "689",
+    "652",
+    "720",
+    "729",
+    "727",
+    "655",
+    "736",
+    "1000007",
+    "722",
+    "673",
+    "900039",
+    "663",
+    "724",
+    "702",
+    "900037",
+    "634",
+    "725",
+    "618",
+    "620",
+    "623",
+    "614",
+    "607",
+    "626",
+    "615",
+    "596",
+    "598",
+    "603",
+    "633",
+    "608",
+    "602",
+    "606",
+    "591",
+    "583",
+    "581",
+    "587",
+    "567",
+    "505",
+    "1000003",
+    "550",
+    "611",
+    "501",
+    "564",
+    "526",
+    "508",
+    "573",
+    "624",
+    "533",
+    "527",
+    "547",
+    "553",
+    "577",
+    "586",
+    "572",
+    "513",
+    "511",
+    "539",
+    "571",
+    "500",
+    "558",
+    "516",
+    "548",
+    "734",
+    "690",
+    "717",
+    "552",
+    "503",
+    "530",
+    "705",
+    "496",
+    "495",
+    "481",
+    "456",
+    "466",
+    "489",
+    "393",
+    "406",
+    "216",
+    "147",
+    "447",
+    "442",
+    "186",
+    "632",
+    "268",
+    "140",
+    "254",
+    "131",
+    "446",
+    "389",
+    "328",
+    "445",
+    "471",
+    "250",
+    "436",
+    "410",
+    "334",
+    "426",
+    "159",
+    "438",
+    "300",
+    "472",
+    "275",
+    "408",
+    "382",
+    "371",
+    "332",
+    "244",
+    "324",
+    "383",
+    "681",
+    "409",
+    "365",
+    "392",
+    "474",
+    "498",
+    "398",
+    "349",
+    "370",
+    "452",
+    "549",
+    "525",
+    "384",
+    "418",
+    "98",
+    "106",
+    "79",
+    "109",
+    "78",
+    "86",
+    "900194",
+    "900203",
+    "900198",
+    "900211",
+    "104",
+    "454",
+    "125",
+    "54",
+    "900212",
+    "20",
+    "70",
+    "900202",
+    "155",
+    "900146",
+    "9",
+    "900210",
+    "900127",
+    "900180",
+    "5",
+    "900085",
+    "900177",
+    "900144",
+    "900161",
+    "900160",
+    "900138",
+    "900088",
+    "900183",
+    "900117",
+    "900133",
+    "900172",
+    "900175",
+    "900108",
+    "900136",
+    "900118",
+    "900132",
+    "900148",
+    "900087",
+    "900152",
+    "900204",
+    "900082",
+    "900189",
+    "900101",
+    "900192",
+    "900207",
+    "900195",
+    "900199",
+    "9975",
+    "900213",
+    "900090",
+    "900201",
+    "900206",
+    "900197",
+    "900110",
+    "900193",
+    "900205",
+    "900113",
+    "900129",
+    "900200",
+    "900191",
+    "704",
+    "282",
+    "900081",
+    "900123",
+    "900190",
+    "485",
+    "428",
+    "900209",
+    "900208",
+    "900094",
+    "150",
+    "900166",
+    "900089",
+    "900196",
+    "672",
+    "17"
+  ]
+}

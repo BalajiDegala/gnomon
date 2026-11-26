@@ -5,6 +5,7 @@ import { Employee } from '../employees/employee.model.js';
 import { DailyTimecard } from './daily-timecard.model.js';
 import { isWorkingDay, reconcileDailyTimecard } from './reconciliation.service.js';
 import { recordEvent } from '../system-events/system-event.service.js';
+import { autoStopStaleSessions } from '../timecard/auto-stop.service.js';
 
 const RUN_INTERVAL_MS = 15 * 60_000;
 const CONCURRENCY = 10;
@@ -78,7 +79,8 @@ export async function ensureDailyAttendanceRecords(
 }
 
 /**
- * Runs at startup and every 15 minutes so rows appear shortly after the 07:00
+ * Runs at startup and every 15 minutes so rows appear (and timecards left
+ * running are stopped) shortly after the 07:00
  * workday boundary. Yesterday is included to fill gaps after downtime. The work
  * is idempotent, so several API replicas can run it safely.
  */
@@ -89,6 +91,12 @@ export function startDailyAttendanceScheduler(logger: Logger): () => void {
     running = true;
     try {
       const now = new Date();
+      // Timecards left running past 07:00 are stopped first, so their day is
+      // reconciled as waiting for confirmation before rows are generated.
+      const autoStopped = await autoStopStaleSessions(now);
+      if (autoStopped.stopped > 0) {
+        logger.info(autoStopped, 'Stopped timecards left running past 07:00');
+      }
       const workDates = [
         ...new Set([getWorkDate(new Date(now.getTime() - DAY_MS)), getWorkDate(now)]),
       ];

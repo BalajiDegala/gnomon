@@ -40,6 +40,8 @@ export interface EmployeeDocument {
     importedAt: Date;
   } | null;
   status: 'active' | 'inactive';
+  /** How availability is shown to colleagues; see the availability module. */
+  availabilityMode?: 'auto' | 'busy' | 'available';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -111,6 +113,11 @@ const employeeSchema = new Schema<EmployeeDocument>(
       default: null,
     },
     status: { type: String, enum: ['active', 'inactive'], default: 'active', required: true },
+    availabilityMode: {
+      type: String,
+      enum: ['auto', 'busy', 'available'],
+      default: 'auto',
+    },
   },
   { timestamps: true },
 );

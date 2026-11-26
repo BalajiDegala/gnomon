@@ -1,0 +1,32 @@
+{
+  "attendance": {
+    "month": "2026-09",
+    "latestRecordedMonth": "2026-06",
+    "availableMonths": [
+      {
+        "month": "2026-06",
+        "attendanceDays": 4626,
+        "employeesWithRecords": 238,
+        "biometricDays": 4626,
+        "biometricEvents": 9196,
+        "accessCardDays": 0,
+        "accessCardEvents": 0,
+        "websiteDays": 0,
+        "websiteSessions": 0,
+        "timesheetDays": 0,
+        "timesheetEntries": 0
+      }
+    ],
+    "generatedAt": "2026-09-28T13:45:13.930Z",
+    "summary": {
+      "scopedEmployees": 276,
+      "employeesWithRecords": 0,
+      "attendanceDays": 0,
+      "completeBiometricDays": 0,
+      "completeAccessCardDays": 0,
+      "websiteSessionDays": 0,
+      "timesheetDays": 0
+    },
+    "rows": []
+  }
+}

@@ -1,0 +1,63 @@
+{
+  "fileName": "11th_sep_to_25th_sep.csv",
+  "origin": "http://localhost:8081",
+  "batchId": "6aba6f7e9c194dbdb9a46018",
+  "status": "completed",
+  "totalRows": 3747,
+  "importedEvents": 4024,
+  "ignoredBlankRows": 1598,
+  "failedRows": 0,
+  "duplicateRows": 0,
+  "provisionedEmployees": 3,
+  "employeesWithPunches": 241,
+  "employeeDays": 2149,
+  "missingOutDays": 274,
+  "previousEventsUnchanged": 17908,
+  "previousEmployeesUnchanged": 277,
+  "juneRowsUnchanged": 4626,
+  "rawEventMismatches": [],
+  "reportMismatches": [],
+  "septemberSummary": {
+    "scopedEmployees": 279,
+    "employeesWithRecords": 241,
+    "attendanceDays": 2149,
+    "completeBiometricDays": 1875,
+    "completeAccessCardDays": 0,
+    "websiteSessionDays": 0,
+    "timesheetDays": 0
+  },
+  "months": [
+    {
+      "month": "2026-09",
+      "attendanceDays": 2149,
+      "employeesWithRecords": 241,
+      "biometricDays": 2149,
+      "biometricEvents": 4024,
+      "accessCardDays": 0,
+      "accessCardEvents": 0,
+      "websiteDays": 0,
+      "websiteSessions": 0,
+      "timesheetDays": 0,
+      "timesheetEntries": 0
+    },
+    {
+      "month": "2026-06",
+      "attendanceDays": 4626,
+      "employeesWithRecords": 238,
+      "biometricDays": 4626,
+      "biometricEvents": 9196,
+      "accessCardDays": 0,
+      "accessCardEvents": 0,
+      "websiteDays": 0,
+      "websiteSessions": 0,
+      "timesheetDays": 0,
+      "timesheetEntries": 0
+    }
+  ],
+  "importHistoryVerified": true,
+  "createdEmployeeCodes": [
+    "DDIC397",
+    "DDIC398",
+    "H727"
+  ]
+}

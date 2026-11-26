@@ -1,0 +1,187 @@
+[{
+  "_id": {
+    "$oid": "6452646210d07c0cdbac7d94"
+  },
+  "login": "balajid",
+  "date": {
+    "$date": "2023-05-03T19:10:50.932Z"
+  },
+  "day": "Wednesday",
+  "project": [
+    "AUPS",
+    "BEETLE",
+    "BA"
+  ],
+  "task": {
+    "AUPS": "Published",
+    "BEETLE": "started today"
+  },
+  "start_time": "19:10:47",
+  "stop_time": "19:10:50",
+  "work_time": "10:00"
+},{
+  "_id": {
+    "$oid": "645373c9e54dacb2cbd68e02"
+  },
+  "login": "schaitanya",
+  "date": {
+    "$date": "2023-05-03T19:10:50.932Z"
+  },
+  "day": "Wednesday",
+  "project": [
+    "AUPS",
+    "BA"
+  ],
+  "task": {
+    "AUPS": "Published",
+    "BEETLE": "started today"
+  },
+  "start_time": "19:10:47",
+  "stop_time": "19:10:50",
+  "work_time": "9:10"
+},{
+  "_id": {
+    "$oid": "645373f1e54dacb2cbd68e03"
+  },
+  "login": "schaitanya",
+  "date": {
+    "$date": "2023-05-01T19:10:50.932Z"
+  },
+  "day": "Tuesday",
+  "project": [
+    "BA"
+  ],
+  "task": {
+    "AUPS": "retake",
+    "BEETLE": "started today"
+  },
+  "start_time": "19:10:47",
+  "stop_time": "19:10:50",
+  "work_time": "9:10"
+},{
+  "_id": {
+    "$oid": "64537403e54dacb2cbd68e04"
+  },
+  "login": "schaitanya",
+  "date": {
+    "$date": "2023-05-02T19:10:50.932Z"
+  },
+  "day": "Tuesday",
+  "project": [
+    "BA"
+  ],
+  "task": {
+    "AUPS": "retake",
+    "BEETLE": "started today"
+  },
+  "start_time": "19:10:47",
+  "stop_time": "19:10:50",
+  "work_time": "9:10"
+},{
+  "_id": {
+    "$oid": "64537436e54dacb2cbd68e05"
+  },
+  "login": "balajid",
+  "date": {
+    "$date": "2023-04-02T19:10:50.932Z"
+  },
+  "day": "Tuesday",
+  "project": [
+    "BEETLE"
+  ],
+  "task": {
+    "AUPS": "Published",
+    "BEETLE": "started today"
+  },
+  "start_time": "19:10:47",
+  "stop_time": "19:10:50",
+  "work_time": "11:10"
+},{
+  "_id": {
+    "$oid": "6453795ac572aca304e641ac"
+  },
+  "login": "balajid",
+  "date": {
+    "$date": "2023-04-04T14:52:34.714Z"
+  },
+  "day": "Thursday",
+  "project": [
+    "REJW4J"
+  ],
+  "task": {
+    "REJW4J": "JMRWWRJ"
+  },
+  "start_time": "14:52:32",
+  "stop_time": "14:52:34",
+  "work_time": "9:00"
+},{
+  "_id": {
+    "$oid": "6454976ed19e6588a56ca1ac"
+  },
+  "login": "balajid",
+  "date": {
+    "$date": "2023-05-05T11:13:23.606Z"
+  },
+  "day": "Friday",
+  "project": [
+    "beetle"
+  ],
+  "task": {
+    "beetle": "testing"
+  },
+  "start_time": "11:13:10",
+  "stop_time": "11:13:23",
+  "work_time": "0:00"
+},{
+  "_id": {
+    "$oid": "64549e4f06e0f4f9377e99b0"
+  },
+  "login": "balajid",
+  "date": {
+    "$date": "2023-05-05T11:42:31.743Z"
+  },
+  "day": "Friday",
+  "project": [
+    "BA"
+  ],
+  "task": {
+    "BA": "Started today"
+  },
+  "start_time": "11:42:31",
+  "stop_time": "Working",
+  "work_time": "00:00"
+},{
+  "_id": {
+    "$oid": "64549f512e223b7a5f5b2f93"
+  },
+  "login": "balajid",
+  "date": {
+    "$date": "2023-05-05T11:46:54.809Z"
+  },
+  "day": "Friday",
+  "project": [
+    "Beetle",
+    "AUPS"
+  ],
+  "task": {
+    "Beetle": "started",
+    "AUPS": "fbd"
+  },
+  "start_time": "11:46:49",
+  "stop_time": "11:46:54",
+  "work_time": "0:00"
+},{
+  "_id": {
+    "$oid": "64549fdda751ca453d9a9df7"
+  },
+  "login": "balajid",
+  "date": {
+    "$date": "2023-05-05T11:49:09.006Z"
+  },
+  "day": "Friday",
+  "project": [],
+  "task": {},
+  "start_time": "11:49:09",
+  "stop_time": "Working",
+  "work_time": "00:00"
+}]

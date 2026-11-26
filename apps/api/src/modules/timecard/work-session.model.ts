@@ -18,6 +18,8 @@ export interface WorkSessionDocument {
   stopMetadata: ClientMetadata | null;
   stoppedBy: Types.ObjectId | null;
   correctionRequestId: Types.ObjectId | null;
+  /** When the employee confirmed an automatic 07:00 stop as their real exit time. */
+  stopConfirmedAt?: Date | null;
   /** Shift snapshot taken at start so later shift edits do not rewrite history. */
   shiftId: Types.ObjectId | null;
   shiftName: string | null;
@@ -47,13 +49,14 @@ const workSessionSchema = new Schema<WorkSessionDocument>(
     durationMinutes: { type: Number, default: null, min: 0 },
     status: {
       type: String,
-      enum: ['running', 'completed', 'force_stopped', 'regularised'],
+      enum: ['running', 'completed', 'force_stopped', 'regularised', 'auto_stopped'],
       required: true,
       default: 'running',
     },
     startMetadata: { type: metadataSchema, required: true },
     stopMetadata: { type: metadataSchema, default: null },
     stoppedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+    stopConfirmedAt: { type: Date, default: null },
     correctionRequestId: {
       type: Schema.Types.ObjectId,
       ref: 'RegularisationRequest',

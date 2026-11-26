@@ -3,6 +3,8 @@ import { useEffect, useMemo } from 'react';
 
 import { PageHeader } from '../components/data-view/PageHeader';
 import { PageTabs, type PageTab } from '../components/data-view/PageTabs';
+import { HelpGuideView } from '../components/help/HelpGuideView';
+import { helpGuides } from '../content/help';
 import { useAuth } from '../lib/auth';
 import { confirmDiscardChanges } from '../lib/unsaved-changes';
 import { parseEnumValue, useUrlQueryState } from '../lib/url-query-state';
@@ -11,9 +13,15 @@ import { PolicyAdministrationPage } from './PolicyAdministrationPage';
 import { SecurityAdministrationSection } from './SecurityAdministrationSection';
 import { SitePreferencesPage } from './SitePreferencesPage';
 
-type AdministrationSection = 'site_preferences' | 'imports' | 'leave_policy' | 'security';
+type AdministrationSection = 'site_preferences' | 'imports' | 'leave_policy' | 'security' | 'guide';
 
-const administrationSections = ['site_preferences', 'imports', 'leave_policy', 'security'] as const;
+const administrationSections = [
+  'site_preferences',
+  'imports',
+  'leave_policy',
+  'security',
+  'guide',
+] as const;
 
 function parseAdministrationSection(value: string): AdministrationSection | null {
   return parseEnumValue(value, administrationSections);
@@ -47,7 +55,8 @@ export function AdministrationPage() {
       (section === 'imports' && canImport) ||
       (section === 'site_preferences' && canManagePolicy) ||
       (section === 'leave_policy' && canSeeLeavePolicy) ||
-      (section === 'security' && canManageSecurity);
+      (section === 'security' && canManageSecurity) ||
+      section === 'guide';
     if (!canSeeSection) setSection(defaultSection);
   }, [canImport, canManageSecurity, canSeeLeavePolicy, defaultSection, section, setSection]);
 
@@ -58,6 +67,7 @@ export function AdministrationPage() {
     if (canImport) availableTabs.push({ value: 'imports', label: 'Attendance imports' });
     if (canManageSecurity) availableTabs.push({ value: 'security', label: 'Access & roles' });
     if (canSeeLeavePolicy) availableTabs.push({ value: 'leave_policy', label: 'Leave & holidays' });
+    availableTabs.push({ value: 'guide', label: 'Admin guide' });
     return availableTabs;
   }, [canImport, canManageSecurity, canSeeLeavePolicy]);
 
@@ -88,6 +98,8 @@ export function AdministrationPage() {
         <PolicyAdministrationPage />
       ) : section === 'security' && canManageSecurity ? (
         <SecurityAdministrationSection />
+      ) : section === 'guide' ? (
+        <HelpGuideView guide={helpGuides.admin} />
       ) : null}
     </Stack>
   );

@@ -1,0 +1,22 @@
+{
+  "status": "passed",
+  "amar": [
+    {
+      "month": "2026-09",
+      "employee": "DDIH516",
+      "employeeGroups": 1,
+      "departmentGroups": 1,
+      "department": "Integration",
+      "placeholderDepartment": false
+    },
+    {
+      "month": "2026-08",
+      "employee": "DDIH516",
+      "employeeGroups": 1,
+      "departmentGroups": 1,
+      "department": "Integration",
+      "placeholderDepartment": false
+    }
+  ],
+  "browserErrors": []
+}

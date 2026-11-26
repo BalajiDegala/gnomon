@@ -4,7 +4,7 @@ const employeeAuditEventSchema = new Schema(
   {
     employeeId: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
     actorUserId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    action: { type: String, enum: ['created', 'updated'], required: true },
+    action: { type: String, enum: ['created', 'updated', 'deleted'], required: true },
     changes: { type: Schema.Types.Mixed, required: true },
   },
   { timestamps: true, immutable: true },

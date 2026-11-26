@@ -25,6 +25,19 @@ export function formatIndiaTime(instant: string | null): string {
   }).format(new Date(instant));
 }
 
+/**
+ * Seconds worked so far: the server's total plus the time elapsed in this
+ * browser since the response arrived (both measured on the same clock).
+ */
+export function trackedSecondsAt(
+  timecard: Pick<TodayTimecard, 'totalTrackedSeconds' | 'activeSession'>,
+  receivedAt: number,
+  now: number,
+): number {
+  if (!timecard.activeSession) return timecard.totalTrackedSeconds;
+  return timecard.totalTrackedSeconds + Math.max(0, Math.floor((now - receivedAt) / 1_000));
+}
+
 export function useTodayTimecard() {
   const { request, user } = useAuth();
   const queryClient = useQueryClient();
@@ -72,15 +85,14 @@ export function useTodayTimecard() {
     return () => window.clearInterval(timer);
   }, [timecard?.activeSession]);
 
-  const trackedSeconds = useMemo(() => {
-    if (!timecard) return 0;
-    if (!timecard.activeSession) return timecard.totalTrackedSeconds;
-    const elapsedSinceResponse = Math.max(
-      0,
-      Math.floor((clock - new Date(timecard.serverNow).getTime()) / 1_000),
-    );
-    return timecard.totalTrackedSeconds + elapsedSinceResponse;
-  }, [clock, timecard]);
+  // Count from when this browser received the figures, not from the server's
+  // clock: a computer whose clock is behind the server would otherwise show a
+  // frozen timer until its clock caught up.
+  const receivedAt = query.dataUpdatedAt;
+  const trackedSeconds = useMemo(
+    () => (timecard ? trackedSecondsAt(timecard, receivedAt, clock) : 0),
+    [clock, receivedAt, timecard],
+  );
 
   const shifts = timecard?.shifts ?? [];
   const workContext = timecard?.workContext;

@@ -1,0 +1,262 @@
+{
+  "status": "verified",
+  "cardEvents": 9591,
+  "cardWorkdays": 4847,
+  "cardEmployees": 499,
+  "newProfiles": 247,
+  "preservedPreviousEvents": 21932,
+  "preservedJuneRows": 4626,
+  "septemberRowsWithBothSources": 1458,
+  "septemberEmployeesWithBothSources": 237,
+  "augustSummary": {
+    "scopedEmployees": 526,
+    "employeesWithRecords": 241,
+    "attendanceDays": 1477,
+    "completeBiometricDays": 0,
+    "completeAccessCardDays": 1423,
+    "websiteSessionDays": 0,
+    "timesheetDays": 0
+  },
+  "septemberSummary": {
+    "scopedEmployees": 526,
+    "employeesWithRecords": 498,
+    "attendanceDays": 4061,
+    "completeBiometricDays": 1875,
+    "completeAccessCardDays": 3310,
+    "websiteSessionDays": 0,
+    "timesheetDays": 0
+  },
+  "availableMonths": [
+    {
+      "month": "2026-09",
+      "attendanceDays": 4061,
+      "employeesWithRecords": 498,
+      "biometricDays": 2149,
+      "biometricEvents": 4024,
+      "accessCardDays": 3370,
+      "accessCardEvents": 6685,
+      "websiteDays": 0,
+      "websiteSessions": 0,
+      "timesheetDays": 0,
+      "timesheetEntries": 0
+    },
+    {
+      "month": "2026-08",
+      "attendanceDays": 1477,
+      "employeesWithRecords": 241,
+      "biometricDays": 0,
+      "biometricEvents": 0,
+      "accessCardDays": 1477,
+      "accessCardEvents": 2906,
+      "websiteDays": 0,
+      "websiteSessions": 0,
+      "timesheetDays": 0,
+      "timesheetEntries": 0
+    },
+    {
+      "month": "2026-06",
+      "attendanceDays": 4626,
+      "employeesWithRecords": 238,
+      "biometricDays": 4626,
+      "biometricEvents": 9196,
+      "accessCardDays": 0,
+      "accessCardEvents": 0,
+      "websiteDays": 0,
+      "websiteSessions": 0,
+      "timesheetDays": 0,
+      "timesheetEntries": 0
+    }
+  ],
+  "samples": [
+    {
+      "id": "6aba6f8146b7ea319ce6d2a8",
+      "employeeId": "6aad5555318904ff4feb2df3",
+      "employeeCode": "DDIC153",
+      "employeeDisplayName": "Pitchumani Krishnamoorthy",
+      "departmentName": "Systems Technology",
+      "workDate": "2026-09-22",
+      "status": "present",
+      "requiresReview": false,
+      "biometric": {
+        "status": "complete",
+        "firstAt": "2026-09-22T03:48:16.000Z",
+        "lastAt": "2026-09-22T12:50:13.000Z",
+        "workedMinutes": 541,
+        "eventCount": 2
+      },
+      "accessCard": {
+        "status": "complete",
+        "firstAt": "2026-09-22T03:48:33.000Z",
+        "lastAt": "2026-09-22T12:49:49.000Z",
+        "workedMinutes": 541,
+        "eventCount": 2
+      },
+      "website": {
+        "status": "none",
+        "firstAt": null,
+        "lastAt": null,
+        "workedMinutes": 0,
+        "sessionCount": 0
+      },
+      "timesheets": {
+        "totalMinutes": 0,
+        "entryCount": 0,
+        "averageProgress": 0
+      },
+      "payableMinutes": 541,
+      "anomalies": []
+    },
+    {
+      "id": "6aba6f8146b7ea319ce6d308",
+      "employeeId": "6aad5555318904ff4feb2df4",
+      "employeeCode": "DDIC279",
+      "employeeDisplayName": "Thippabathula Shiva",
+      "departmentName": "Compositing",
+      "workDate": "2026-09-22",
+      "status": "present",
+      "requiresReview": false,
+      "biometric": {
+        "status": "complete",
+        "firstAt": "2026-09-22T04:36:17.000Z",
+        "lastAt": "2026-09-22T15:50:31.000Z",
+        "workedMinutes": 674,
+        "eventCount": 2
+      },
+      "accessCard": {
+        "status": "complete",
+        "firstAt": "2026-09-22T04:36:25.000Z",
+        "lastAt": "2026-09-22T15:50:09.000Z",
+        "workedMinutes": 673,
+        "eventCount": 2
+      },
+      "website": {
+        "status": "none",
+        "firstAt": null,
+        "lastAt": null,
+        "workedMinutes": 0,
+        "sessionCount": 0
+      },
+      "timesheets": {
+        "totalMinutes": 0,
+        "entryCount": 0,
+        "averageProgress": 0
+      },
+      "payableMinutes": 674,
+      "anomalies": []
+    },
+    {
+      "id": "6aba6f8146b7ea319ce6d36c",
+      "employeeId": "6aad5555318904ff4feb2df5",
+      "employeeCode": "DDIC280",
+      "employeeDisplayName": "Palash Das",
+      "departmentName": "Compositing",
+      "workDate": "2026-09-22",
+      "status": "present",
+      "requiresReview": false,
+      "biometric": {
+        "status": "complete",
+        "firstAt": "2026-09-22T03:46:47.000Z",
+        "lastAt": "2026-09-22T13:54:42.000Z",
+        "workedMinutes": 607,
+        "eventCount": 2
+      },
+      "accessCard": {
+        "status": "complete",
+        "firstAt": "2026-09-22T03:46:55.000Z",
+        "lastAt": "2026-09-22T13:54:16.000Z",
+        "workedMinutes": 607,
+        "eventCount": 2
+      },
+      "website": {
+        "status": "none",
+        "firstAt": null,
+        "lastAt": null,
+        "workedMinutes": 0,
+        "sessionCount": 0
+      },
+      "timesheets": {
+        "totalMinutes": 0,
+        "entryCount": 0,
+        "averageProgress": 0
+      },
+      "payableMinutes": 607,
+      "anomalies": []
+    },
+    {
+      "id": "6aba6f8146b7ea319ce6d3d5",
+      "employeeId": "6aad5555318904ff4feb2df6",
+      "employeeCode": "DDIC283",
+      "employeeDisplayName": "Kondapally Ramesh",
+      "departmentName": "Compositing",
+      "workDate": "2026-09-22",
+      "status": "present",
+      "requiresReview": false,
+      "biometric": {
+        "status": "complete",
+        "firstAt": "2026-09-22T03:10:23.000Z",
+        "lastAt": "2026-09-22T13:08:20.000Z",
+        "workedMinutes": 597,
+        "eventCount": 2
+      },
+      "accessCard": {
+        "status": "complete",
+        "firstAt": "2026-09-22T03:10:29.000Z",
+        "lastAt": "2026-09-22T13:08:00.000Z",
+        "workedMinutes": 597,
+        "eventCount": 2
+      },
+      "website": {
+        "status": "none",
+        "firstAt": null,
+        "lastAt": null,
+        "workedMinutes": 0,
+        "sessionCount": 0
+      },
+      "timesheets": {
+        "totalMinutes": 0,
+        "entryCount": 0,
+        "averageProgress": 0
+      },
+      "payableMinutes": 597,
+      "anomalies": []
+    },
+    {
+      "id": "6aba6f8246b7ea319ce6d42d",
+      "employeeId": "6aad5555318904ff4feb2df7",
+      "employeeCode": "DDIC285",
+      "employeeDisplayName": "N.Santosh",
+      "departmentName": "Compositing",
+      "workDate": "2026-09-22",
+      "status": "present",
+      "requiresReview": false,
+      "biometric": {
+        "status": "complete",
+        "firstAt": "2026-09-22T03:47:52.000Z",
+        "lastAt": "2026-09-22T18:15:59.000Z",
+        "workedMinutes": 868,
+        "eventCount": 2
+      },
+      "accessCard": {
+        "status": "complete",
+        "firstAt": "2026-09-22T03:48:00.000Z",
+        "lastAt": "2026-09-22T18:15:13.000Z",
+        "workedMinutes": 867,
+        "eventCount": 2
+      },
+      "website": {
+        "status": "none",
+        "firstAt": null,
+        "lastAt": null,
+        "workedMinutes": 0,
+        "sessionCount": 0
+      },
+      "timesheets": {
+        "totalMinutes": 0,
+        "entryCount": 0,
+        "averageProgress": 0
+      },
+      "payableMinutes": 868,
+      "anomalies": []
+    }
+  ]
+}

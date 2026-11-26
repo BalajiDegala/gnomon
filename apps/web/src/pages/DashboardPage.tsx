@@ -15,6 +15,7 @@ import {
 } from '@mui/material';
 import { ArrowUpRight, Play, Square } from 'lucide-react';
 
+import { AnnouncementsPanel } from '../components/AnnouncementsPanel';
 import { durationDigits, durationLabel, FlipClock } from '../components/FlipClock';
 import { CardHeading, Dot, SoftCard, SoftRow, statusDotColor } from '../components/soft';
 import { formatShiftHours, TimecardContextPicker } from '../components/TimecardContextPicker';
@@ -137,6 +138,8 @@ export function DashboardPage({ onNavigate }: DashboardPageProps) {
           Live · Hyderabad
         </Box>
       </Stack>
+
+      <AnnouncementsPanel />
 
       {(!timecard.canRead || !timecard.canWrite) && (
         <Alert severity="warning">

@@ -26,6 +26,12 @@ const EnvSchema = z.object({
   SETTINGS_ENCRYPTION_KEY: z.string().min(32).optional(),
   /** Record system events (debug log). Defaults to on, except under tests. */
   SYSTEM_EVENTS_ENABLED: z.enum(['true', 'false']).optional(),
+  /**
+   * Reverse proxies in front of the API, used to find the browser's IP address
+   * (timecard machine, availability page). Compose: web nginx = 1. Kubernetes:
+   * ingress + web nginx = 2.
+   */
+  TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(1),
   SYSTEM_EVENT_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(180),
 });
 

@@ -1,0 +1,22 @@
+[
+  {
+    "month": "2026-08",
+    "rows": 1477,
+    "changedIdentityRows": 1291,
+    "amarRows": 6,
+    "amarCode": "DDIH516",
+    "amarDepartment": "Integration",
+    "amarEmployeeGroups": 1,
+    "evidenceUnchanged": true
+  },
+  {
+    "month": "2026-09",
+    "rows": 4061,
+    "changedIdentityRows": 1290,
+    "amarRows": 16,
+    "amarCode": "DDIH516",
+    "amarDepartment": "Integration",
+    "amarEmployeeGroups": 1,
+    "evidenceUnchanged": true
+  }
+]

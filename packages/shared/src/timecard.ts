@@ -8,6 +8,8 @@ export const WorkSessionStatusSchema = z.enum([
   'completed',
   'force_stopped',
   'regularised',
+  /** Left running past the 07:00 boundary; stopped by the system, awaiting confirmation. */
+  'auto_stopped',
 ]);
 export type WorkSessionStatus = z.infer<typeof WorkSessionStatusSchema>;
 
@@ -69,6 +71,20 @@ export const AttendanceActionItemSchema = z.object({
   missingEvent: z.enum(['opening', 'closing', 'both']),
   /** Plain-language reasons, e.g. "No biometric exit". */
   issues: z.array(z.string()),
+  /**
+   * Set when the timecard was left running and stopped automatically at 07:00:
+   * the employee confirms the stop or requests a corrected exit time.
+   */
+  autoStopped: z
+    .object({
+      sessionId: z.string(),
+      startedAt: z.string().datetime(),
+      stoppedAt: z.string().datetime(),
+      /** Prefill for "Change exit time": the shift end on that day. */
+      suggestedEnd: z.string().datetime(),
+    })
+    .nullable()
+    .optional(),
 });
 export type AttendanceActionItem = z.infer<typeof AttendanceActionItemSchema>;
 

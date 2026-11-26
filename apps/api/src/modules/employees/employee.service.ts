@@ -9,8 +9,17 @@ import type {
 import { Types, type QueryFilter } from 'mongoose';
 
 import { HttpError } from '../../middleware/errors.js';
+import { AttendanceEvent } from '../attendance/attendance-event.model.js';
 import { User } from '../auth/user.model.js';
-import { Location } from './location.model.js';
+import { LeaveBalance, LeaveRequest } from '../leaves/leave.model.js';
+import { Notification } from '../notifications/notification.model.js';
+import { DailyTimecard } from '../reconciliation/daily-timecard.model.js';
+import { RegularisationRequest } from '../regularisations/regularisation.model.js';
+import { RoleAssignment } from '../roles/role.model.js';
+import { ShowAssignment } from '../shows/show.model.js';
+import { WorkSession } from '../timecard/work-session.model.js';
+import { TimeEntry } from '../timesheets/time-entry.model.js';
+import { EmployeeLocationAssignment, Location } from './location.model.js';
 import { EmployeeAuditEvent } from './employee-audit.model.js';
 import { Employee, type EmployeeDocument } from './employee.model.js';
 import {
@@ -340,4 +349,81 @@ export async function updateEmployee(
     }
     throw error;
   }
+}
+
+/**
+ * Permanently delete a person added by mistake. Anyone with recorded work
+ * (timecards, timesheets, leave, regularisations, attendance) or who approves
+ * for others is kept; set them Inactive instead so history and reports stay intact.
+ */
+export async function deleteEmployee(user: AuthUser, employeeId: string): Promise<void> {
+  if (!hasCompanyEmployeePermission(user, 'employee:update')) {
+    throw new HttpError(403, 'Deleting employees requires company scope', 'SCOPE_FORBIDDEN');
+  }
+  if (user.employeeId === employeeId) {
+    throw new HttpError(409, 'You cannot delete your own account', 'EMPLOYEE_DELETE_SELF');
+  }
+  const employee = await Employee.findById(employeeId).lean().exec();
+  if (!employee) throw new HttpError(404, 'Employee not found', 'EMPLOYEE_NOT_FOUND');
+
+  const id = employee._id;
+  const [sessions, entries, leaves, regularisations, attendance, reports] = await Promise.all([
+    WorkSession.exists({ employeeId: id }),
+    TimeEntry.exists({ employeeId: id }),
+    LeaveRequest.exists({ $or: [{ employeeId: id }, { managerEmployeeId: id }] }),
+    RegularisationRequest.exists({ $or: [{ employeeId: id }, { managerEmployeeId: id }] }),
+    AttendanceEvent.exists({ employeeId: id }),
+    Employee.exists({
+      _id: { $ne: id },
+      $or: [
+        { reportingManagerId: id },
+        { 'hrProfile.approver1EmployeeId': id },
+        { 'hrProfile.approver2EmployeeId': id },
+      ],
+    }),
+  ]);
+  const history = [
+    sessions && 'timecards',
+    entries && 'timesheets',
+    leaves && 'leave requests',
+    regularisations && 'regularisations',
+    attendance && 'attendance records',
+  ].filter(Boolean);
+  if (history.length > 0) {
+    throw new HttpError(
+      409,
+      `${employee.employeeCode} has ${history.join(', ')}. Set them to Inactive instead so their history is kept.`,
+      'EMPLOYEE_HAS_HISTORY',
+    );
+  }
+  if (reports) {
+    throw new HttpError(
+      409,
+      `${employee.employeeCode} is a manager or approver for other employees. Reassign them first, or set ${employee.employeeCode} to Inactive.`,
+      'EMPLOYEE_IS_APPROVER',
+    );
+  }
+
+  const account = await User.findOne({ employeeId: id }).select({ _id: 1 }).lean().exec();
+  await Promise.all([
+    account ? RoleAssignment.deleteMany({ userId: account._id }).exec() : null,
+    account ? User.deleteOne({ _id: account._id }).exec() : null,
+    ShowAssignment.deleteMany({ employeeId: id }).exec(),
+    EmployeeLocationAssignment.deleteMany({ employeeId: id }).exec(),
+    LeaveBalance.deleteMany({ employeeId: id }).exec(),
+    Notification.deleteMany({ recipientEmployeeId: id }).exec(),
+    // Derived daily rows (e.g. "absent" days) with no underlying records.
+    DailyTimecard.deleteMany({ employeeId: id }).exec(),
+  ]);
+  await Employee.deleteOne({ _id: id }).exec();
+  await EmployeeAuditEvent.create({
+    employeeId: id,
+    actorUserId: user.id,
+    action: 'deleted',
+    changes: {
+      employeeCode: employee.employeeCode,
+      name: `${employee.firstName} ${employee.lastName}`.trim(),
+      email: employee.email,
+    },
+  });
 }

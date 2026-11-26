@@ -8,6 +8,7 @@ import { LeaveRequest } from '../leaves/leave.model.js';
 import { listApplicableHolidays } from '../policies/holiday-applicability.service.js';
 import { DailyTimecard } from '../reconciliation/daily-timecard.model.js';
 import { RegularisationRequest } from '../regularisations/regularisation.model.js';
+import { WorkSession } from './work-session.model.js';
 
 const DEFAULT_SHIFT_START = '09:30';
 const DEFAULT_SHIFT_END = '18:30';
@@ -146,5 +147,48 @@ export async function listAttendanceActionItems(
             ],
     });
   }
+  await attachAutoStops(employeeId, items);
   return { fromDate, toDate, items: items.reverse() };
+}
+
+/**
+ * Days whose timecard was stopped automatically at 07:00 get the stop details so
+ * the employee can confirm it or request a corrected exit time (prefilled with
+ * the shift end, the next morning for overnight shifts).
+ */
+async function attachAutoStops(employeeId: string, items: AttendanceActionItem[]): Promise<void> {
+  const dates = items.filter((item) => item.kind === 'partial').map((item) => item.workDate);
+  if (dates.length === 0) return;
+  const sessions = await WorkSession.find({
+    employeeId,
+    workDate: { $in: dates },
+    status: 'auto_stopped',
+  })
+    .select({ workDate: 1, startedAt: 1, stoppedAt: 1, shiftEndTime: 1 })
+    .sort({ startedAt: 1 })
+    .lean()
+    .exec();
+  for (const session of sessions) {
+    const item = items.find((candidate) => candidate.workDate === session.workDate);
+    if (!item || !session.stoppedAt) continue;
+    let suggestedEnd = new Date(
+      indiaInstant(session.workDate, session.shiftEndTime || DEFAULT_SHIFT_END),
+    );
+    if (suggestedEnd <= session.startedAt) {
+      suggestedEnd = new Date(suggestedEnd.getTime() + 24 * 60 * 60_000);
+    }
+    if (suggestedEnd > session.stoppedAt || suggestedEnd <= session.startedAt) {
+      suggestedEnd = session.stoppedAt;
+    }
+    item.autoStopped = {
+      sessionId: String(session._id),
+      startedAt: session.startedAt.toISOString(),
+      stoppedAt: session.stoppedAt.toISOString(),
+      suggestedEnd: suggestedEnd.toISOString(),
+    };
+    item.source = 'website';
+    item.missingEvent = 'closing';
+    item.suggestedAction = 'regularisation';
+    item.issues = ['Timecard stopped automatically at 07:00'];
+  }
 }

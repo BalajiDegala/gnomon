@@ -38,6 +38,7 @@ import {
   Rows3,
   Rows4,
   Search,
+  Trash2,
   UserRoundCog,
   X,
 } from 'lucide-react';
@@ -472,6 +473,29 @@ export function PeoplePage() {
     }
   };
 
+  const deleteEditing = async () => {
+    if (!editing) return;
+    const name = `${editing.employeeCode} (${editing.firstName} ${editing.lastName})`;
+    if (
+      !window.confirm(
+        `Permanently delete ${name}? Their login and role assignments are removed too. This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    try {
+      await directory.remove(editing.id);
+      clearDraft();
+      setEditing(null);
+      setForm(emptyForm);
+      setSuccess(`${editing.employeeCode} was deleted.`);
+    } catch {
+      // Mutation errors (e.g. the person has history) are displayed above the directory.
+      setEditing(null);
+      setForm(emptyForm);
+    }
+  };
+
   const hasFilters =
     Boolean(search) ||
     status !== 'active' ||
@@ -889,6 +913,7 @@ export function PeoplePage() {
         onChange={setForm}
         onClose={closeEmployeeForm}
         onSubmit={submitEdit}
+        onDelete={editing && editing.id !== user?.employeeId ? deleteEditing : undefined}
       />
     </Stack>
   );
@@ -906,6 +931,7 @@ function EmployeeDialog({
   onChange,
   onClose,
   onSubmit,
+  onDelete,
 }: {
   title: string;
   open: boolean;
@@ -918,6 +944,7 @@ function EmployeeDialog({
   onChange: (form: EmployeeFormState) => void;
   onClose: () => void;
   onSubmit: (event: FormEvent) => void;
+  onDelete?: () => void;
 }) {
   const update = (field: keyof EmployeeFormState, value: string) =>
     onChange({ ...form, [field]: value });
@@ -999,6 +1026,17 @@ function EmployeeDialog({
           </Stack>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
+          {onDelete && (
+            <Button
+              color="error"
+              onClick={onDelete}
+              disabled={isUpdating}
+              startIcon={<Trash2 size={16} />}
+              sx={{ mr: 'auto' }}
+            >
+              Delete
+            </Button>
+          )}
           <Button color="inherit" onClick={onClose} disabled={isUpdating}>
             Cancel
           </Button>

@@ -1,10 +1,12 @@
 import { StartTimecardRequestSchema } from '@gnomon/shared';
 import { Router, type Request } from 'express';
+import { z } from 'zod';
 
 import { requireAuth, requirePermission } from '../../middleware/auth.js';
 import { getAttendanceSignals } from '../attendance/attendance.service.js';
 import { reconcileDailyTimecard } from '../reconciliation/reconciliation.service.js';
 import { listAttendanceActionItems } from './action-items.service.js';
+import { confirmAutoStop } from './auto-stop.service.js';
 import { getTodayTimecard, startTimecard, stopTimecard } from './timecard.service.js';
 
 function getClientMetadata(request: Request) {
@@ -71,5 +73,19 @@ timecardRouter.post(
       getClientMetadata(request),
     );
     response.json(await withAttendanceSignals(timecard, request.authUser!.employeeId));
+  },
+);
+
+const SessionParamsSchema = z.object({ sessionId: z.string().regex(/^[a-f\d]{24}$/i) });
+
+/** Confirm that a timecard stopped automatically at 07:00 really ended then. */
+timecardRouter.post(
+  '/sessions/:sessionId/confirm-stop',
+  requirePermission('attendance:self:write'),
+  async (request, response) => {
+    const { sessionId } = SessionParamsSchema.parse(request.params);
+    response.json(
+      await confirmAutoStop(request.authUser!.employeeId, request.authUser!.id, sessionId),
+    );
   },
 );

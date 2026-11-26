@@ -2,6 +2,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   Activity,
   CalendarCheck,
+  CircleDot,
   ClipboardList,
   History,
   ListTodo,
@@ -11,12 +12,15 @@ import {
   Fingerprint,
   Gauge,
   LayoutDashboard,
+  LifeBuoy,
   Settings2,
   UsersRound,
 } from 'lucide-react';
 
 export type AppView =
   | 'overview'
+  | 'availability'
+  | 'help'
   | 'timecard'
   | 'timesheets'
   | 'catch-up'
@@ -35,6 +39,8 @@ export type AppView =
 
 export const appViewPaths: Record<AppView, string> = {
   overview: '/',
+  availability: '/availability',
+  help: '/help',
   timecard: '/timecard',
   timesheets: '/timesheets',
   'catch-up': '/catch-up',
@@ -117,6 +123,8 @@ const employeeNavigation: NavigationItem[] = [
     icon: CalendarDays,
     requiredPermissions: ['attendance:self:read'],
   },
+  { id: 'availability', label: 'Availability', icon: CircleDot },
+  { id: 'help', label: 'Help & guides', icon: LifeBuoy },
 ];
 
 const managerNavigation: NavigationItem[] = [

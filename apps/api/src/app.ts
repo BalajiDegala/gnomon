@@ -8,6 +8,8 @@ import pinoHttp from 'pino-http';
 import { env } from './config/env.js';
 import { sensitiveLogPaths } from './config/logging.js';
 import { errorHandler, notFoundHandler } from './middleware/errors.js';
+import { announcementRouter } from './modules/announcements/announcement.routes.js';
+import { availabilityRouter } from './modules/availability/availability.routes.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { calendarRouter } from './modules/calendar/calendar.routes.js';
 import { employeeRouter } from './modules/employees/employee.routes.js';
@@ -45,7 +47,7 @@ import { healthRouter } from './routes/health.routes.js';
 export const app = express();
 
 app.disable('x-powered-by');
-app.set('trust proxy', 1);
+app.set('trust proxy', env.TRUST_PROXY_HOPS);
 app.use(helmet());
 // Large report responses (e.g. a month of attendance) compress well.
 app.use(compression());
@@ -72,6 +74,8 @@ app.use(cookieParser());
 
 app.use('/api/v1/health', healthRouter);
 app.use('/api/v1/auth', authRouter);
+app.use('/api/v1/availability', availabilityRouter);
+app.use('/api/v1/announcements', announcementRouter);
 app.use('/api/v1/calendar', calendarRouter);
 app.use('/api/v1/employees', employeeRouter);
 app.use('/api/v1/imports', importRouter);

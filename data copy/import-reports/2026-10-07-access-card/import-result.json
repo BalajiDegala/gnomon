@@ -1,0 +1,25 @@
+{
+  "batch": {
+    "id": "6ac5fe949c194dbdb9a46021",
+    "removedRows": 0,
+    "removedAt": null,
+    "removalReason": null,
+    "source": "access_card",
+    "importType": "door_workbook",
+    "fileName": "12th to 22nd sep 2026.xls",
+    "periodStart": "2026-08-21T08:53:57.000Z",
+    "periodEnd": "2026-09-22T18:27:31.000Z",
+    "totalRows": 100000,
+    "successfulRows": 9591,
+    "failedRows": 0,
+    "duplicateRows": 0,
+    "ignoredRows": 90409,
+    "provisionedEmployees": 247,
+    "reconciledTimecards": 4847,
+    "status": "completed",
+    "errors": [],
+    "errorsTruncated": false,
+    "createdAt": "2026-10-07T08:11:00.398Z"
+  },
+  "replayed": false
+}

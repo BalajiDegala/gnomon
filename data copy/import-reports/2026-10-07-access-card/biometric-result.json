@@ -1,0 +1,25 @@
+{
+  "batch": {
+    "id": "6aba6f7e9c194dbdb9a46018",
+    "removedRows": 0,
+    "removedAt": null,
+    "removalReason": null,
+    "source": "biometric",
+    "importType": "csv",
+    "fileName": "11th_sep_to_25th_sep.csv",
+    "periodStart": "2026-09-11T00:38:48.000Z",
+    "periodEnd": "2026-09-25T11:24:51.000Z",
+    "totalRows": 3747,
+    "successfulRows": 4024,
+    "failedRows": 0,
+    "duplicateRows": 0,
+    "ignoredRows": 1598,
+    "provisionedEmployees": 3,
+    "reconciledTimecards": 2149,
+    "status": "completed",
+    "errors": [],
+    "errorsTruncated": false,
+    "createdAt": "2026-09-28T13:45:34.689Z"
+  },
+  "replayed": true
+}

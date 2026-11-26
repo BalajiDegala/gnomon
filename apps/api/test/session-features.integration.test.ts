@@ -443,7 +443,7 @@ describe.skipIf(!baseUri)('session features with MongoDB', () => {
   });
 
   describe('stale timecard sessions', () => {
-    it('closes a session left open on an earlier day so today can start, and logs it', async () => {
+    it('stops a session left open on an earlier day at 07:00 so today can start, and logs it', async () => {
       const person = await employee('TCD001');
       const stale = await WorkSession.create({
         employeeId: person._id,
@@ -460,15 +460,108 @@ describe.skipIf(!baseUri)('session features with MongoDB', () => {
       );
       expect(today.activeSession).not.toBeNull();
       const closed = await WorkSession.findById(stale._id).lean();
-      expect(closed).toMatchObject({ status: 'force_stopped', stoppedAt: null });
+      // Stopped at the 07:00 boundary that ended its workday, waiting for confirmation.
+      expect(closed).toMatchObject({
+        status: 'auto_stopped',
+        stoppedAt: new Date('2026-11-20T01:30:00Z'),
+        durationMinutes: 740,
+      });
       expect(await WorkSession.countDocuments({ employeeId: person._id, status: 'running' })).toBe(
         1,
       );
       await vi.waitFor(async () =>
-        expect(
-          await SystemEvent.findOne({ action: 'timecard.stale_session_closed' }).lean(),
-        ).toMatchObject({ severity: 'warn', metadata: { workDate: '2026-11-19' } }),
+        expect(await SystemEvent.findOne({ action: 'timecard.auto_stopped' }).lean()).toMatchObject(
+          { severity: 'warn', metadata: { workDate: '2026-11-19' } },
+        ),
       );
+    });
+
+    it('stops forgotten timecards at 07:00 and lets the employee confirm from Catch-up', async () => {
+      const autoStop = await import('../src/modules/timecard/auto-stop.service.js');
+      const { listAttendanceActionItems } =
+        await import('../src/modules/timecard/action-items.service.js');
+      const person = await employee('TCD003');
+      const other = await employee('TCD004');
+      // Thursday 2026-11-19, started 09:42 India time and never stopped.
+      const forgotten = await WorkSession.create({
+        employeeId: person._id,
+        workDate: '2026-11-19',
+        startedAt: new Date('2026-11-19T04:12:00Z'),
+        status: 'running',
+        startMetadata: metadata,
+      });
+      const now = new Date('2026-11-23T06:00:00Z');
+      const todays = await startTimecard(String(other._id), metadata, {}, now);
+
+      expect(await autoStop.autoStopStaleSessions(now)).toEqual({ stopped: 1 });
+      expect(await autoStop.autoStopStaleSessions(now)).toEqual({ stopped: 0 });
+      expect(await WorkSession.findById(forgotten._id).lean()).toMatchObject({
+        status: 'auto_stopped',
+        stoppedAt: new Date('2026-11-20T01:30:00Z'),
+      });
+      // Today's running timecards are left alone.
+      expect(todays.activeSession).not.toBeNull();
+      expect(await WorkSession.countDocuments({ employeeId: other._id, status: 'running' })).toBe(
+        1,
+      );
+
+      // Until confirmed the day is incomplete and shows in Catch-up with both options.
+      const day = await DailyTimecard.findOne({ employeeId: person._id, workDate: '2026-11-19' })
+        .lean()
+        .exec();
+      expect(day?.calculated?.status).toBe('partial');
+      expect(day?.calculated?.anomalies).toContain('missing_web_stop');
+      const pending = await listAttendanceActionItems(String(person._id), now);
+      expect(pending.items.find((item) => item.workDate === '2026-11-19')).toMatchObject({
+        kind: 'partial',
+        source: 'website',
+        missingEvent: 'closing',
+        autoStopped: {
+          sessionId: String(forgotten._id),
+          startedAt: '2026-11-19T04:12:00.000Z',
+          stoppedAt: '2026-11-20T01:30:00.000Z',
+          // Standard shift end, 18:30 India time.
+          suggestedEnd: '2026-11-19T13:00:00.000Z',
+        },
+      });
+
+      // Someone else cannot confirm it.
+      await expect(
+        autoStop.confirmAutoStop(
+          String(other._id),
+          'aaaaaaaaaaaaaaaaaaaaaaaa',
+          String(forgotten._id),
+          now,
+        ),
+      ).rejects.toMatchObject({ status: 409, code: 'AUTO_STOP_NOT_PENDING' });
+
+      await autoStop.confirmAutoStop(
+        String(person._id),
+        'aaaaaaaaaaaaaaaaaaaaaaaa',
+        String(forgotten._id),
+        now,
+      );
+      const confirmed = await WorkSession.findById(forgotten._id).lean();
+      expect(confirmed).toMatchObject({ status: 'completed', durationMinutes: 1278 });
+      expect(confirmed?.stopConfirmedAt).toEqual(now);
+      const after = await DailyTimecard.findOne({ employeeId: person._id, workDate: '2026-11-19' })
+        .lean()
+        .exec();
+      expect(after?.calculated?.anomalies).not.toContain('missing_web_stop');
+      const cleared = await listAttendanceActionItems(String(person._id), now);
+      // The timecard question is answered (any remaining office-punch issues are separate).
+      const clearedDay = cleared.items.find((item) => item.workDate === '2026-11-19');
+      expect(clearedDay?.autoStopped ?? null).toBeNull();
+      expect(clearedDay?.issues ?? []).not.toContain('Timecard not stopped');
+
+      await expect(
+        autoStop.confirmAutoStop(
+          String(person._id),
+          'aaaaaaaaaaaaaaaaaaaaaaaa',
+          String(forgotten._id),
+          now,
+        ),
+      ).rejects.toMatchObject({ status: 409 });
     });
 
     it('still refuses a second start on the same day', async () => {
@@ -478,6 +571,222 @@ describe.skipIf(!baseUri)('session features with MongoDB', () => {
       await expect(
         startTimecard(String(person._id), metadata, {}, new Date(now.getTime() + 60_000)),
       ).rejects.toMatchObject({ status: 409, code: 'TIMECARD_ALREADY_RUNNING' });
+    });
+  });
+  describe('deleting employees', () => {
+    const admin = (employeeId: string) => ({
+      id: new Types.ObjectId().toString(),
+      employeeId,
+      employeeCode: 'ADMIN',
+      displayName: 'Admin',
+      email: 'admin@example.test',
+      permissions: ['employee:update' as const],
+      scopes: [{ type: 'company', ids: [] }],
+      grants: [
+        {
+          roleCode: 'SYSTEM_ADMIN' as const,
+          permissions: ['employee:update' as const],
+          scope: { type: 'company' as const, ids: [] },
+        },
+      ],
+    });
+
+    it('removes a person with no history, with their login and leave balances', async () => {
+      const { deleteEmployee } = await import('../src/modules/employees/employee.service.js');
+      const { User } = await import('../src/modules/auth/user.model.js');
+      const actor = await employee('ADM1');
+      const person = await employee('MIST1');
+      await User.create({
+        employeeId: person._id,
+        email: 'mist1@example.test',
+        passwordHash: 'x',
+        status: 'active',
+      });
+      await LeaveBalance.create({
+        employeeId: person._id,
+        leaveType: 'casual',
+        year: 2026,
+        entitledDays: 5,
+      });
+
+      await deleteEmployee(admin(String(actor._id)), String(person._id));
+
+      expect(await Employee.exists({ _id: person._id })).toBeNull();
+      expect(await User.exists({ employeeId: person._id })).toBeNull();
+      expect(await LeaveBalance.exists({ employeeId: person._id })).toBeNull();
+    });
+
+    it('keeps people with history or who approve for others, and never deletes yourself', async () => {
+      const { deleteEmployee } = await import('../src/modules/employees/employee.service.js');
+      const actor = await employee('ADM2');
+      const worker = await employee('WORK1');
+      const manager = await employee('MGR1');
+      await Employee.updateOne({ _id: worker._id }, { reportingManagerId: manager._id });
+      const now = new Date();
+      await startTimecard(String(worker._id), metadata, {}, now);
+
+      await expect(
+        deleteEmployee(admin(String(actor._id)), String(worker._id)),
+      ).rejects.toMatchObject({ status: 409, code: 'EMPLOYEE_HAS_HISTORY' });
+      await expect(
+        deleteEmployee(admin(String(actor._id)), String(manager._id)),
+      ).rejects.toMatchObject({ status: 409, code: 'EMPLOYEE_IS_APPROVER' });
+      await expect(
+        deleteEmployee(admin(String(actor._id)), String(actor._id)),
+      ).rejects.toMatchObject({ status: 409, code: 'EMPLOYEE_DELETE_SELF' });
+      expect(await Employee.countDocuments()).toBe(3);
+    });
+  });
+  describe('availability', () => {
+    it('follows the timecard by default and hides it behind a manual mode', async () => {
+      const availability = await import('../src/modules/availability/availability.service.js');
+      const viewer = await employee('VIEW1');
+      const worker = await employee('WORKA');
+      const idle = await employee('IDLE1');
+      await startTimecard(String(worker._id), metadata, {}, new Date());
+
+      const find = async (id: unknown) =>
+        (await availability.listAvailability(String(viewer._id))).people.find(
+          (person) => person.employeeId === String(id),
+        )!;
+
+      expect(await find(worker._id)).toMatchObject({
+        status: 'available',
+        ipAddress: '10.0.0.5',
+        loginId: 'worka',
+        email: 'worka@example.test',
+      });
+      expect((await find(worker._id)).since).not.toBeNull();
+      expect(await find(idle._id)).toMatchObject({ status: 'away', ipAddress: null });
+      expect(await find(viewer._id)).toMatchObject({ isMe: true });
+
+      // Do not disturb hides the running timecard, its start time and machine.
+      await availability.setMyAvailabilityMode(String(worker._id), 'busy');
+      expect(await find(worker._id)).toMatchObject({
+        status: 'busy',
+        ipAddress: null,
+        since: null,
+      });
+      expect(await availability.getMyAvailability(String(worker._id))).toEqual({
+        mode: 'busy',
+        status: 'busy',
+      });
+
+      // Always available shows available even with no timecard running.
+      await availability.setMyAvailabilityMode(String(idle._id), 'available');
+      expect(await find(idle._id)).toMatchObject({ status: 'available', ipAddress: null });
+
+      await availability.setMyAvailabilityMode(String(worker._id), 'auto');
+      expect(await find(worker._id)).toMatchObject({ status: 'available', ipAddress: '10.0.0.5' });
+    });
+  });
+
+  describe('announcements', () => {
+    it('lets managers message everyone or departments, with bell entries and read state', async () => {
+      const service = await import('../src/modules/announcements/announcement.service.js');
+      const { Notification } = await import('../src/modules/notifications/notification.model.js');
+      const inDepartment = async (code: string, departmentName: string) => {
+        const person = await employee(code);
+        person.biometricProfile = {
+          fullName: `${code} Test`,
+          departmentName,
+          designation: null,
+          companyName: null,
+          importedAt: new Date(),
+        };
+        return person.save();
+      };
+      const lead = await inDepartment('LEAD1', 'Compositing');
+      const comp = await inDepartment('COMP1', 'Compositing');
+      const fx = await inDepartment('FX001', 'FX');
+      const roto = await inDepartment('ROTO1', 'Roto ');
+      await Employee.updateOne({ _id: comp._id }, { reportingManagerId: lead._id });
+      const viewer = (
+        person: { _id: unknown; employeeCode: string },
+        roleCode?: 'SYSTEM_ADMIN',
+      ) => ({
+        employeeId: String(person._id),
+        displayName: `${person.employeeCode} Test`,
+        grants: roleCode
+          ? [{ roleCode, permissions: [], scope: { type: 'company' as const, ids: [] } }]
+          : [],
+      });
+
+      // Plain employees cannot send; someone with direct reports can.
+      expect(await service.canSendAnnouncements(viewer(fx))).toBe(false);
+      await expect(
+        service.createAnnouncement(viewer(fx), {
+          title: 'Hello',
+          message: 'Not allowed',
+          audience: { type: 'all' },
+        }),
+      ).rejects.toMatchObject({ status: 403 });
+      expect(await service.canSendAnnouncements(viewer(lead))).toBe(true);
+
+      expect(await service.listAnnouncementDepartments()).toEqual([
+        { name: 'Compositing', employeeCount: 2 },
+        { name: 'FX', employeeCount: 1 },
+        { name: 'Roto', employeeCount: 1 },
+      ]);
+
+      // Department match ignores case and spacing; the sender is not a recipient.
+      const sent = await service.createAnnouncement(viewer(lead), {
+        title: 'Render farm maintenance',
+        message: 'The farm is down from 18:00 to 20:00 today.',
+        audience: { type: 'departments', departments: ['compositing', 'roto'] },
+        durationDays: 3,
+      });
+      expect(sent).toMatchObject({ recipientCount: 2, sentByMe: true, canWithdraw: true });
+      await expect(
+        service.createAnnouncement(viewer(lead), {
+          title: 'Typo',
+          message: 'Unknown department',
+          audience: { type: 'departments', departments: ['Lighting'] },
+        }),
+      ).rejects.toMatchObject({ status: 400 });
+
+      const bell = await Notification.find({ entityId: sent.id }).lean();
+      expect(bell.map((row) => String(row.recipientEmployeeId)).sort()).toEqual(
+        [String(comp._id), String(roto._id)].sort(),
+      );
+      expect(bell[0]).toMatchObject({ kind: 'announcement', href: '/', readAt: null });
+
+      const compFeed = await service.listAnnouncementFeed(viewer(comp));
+      expect(compFeed.canSend).toBe(false);
+      expect(compFeed.items).toEqual([
+        expect.objectContaining({
+          title: 'Render farm maintenance',
+          senderName: 'LEAD1 Test',
+          readAt: null,
+          sentByMe: false,
+          canWithdraw: false,
+        }),
+      ]);
+      expect((await service.listAnnouncementFeed(viewer(fx))).items).toEqual([]);
+      expect((await service.listAnnouncementFeed(viewer(lead))).items[0]?.sentByMe).toBe(true);
+
+      await service.markAnnouncementRead(viewer(comp), sent.id);
+      expect((await service.listAnnouncementFeed(viewer(comp))).items[0]?.readAt).not.toBeNull();
+
+      // Expired messages leave the Overview page.
+      const later = new Date(Date.now() + 4 * 24 * 60 * 60_000);
+      expect((await service.listAnnouncementFeed(viewer(comp), later)).items).toEqual([]);
+
+      // Only the sender or a system admin may withdraw; it removes the bell entries.
+      await expect(service.withdrawAnnouncement(viewer(comp), sent.id)).rejects.toMatchObject({
+        status: 403,
+      });
+      const everyone = await service.createAnnouncement(viewer(fx, 'SYSTEM_ADMIN'), {
+        title: 'Office closed Friday',
+        message: 'Diwali holiday.',
+        audience: { type: 'all' },
+      });
+      expect(everyone.recipientCount).toBe(3);
+      await service.withdrawAnnouncement(viewer(fx, 'SYSTEM_ADMIN'), sent.id);
+      expect(await Notification.countDocuments({ entityId: sent.id })).toBe(0);
+      expect((await service.listAnnouncementFeed(viewer(comp))).items.map((i) => i.title)).toEqual([
+        'Office closed Friday',
+      ]);
     });
   });
 });

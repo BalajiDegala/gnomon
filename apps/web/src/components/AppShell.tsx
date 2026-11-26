@@ -4,6 +4,7 @@ import {
   Badge,
   Box,
   Button,
+  ButtonBase,
   Divider,
   Drawer,
   IconButton,
@@ -21,6 +22,8 @@ import {
 } from '@mui/material';
 import {
   Bell,
+  Check,
+  ChevronDown,
   ChevronRight,
   Clock3,
   LogOut,
@@ -30,7 +33,14 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
+import {
+  availabilityModeLabels,
+  availabilityStatusLabels,
+  type AvailabilityMode,
+} from '@gnomon/shared';
+
 import { useAppNavigation } from '../lib/app-navigation';
+import { availabilityStatusColors, useMyAvailability } from '../lib/availability';
 import { useAuth } from '../lib/auth';
 import { useNotifications } from '../lib/notifications';
 import { GnomonLogo } from './GnomonLogo';
@@ -145,6 +155,8 @@ function NavigationList({ activeView, items, label, onSelect }: NavigationListPr
 export function AppShell() {
   const { user, logout } = useAuth();
   const notifications = useNotifications();
+  const myAvailability = useMyAvailability();
+  const [statusAnchor, setStatusAnchor] = useState<HTMLElement | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('lg'));
@@ -403,27 +415,115 @@ export function AppShell() {
                 boxShadow: 'var(--g-raised-sm)',
               }}
             >
-              <Avatar
+              <ButtonBase
+                aria-label="Your availability status"
+                aria-haspopup="menu"
+                onClick={(event) => setStatusAnchor(event.currentTarget)}
                 sx={{
-                  width: 34,
-                  height: 34,
-                  bgcolor: 'var(--g-base)',
-                  boxShadow: 'var(--g-inset-sm)',
-                  color: 'var(--g-accent-text)',
-                  fontSize: 12,
-                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  borderRadius: '10px',
+                  pr: 0.5,
                 }}
               >
-                {user?.displayName.at(0)}
-              </Avatar>
-              <Box sx={{ maxWidth: 150, display: { xs: 'none', md: 'block' } }}>
-                <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 600, lineHeight: 1.2 }}>
-                  {user?.displayName}
-                </Typography>
-                <Typography noWrap sx={{ color: 'text.secondary', fontSize: 11.5 }}>
-                  {user?.employeeCode}
-                </Typography>
-              </Box>
+                <Badge
+                  overlap="circular"
+                  anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                  badgeContent={
+                    <Box
+                      component="span"
+                      sx={{
+                        width: 11,
+                        height: 11,
+                        borderRadius: '50%',
+                        border: '2px solid var(--g-base)',
+                        bgcolor:
+                          availabilityStatusColors[myAvailability.availability?.status ?? 'away'],
+                      }}
+                    />
+                  }
+                >
+                  <Avatar
+                    sx={{
+                      width: 34,
+                      height: 34,
+                      bgcolor: 'var(--g-base)',
+                      boxShadow: 'var(--g-inset-sm)',
+                      color: 'var(--g-accent-text)',
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {user?.displayName.at(0)}
+                  </Avatar>
+                </Badge>
+                <Box sx={{ maxWidth: 150, display: { xs: 'none', md: 'block' } }}>
+                  <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 600, lineHeight: 1.2 }}>
+                    {user?.displayName}
+                  </Typography>
+                  <Typography noWrap sx={{ color: 'text.secondary', fontSize: 11.5 }}>
+                    {user?.employeeCode}
+                  </Typography>
+                </Box>
+                <ChevronDown size={14} style={{ opacity: 0.6 }} />
+              </ButtonBase>
+              <MuiMenu
+                anchorEl={statusAnchor}
+                open={Boolean(statusAnchor)}
+                onClose={() => setStatusAnchor(null)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+              >
+                <Box sx={{ px: 2, pt: 1, pb: 0.75, maxWidth: 280 }}>
+                  <Typography sx={{ fontSize: 12, fontWeight: 700 }}>Your status</Typography>
+                  <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>
+                    Colleagues see:{' '}
+                    {availabilityStatusLabels[myAvailability.availability?.status ?? 'away']}
+                  </Typography>
+                </Box>
+                <Divider />
+                {(['auto', 'busy', 'available'] as AvailabilityMode[]).map((mode) => (
+                  <MenuItem
+                    key={mode}
+                    selected={myAvailability.availability?.mode === mode}
+                    disabled={myAvailability.setMode.isPending}
+                    onClick={() => {
+                      myAvailability.setMode.mutate(mode);
+                      setStatusAnchor(null);
+                    }}
+                    sx={{ alignItems: 'flex-start', gap: 1, py: 1 }}
+                  >
+                    <Box sx={{ width: 16, pt: 0.25 }}>
+                      {myAvailability.availability?.mode === mode && <Check size={15} />}
+                    </Box>
+                    <Box>
+                      <Typography sx={{ fontSize: 13, fontWeight: 600 }}>
+                        {availabilityModeLabels[mode]}
+                      </Typography>
+                      <Typography
+                        sx={{ fontSize: 11.5, color: 'text.secondary', whiteSpace: 'normal' }}
+                      >
+                        {mode === 'auto'
+                          ? 'Available while your workday is running, away otherwise'
+                          : mode === 'busy'
+                            ? 'Always shown as Do not disturb'
+                            : 'Always shown as Available'}
+                      </Typography>
+                    </Box>
+                  </MenuItem>
+                ))}
+                <Divider />
+                <MenuItem
+                  onClick={() => {
+                    setStatusAnchor(null);
+                    selectView('availability');
+                  }}
+                  sx={{ fontSize: 13 }}
+                >
+                  See everyone's availability
+                </MenuItem>
+              </MuiMenu>
               <Tooltip title="Sign out">
                 <IconButton
                   aria-label="Sign out"

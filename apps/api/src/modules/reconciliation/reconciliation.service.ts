@@ -174,7 +174,7 @@ function summarizeWebsite(
   now: Date,
   windowEnd: Date,
 ): WebsiteSummary {
-  const ordered = [...sessions].sort(
+  let ordered = [...sessions].sort(
     (left, right) => left.startedAt.getTime() - right.startedAt.getTime(),
   );
   if (ordered.length === 0) {
@@ -188,6 +188,11 @@ function summarizeWebsite(
   }
 
   const cutoff = new Date(Math.min(now.getTime(), windowEnd.getTime()));
+  // An automatic 07:00 stop is not a real exit until the employee confirms it,
+  // so the day stays incomplete ("Timecard not stopped") until then.
+  ordered = ordered.map((session) =>
+    session.status === 'auto_stopped' ? { ...session, stoppedAt: null } : session,
+  );
   const running = ordered.some((session) => session.status === 'running' && !session.stoppedAt);
   const incomplete = ordered.some(
     (session) => !session.stoppedAt && !(session.status === 'running' && now < windowEnd),

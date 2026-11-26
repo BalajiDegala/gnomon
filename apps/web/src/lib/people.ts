@@ -42,16 +42,23 @@ export function useEmployeeDirectory() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['employees', 'directory'] }),
   });
 
+  const remove = useMutation({
+    mutationFn: (employeeId: string) =>
+      request<void>(`/api/v1/employees/${employeeId}`, { method: 'DELETE' }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['employees'] }),
+  });
+
   return {
     canRead,
     canCreate: query.data?.directory.canCreate ?? false,
     canUpdate: query.data?.directory.canUpdate ?? false,
     employees: query.data?.directory.employees ?? [],
     isLoading: query.isLoading,
-    isUpdating: create.isPending || update.isPending,
-    error: query.error ?? create.error ?? update.error,
+    isUpdating: create.isPending || update.isPending || remove.isPending,
+    error: query.error ?? create.error ?? update.error ?? remove.error,
     create: (input: CreateEmployeeRequest) => create.mutateAsync(input),
     update: (employeeId: string, input: UpdateEmployeeRequest) =>
       update.mutateAsync({ employeeId, input }),
+    remove: (employeeId: string) => remove.mutateAsync(employeeId),
   };
 }

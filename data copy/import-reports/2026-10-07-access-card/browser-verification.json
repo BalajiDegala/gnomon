@@ -1,0 +1,18 @@
+{
+  "status": "passed",
+  "septemberBothSources": true,
+  "accessCardFilter": true,
+  "augustCardRecords": true,
+  "completedImportHistory": true,
+  "browserErrors": [],
+  "sample": {
+    "employeeCode": "DDIC153",
+    "workDate": "2026-09-22",
+    "displayedTimes": [
+      "09:18:16",
+      "18:20:13",
+      "09:18:33",
+      "18:19:49"
+    ]
+  }
+}

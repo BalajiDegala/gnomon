@@ -18,3 +18,5 @@ export * from './timesheet.js';
 export * from './tips.js';
 export * from './ldap.js';
 export * from './system-events.js';
+export * from './availability.js';
+export * from './announcement.js';

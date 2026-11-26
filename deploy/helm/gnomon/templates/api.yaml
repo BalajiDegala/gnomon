@@ -39,6 +39,9 @@ spec:
               value: {{ .Values.api.webOrigin | quote }}
             - name: COOKIE_SECURE
               value: {{ ternary "true" "false" (gt (len .Values.ingress.tls) 0) | quote }}
+            # Ingress + web nginx in front of the API (real client IP addresses).
+            - name: TRUST_PROXY_HOPS
+              value: {{ ternary "2" "1" .Values.ingress.enabled | quote }}
             - name: ACCESS_TOKEN_SECRET
               valueFrom:
                 secretKeyRef:

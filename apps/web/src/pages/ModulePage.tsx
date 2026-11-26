@@ -20,7 +20,9 @@ import type { AppView } from '../navigation';
 import { AdministrationPage } from './AdministrationPage';
 import { ApprovalQueuePage } from './ApprovalQueuePage';
 import { CatchUpPage } from './CatchUpPage';
+import { HelpPage } from './HelpPage';
 import { AttendanceDetailsPage } from './AttendanceDetailsPage';
+import { AvailabilityPage } from './AvailabilityPage';
 import { CalendarPage } from './CalendarPage';
 import { LeavePage } from './LeavePage';
 import { PeoplePage } from './PeoplePage';
@@ -48,6 +50,8 @@ export function ModulePage({ view, onNavigate }: ModulePageProps) {
     );
   }
   if (view === 'catch-up') return <CatchUpPage />;
+  if (view === 'availability') return <AvailabilityPage />;
+  if (view === 'help') return <HelpPage />;
   if (view === 'regularisation') {
     return <RegularisationPage onOpenCatchUp={() => onNavigate('catch-up')} />;
   }

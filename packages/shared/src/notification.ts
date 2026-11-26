@@ -5,6 +5,7 @@ export const NotificationKindSchema = z.enum([
   'leave_approved',
   'leave_rejected',
   'user_provisioned',
+  'announcement',
 ]);
 export type NotificationKind = z.infer<typeof NotificationKindSchema>;
 

@@ -32,7 +32,6 @@ if [[ ! ${tag} =~ ^[0-9A-Za-z][0-9A-Za-z._-]{0,127}$ ]]; then
   echo "Invalid image tag: ${tag}" >&2
   exit 1
 fi
-hyde
 docker_command=(docker)
 if ! docker info >/dev/null 2>&1; then
   echo "Docker is not accessible as $(id -un); using sudo."

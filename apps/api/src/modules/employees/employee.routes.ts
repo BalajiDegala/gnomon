@@ -7,7 +7,12 @@ import { Router } from 'express';
 import { z } from 'zod';
 
 import { requireAuth, requirePermission } from '../../middleware/auth.js';
-import { createEmployee, listEmployees, updateEmployee } from './employee.service.js';
+import {
+  createEmployee,
+  deleteEmployee,
+  listEmployees,
+  updateEmployee,
+} from './employee.service.js';
 
 const EmployeeParamsSchema = z.object({
   employeeId: z.string().regex(/^[a-f\d]{24}$/i),
@@ -33,5 +38,15 @@ employeeRouter.patch(
     const { employeeId } = EmployeeParamsSchema.parse(request.params);
     const input = UpdateEmployeeRequestSchema.parse(request.body);
     response.json({ employee: await updateEmployee(request.authUser!, employeeId, input) });
+  },
+);
+
+employeeRouter.delete(
+  '/:employeeId',
+  requirePermission('employee:update'),
+  async (request, response) => {
+    const { employeeId } = EmployeeParamsSchema.parse(request.params);
+    await deleteEmployee(request.authUser!, employeeId);
+    response.status(204).end();
   },
 );
