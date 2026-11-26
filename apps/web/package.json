@@ -21,11 +21,13 @@
     "@mui/material": "latest",
     "@tanstack/react-query": "latest",
     "lucide-react": "^1.27.0",
+    "matter-js": "^0.20.0",
     "react": "latest",
     "react-dom": "latest"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.0",
+    "@types/matter-js": "^0.20.2",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "@vitejs/plugin-react": "latest",

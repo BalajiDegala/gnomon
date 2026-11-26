@@ -6,6 +6,7 @@ import { createRoot } from 'react-dom/client';
 
 import { App } from './App';
 import { AuthProvider } from './lib/auth';
+import { DeveloperModeProvider } from './lib/developer-mode';
 import { ThemeModeProvider } from './theme/ThemeModeProvider';
 
 const queryClient = new QueryClient({
@@ -26,7 +27,9 @@ createRoot(root).render(
     <ThemeModeProvider>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <App />
+          <DeveloperModeProvider>
+            <App />
+          </DeveloperModeProvider>
         </AuthProvider>
       </QueryClientProvider>
     </ThemeModeProvider>

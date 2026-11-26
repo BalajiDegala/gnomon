@@ -33,6 +33,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAppNavigation } from '../lib/app-navigation';
 import { useAuth } from '../lib/auth';
 import { useNotifications } from '../lib/notifications';
+import { DeveloperModeIndicator } from './DeveloperModeIndicator';
+import { ColorfulRain } from './ColorfulRain';
 import { GnomonLogo } from './GnomonLogo';
 import { TipsCompanion } from './TipsCompanion';
 import { ThemeSwitcher } from './ThemeSwitcher';
@@ -493,6 +495,8 @@ export function AppShell() {
         )}
       </Box>
       <TipsCompanion />
+      <DeveloperModeIndicator />
+      <ColorfulRain />
     </Box>
   );
 }
